@@ -27,8 +27,8 @@ Before any planning, generation or delegation:
 Hybrid model — heavy *design-decision* roles are subagents (delegate via the Agent tool); mechanical *generation* is done via skills (invoke via the Skill tool).
 
 **Specialist subagents (decisions):**
-#- `needs-assessment` — gathers real learner context (roles, goals, baseline).
-#- `curriculum-architect` — builds the prerequisite graph + learning-objectives map, sequences around a real problem.
+- `learning-requirements` — interviews the human to collect course objectives, technical setup (duration, delivery mode, scheduling), and at least one participant persona. Sole owner of the personas, objectives, and course-spec stores.
+- `learning-curriculum-architect` — builds the prerequisite graph and sequences it into ordered sessions around a real, persona-anchored problem. Sole owner of the curriculum store.
 #- `instructional-designer` — decides how each module teaches (cognitive load, experience→reflection→theory→practice).
 #- `assessment-designer` — designs quizzes/exercises, formative vs summative, each item traced to an objective.
 #- `editor` — cross-module consistency: terminology, acronyms, tone, brand.
@@ -42,7 +42,7 @@ Hybrid model — heavy *design-decision* roles are subagents (delegate via the A
 # Pipeline
 
 1. **ASSESSMENT** — objectives & outcomes, duration, prerequisites, scheduling constraints, *and* real cohort context.
-#2. **CURRICULUM DESIGN** — prerequisite graph + objectives map + lesson sequence + assessment strategy.
+2. **CURRICULUM DESIGN** — prerequisite graph + ordered session sequence (delegated to learning-curriculum-architect).
 #3. **INSTRUCTIONAL DESIGN** — how each module teaches.
 #4. **MATERIALS DEVELOPMENT** — slides, quizzes, exercises, manuals.
 #5. **GRAPHICAL DESIGN** — visual/brand-consistent, accessible materials.
@@ -57,15 +57,18 @@ Hybrid model — heavy *design-decision* roles are subagents (delegate via the A
 - **Single Source of Truth, per domain.** Not one folder — one authoritative store per domain, each with exactly one writer; everyone else reads it or proposes a change, never keeps a private copy:
   | Store | Owner (writer) |
   |---|---|
-  | Learner personas/profiles | needs-assessment |
+  | Participant personas (`learning/ssot/personas.md`) | learning-requirements |
+  | Course objectives (`learning/ssot/objectives.md`) | learning-requirements |
+  | Technical spec — duration, delivery mode, scheduling (`learning/ssot/course-spec.md`) | learning-requirements |
+  | Curriculum — prerequisite graph, ordered session sequence, session chunking (`learning/ssot/curriculum.md`) | learning-curriculum-architect |
+
+  Require every agent to read the *current* version of a store it depends on before proceeding — retrieval before generation, never memory or invention.
 
   
-#  | Prerequisite graph | curriculum-architect |
-#  | Learning-objectives map | curriculum-architect |
 #  
 #  | Terminology/style glossary | editor |
 #  | Course manifest (structure, module IDs) | this agent |
-#  Require every agent to read the *current* version of a store it depends on before proceeding — retrieval before generation, never memory or invention. **Do not** put SSOT control over the *creative wording* of slides/exercises — that would defeat having a Content Author.
+#  **Do not** put SSOT control over the *creative wording* of slides/exercises — that would defeat having a Content Author.
 
 - **Hypotheses vs facts.** The prerequisite graph and personas are guesses. Tag entries with confidence/provenance; route low-confidence entries to human review; **block** downstream work built on a still-unapproved ("provisional") store.
 
