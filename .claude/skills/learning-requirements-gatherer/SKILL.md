@@ -20,8 +20,8 @@ SSOT are defined in @.claude/reference/ssot_structure.md.
 
 You are the only writer of the following stores:
 
-* LOGISTICS — `specifications/logistics.md`
 * GOALS — `specifications/goals.md`
+* LOGISTICS — `specifications/logistics.md`
 * STUDENT_PERSONAS — `specifications/student_personas.md`
 
 Everyone else in the system reads these; only this interview writes them.
@@ -30,11 +30,11 @@ Retrieval before generation: if a store already exists (a re-run, or a revised r
 
 # What "collected" means
 
-- **LOGISTICS** covers at minimum: total length (hours/sessions/weeks), delivery mode (**human-taught / self-paced / hybrid / other**), synchronous vs asynchronous, schedule and pacing constraints, language, expected cohort size, prerequisites assumed, and the target delivery platform, whether students work in a specific sector or company. Ask about anything else that would shape the material.
-
 - **GOALS** are outcomes: "can configure a CI pipeline", not "intro to CI". Each objective phrased so a dedicated agent can later trace a quiz item to it.
 
-- **Personas** — **at least one is mandatory**; you may not finish without it. Prefer several when the cohort is mixed. A persona here is not demographics — it is a *map of competing priorities*.
+- **LOGISTICS** covers at minimum: total length (hours/sessions/weeks), delivery mode (**human-taught / self-paced / hybrid / other**), synchronous vs asynchronous, schedule and pacing constraints, language, expected cohort size, prerequisites assumed, and the target delivery platform, whether students work in a specific sector or company. Ask about anything else that would shape the material.
+
+- **STUDENT_PERSONAS** — **at least one is mandatory**; you may not finish without it. Prefer several when the cohort is mixed. A persona here is not demographics — it is a *map of competing priorities*.
 
 # How to run the interview
 
@@ -42,9 +42,57 @@ Work through the human conversationally, in rounds — do not dump a giant form.
 
 Start acquiring info you will store in the LOGISTICS store, then the GOALS store, then the PERSONAS store.
 
-## LOGISTICS
+
 
 ## GOALS
+
+Draw the questions from the following theoretical frameworks:
+
+**Backward Design (UbD)**
+- Enduring Understandings: What core concepts should students retain long after the class ends?
+- Essential Questions: What provocative, open-ended questions will drive inquiry and discussion?
+- Knowledge & Skills: What specific facts, theories, and actionable skills must students master?
+- How will you verify that students achieved those goals?
+
+Once you adopt the Backward Design structure, use these frameworks to classify and write the individual goal statements:
+
+Bloom’s Taxonomy (Revised by Anderson & Krathwohl)
+Best for establishing cognitive rigor. It organizes goals into six levels using measurable action verbs:
+- Remember: Retrieve knowledge (e.g., define, list).
+- Understand: Construct meaning (e.g., explain, classify).
+- Apply: Use procedure in a given situation (e.g., execute, solve).
+- Analyze: Break material into constituent parts (e.g., differentiate, deconstruct).
+- Evaluate: Make judgments based on criteria (e.g., critique, assess).
+- Create: Put elements together to form a functional whole (e.g., design, formulate).
+
+Fink’s Taxonomy of Significant Learning
+Best when goals extend beyond purely cognitive skills into holistic, personal, or professional growth (popular in higher education and leadership courses). It covers six non-hierarchical dimensions:
+- Foundational Knowledge: Core concepts and information.
+- Application: Practical execution and critical thinking.
+- Integration: Connecting ideas across disciplines or real-world contexts.
+- Human Dimension: Understanding self and interacting with others.
+- Caring: Developing new values, interests, or feelings about the topic.
+- Learning How to Learn: Developing self-directed learning skills.
+
+Then state the goals in a way that is **traceable** to later quizzes or exercises. Each goal should be phrased using a modified ABCD Objective Model:
+- goal ID. Prefer an ID that is somehwat mnemonic of the goal, e.g. "G1_DEPLOY" instead of "G1". This makes it easier to trace for humans.
+- Audience: Who is performing? ("Students will...")
+- Behavior: What action verb shows mastery? ("...construct a responsive web page...")
+- Condition: Under what constraints or with what tools? ("...using standard HTML/CSS templates...")
+- Degree: What standard defines success? ("...that passes all accessibility checks.")
+
+## LOGISTICS
+
+Context & Delivery Analysis: Determines where and how the course happens.
+- Delivery Modality: Synchronous vs. Asynchronous; Local (In-person), Remote, or Hybrid/Blended.
+- Location & Facilities: Physical room requirements or virtual platform specs (e.g., Zoom, LMS).
+
+Target Audience & Constraint Analysis: Determines who can take it and when.
+- Schedule & Duration: Total hours, session length, cadence (e.g., 6 weeks, 2 hours/week), and timezone constraints.
+- Prerequisites & Language: Required prior knowledge, software access, and native/instructional language requirements.
+
+Educational Logistins:	
+- Interactivity Type, Learning Resource Type, Typical Learning Time, Context (e.g., Higher Ed, Corporate)
 
 ## PERSONAS
 
