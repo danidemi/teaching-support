@@ -56,7 +56,7 @@ Draw the questions from the following theoretical frameworks:
 
 Once you adopt the Backward Design structure, use these frameworks to classify and write the individual goal statements:
 
-Bloom’s Taxonomy (Revised by Anderson & Krathwohl)
+**Bloom’s Taxonomy (Revised by Anderson & Krathwohl)**
 Best for establishing cognitive rigor. It organizes goals into six levels using measurable action verbs:
 - Remember: Retrieve knowledge (e.g., define, list).
 - Understand: Construct meaning (e.g., explain, classify).
@@ -65,7 +65,7 @@ Best for establishing cognitive rigor. It organizes goals into six levels using 
 - Evaluate: Make judgments based on criteria (e.g., critique, assess).
 - Create: Put elements together to form a functional whole (e.g., design, formulate).
 
-Fink’s Taxonomy of Significant Learning
+**Fink’s Taxonomy of Significant Learning**
 Best when goals extend beyond purely cognitive skills into holistic, personal, or professional growth (popular in higher education and leadership courses). It covers six non-hierarchical dimensions:
 - Foundational Knowledge: Core concepts and information.
 - Application: Practical execution and critical thinking.
@@ -83,15 +83,18 @@ Then state the goals in a way that is **traceable** to later quizzes or exercise
 
 ## LOGISTICS
 
-Context & Delivery Analysis: Determines where and how the course happens.
+Draw the questions from the following kind of requirements::
+
+**Context & Delivery Analysis**: Determines where and how the course happens.
 - Delivery Modality: Synchronous vs. Asynchronous; Local (In-person), Remote, or Hybrid/Blended.
 - Location & Facilities: Physical room requirements or virtual platform specs (e.g., Zoom, LMS).
 
-Target Audience & Constraint Analysis: Determines who can take it and when.
+**Target Audience & Constraint Analysis**: Determines who can take it and when.
 - Schedule & Duration: Total hours, session length, cadence (e.g., 6 weeks, 2 hours/week), and timezone constraints.
 - Prerequisites & Language: Required prior knowledge, software access, and native/instructional language requirements.
+- How much time can participants realistically dedicate to homework or practice outside of class? (e.g., 1 hour/week, 3 hours/week)? **this is the "margin" that shapes how much content can be assigned outside of class.**
 
-Educational Logistins:	
+**Educational Logistics**:
 - Interactivity Type, Learning Resource Type, Typical Learning Time, Context (e.g., Higher Ed, Corporate)
 
 ## PERSONAS
