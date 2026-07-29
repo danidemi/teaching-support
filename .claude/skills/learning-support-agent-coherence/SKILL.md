@@ -82,14 +82,22 @@ you notice — you understand good multi-agent design, so use that judgement, do
 
 **B. SSOT alignment** *(the highest-value check — misaligned stores cause agents to read and
 write different files while believing they share one)*
-- Every mention of the same store uses the **identical path string**. `learning/ssot/personas.md`
-  in one file and `learning/ssot/persona.md` (or `.../student-personas.md`) in another is two
+- Every mention of the same store uses the **identical path string**. `specifications/personas.md`
+  in one file and `specifications/persona.md` (or `.../student-personas.md`) in another is two
   files pretending to be one.
 - Every store has **exactly one writer/owner**. Zero owners = an orphan store nobody maintains.
   Two owners = a write conflict that corrupts the source of truth.
 - An owner's own file and the orchestrator's ownership table **agree** on who owns what.
-- Paths sit under the conventions the project already uses (here: `learning/ssot/…`,
-  `learning/output/…`, `learning/project.md`). Flag a store dropped somewhere inconsistent.
+- Paths match `.claude/reference/ssot_structure.md`, which is **canonical** for store locations:
+  specs in `specifications/…`, design artefacts in `design/…`, produced material in `material/…`,
+  and shared theory the agents read in `.claude/reference/…`. Read that file at the start of the
+  audit rather than trusting this list — if the two ever disagree, `ssot_structure.md` wins and
+  this line is the bug.
+
+  ⚠️ An older, **abandoned** layout used `learning/project.md`, `learning/ssot/…` and
+  `learning/output/…`. `learning` is in `.gitignore` and no store lives there. Treat a surviving
+  `learning/…` reference as a **finding to fix**, not as the convention — and never "correct" a
+  file that uses the canonical paths to match it.
 
 **C. Scope overlap & conflict**
 - No two agents describe the **same responsibility** as theirs. Overlap is sometimes fine
@@ -115,11 +123,15 @@ write different files while believing they share one)*
 - Grounding discipline is consistent: agents that depend on a store are told to **read its current
   version first** rather than work from memory.
 - References to docs resolve. But separate two kinds of path: **input docs that must already exist**
-  (e.g. `doc/pedagogic/…` the agents read as source material) *should* resolve now, and a broken one
-  is a real finding — whereas **runtime/output paths** the pipeline creates later (`learning/project.md`,
-  `learning/ssot/…`, `learning/output/…`) are expected to be absent before the project is initialized.
-  Do **not** flag those as broken; the agents already guard for their absence. Only flag a runtime
-  path if it's *spelled inconsistently* between agents (that's check B), not for merely not existing yet.
+  (e.g. `doc/pedagogic/…` and `.claude/reference/…` the agents read as source material) *should*
+  resolve now, and a broken one is a real finding — whereas **runtime/output paths** the pipeline
+  creates later (`design/knowledge_goals_graph.md`, `material/…`, `material/slides/out/…`) are
+  expected to be absent before that phase has run. Do **not** flag those as broken; the agents already
+  guard for their absence. Only flag a runtime path if it's *spelled inconsistently* between agents
+  (that's check B), not for merely not existing yet.
+- Prefer the `.claude/reference/…` prefix when citing a shared theory doc. Bare `reference/…` (as in
+  `learning-curriculum-architect`) resolves only if the reader guesses the prefix — worth raising as
+  an improvement, not a blocker.
 
 ## Step 3 — Write the discrepancy report
 

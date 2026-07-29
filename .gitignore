@@ -1,1 +1,7 @@
 learning
+
+# Rendered slide decks are build products — regenerate from the model in
+# material/slides/session-NN.yml via tools/slides/slides render
+material/slides/out/
+tools/slides/example/out/
+__pycache__/

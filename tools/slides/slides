@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# Single entry point for the slide pipeline. Everything runs in the container built
+# from this directory, so the host needs nothing but Docker.
+#
+#   slides build                      build/rebuild the container image
+#   slides lint    <deck.yml>...      check a model against slide_rules.yml
+#   slides cover   <deck.yml>...      objective/unit coverage, both directions
+#   slides fetch   <deck.yml>         download third-party images (network step)
+#   slides render  <deck.yml>         lint, then render .pptx + .pdf (needs status: approved)
+#   slides preview <deck.yml>         render a DRAFT-watermarked preview for review
+#   slides check   <deck.yml>...      lint + cover, the usual pre-review gate
+#   slides shell                      interactive shell in the image, for debugging
+#
+# The container runs as the invoking user, so rendered files are owned by you and
+# not by root.
+set -euo pipefail
+
+IMAGE="piattaforma-corsi/slides:1"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO="$(cd "$HERE/../.." && pwd)"
+
+die() { printf 'slides: %s\n' "$*" >&2; exit 2; }
+
+have_image() { docker image inspect "$IMAGE" >/dev/null 2>&1; }
+
+build_image() {
+    printf 'building %s (first run downloads ~1 GB)\n' "$IMAGE"
+    docker build -t "$IMAGE" "$HERE"
+}
+
+ensure_image() {
+    have_image || build_image
+}
+
+# Paths are passed through as repo-relative so they resolve identically inside.
+in_docker() {
+    ensure_image
+    docker run --rm \
+        -u "$(id -u):$(id -g)" \
+        -v "$REPO:/work" \
+        -w /work \
+        -e HOME=/tmp \
+        -e PYTHONDONTWRITEBYTECODE=1 \
+        "$IMAGE" "$@"
+}
+
+py() {
+    local script="$1"; shift
+    in_docker python3 "tools/slides/$script" "$@"
+}
+
+# Turn any host path into one relative to the repo root.
+rel() {
+    local p
+    for p in "$@"; do
+        if [[ "$p" == /* ]]; then
+            printf '%s\n' "${p#"$REPO"/}"
+        else
+            printf '%s\n' "$(realpath --relative-to="$REPO" "$p")"
+        fi
+    done
+}
+
+cmd="${1:-}"; shift || true
+case "$cmd" in
+    build)   build_image ;;
+
+    lint)    [[ $# -gt 0 ]] || die "lint needs at least one deck"
+             mapfile -t decks < <(rel "$@"); py slidelint.py "${decks[@]}" ;;
+
+    cover)   [[ $# -gt 0 ]] || die "cover needs at least one deck"
+             mapfile -t decks < <(rel "$@"); py coverage.py "${decks[@]}" ;;
+
+    fetch)   [[ $# -gt 0 ]] || die "fetch needs a deck"
+             mapfile -t decks < <(rel "$@"); py fetch_assets.py "${decks[@]}" ;;
+
+    check)   [[ $# -gt 0 ]] || die "check needs at least one deck"
+             mapfile -t decks < <(rel "$@")
+             py slidelint.py "${decks[@]}"; echo; py coverage.py "${decks[@]}" ;;
+
+    render)  [[ $# -gt 0 ]] || die "render needs a deck"
+             mapfile -t decks < <(rel "$@")
+             # Errors block a real render; warnings do not.
+             py slidelint.py "${decks[0]}"
+             py build_deck.py "${decks[0]}" ;;
+
+    preview) [[ $# -gt 0 ]] || die "preview needs a deck"
+             mapfile -t decks < <(rel "$@")
+             py slidelint.py "${decks[0]}" || true
+             py build_deck.py "${decks[0]}" --allow-draft ;;
+
+    shell)   in_docker bash ;;
+
+    ""|-h|--help|help)
+             sed -n '2,20p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' ;;
+
+    *)       die "unknown command '$cmd' (try: slides help)" ;;
+esac

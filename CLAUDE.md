@@ -1,0 +1,118 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What this repository is
+
+There is no application code, build, test, or lint step here — everything is Markdown. The repo is
+two things at once:
+
+1. **A Claude Code agent/skill system** (`.claude/`) for planning adult courses and producing their didactic material (slides, quizzes, exercises, manuals).
+2. **A live test course project** it is being developed against — `specifications/` and `design/` currently hold a likely course that human can regenerate for testing purpose.
+
+## Pipeline and how to invoke it
+
+Phases (`.claude/reference/phases.md`): requirements gathering → curriculum design → instructional
+design → materials development. Phase 3 has **no owner**; phase 4 covers slides only.
+
+- `/learning-requirements-gatherer` — **must be run by the human in the main conversation loop.** It
+  interviews the human and writes LOGISTICS, GOALS, STUDENT_PERSONAS.
+- `learning-curriculum-architect` — a subagent; `learning-project-manager` delegates to it with the
+  Agent tool once the three requirement stores exist and are signed off.
+- `/learning-slide-author` — a main-loop skill (its sign-off gate needs conversation). Writes the
+  per-session deck models and renders them. See the slide pipeline below.
+- `learning-support-agent-coherence` — run this skill after editing **any** file under
+  `.claude/agents/` or `.claude/skills/`. It audits name/path/ownership drift, reports first, and only
+  edits after explicit human approval.
+
+Because phase 3 has no owner, the slide author necessarily makes some instructional-design decisions.
+It records them in each deck's `instructional_decisions` list tagged `awaiting: instructional-designer`
+rather than burying them in slide wording — that list is the handover when a phase-3 owner exists.
+
+## The rule that shapes the whole design: skill vs. subagent
+
+A subagent receives one prompt and returns one final message — it has **no channel to ask the human
+anything mid-run**. Therefore:
+
+- Anything **interactive** must be a **skill running in the main loop** (hence requirements gathering
+  is a skill, not an agent, and neither the orchestrator nor any subagent can run it — they must stop
+  and ask the human to invoke it).
+- Only **non-interactive design decisions** become subagents.
+
+Preserve this split when adding roles. Delegation is blocking; independent subagent calls go in one
+message to run in parallel, dependent ones are chained.
+
+## Single Source of Truth
+
+One authoritative store per domain, **exactly one writer**, everyone else reads the *current* version
+before generating — retrieval before generation, never memory or invention. `.claude/reference/ssot_structure.md`
+is canonical for paths:
+
+| Store | Path | Writer |
+|---|---|---|
+| LOGISTICS | `specifications/logistics.md` | learning-requirements-gatherer (skill) |
+| GOALS | `specifications/goals.md` | learning-requirements-gatherer (skill) |
+| STUDENT_PERSONAS | `specifications/student_personas.md` | learning-requirements-gatherer (skill) |
+| CURRICULUM | `design/curriculum.md` | learning-curriculum-architect |
+| MATERIAL — slides | `material/slides/session-NN.yml` | learning-slide-author (skill) |
+| DESIGN (knowledge graph) | `design/knowledge_goals_graph.md` | not yet created |
+| MATERIAL — everything else | `material/` | not yet created |
+
+Stores hold **hypotheses as well as facts** — the prerequisite graph and the personas are informed
+guesses. Every entry carries a confidence/provenance tag (`[stated]`, `[inferred]`,
+`[invented framing]`, `[risk]`); low-confidence entries route to human review, and downstream work on a
+still-provisional store is blocked pending sign-off.
+
+## The slide pipeline (`tools/slides/`)
+
+The repo's only toolchain, and it is fully containerised — the host needs Docker and nothing else.
+First `slides build` takes a few minutes and ~1.6 GB of disk.
+
+```bash
+tools/slides/slides check   material/slides/session-01.yml   # lint + coverage
+tools/slides/slides preview material/slides/session-01.yml   # DRAFT-stamped render
+tools/slides/slides render  material/slides/session-01.yml   # requires status: approved
+```
+
+- **The model is the source; `.pptx`/`.pdf` are build products** under `material/slides/out/`,
+  git-ignored, never hand-edited. Model format: `.claude/reference/slide_model_spec.md`. Design rules:
+  `.claude/reference/slide_design_rules.md` (distilled from `doc/writing_effective_slides.md` — a
+  rewrite, not a mirror copy, so re-derive it rather than diffing).
+- **Thresholds live in `tools/slides/slide_rules.yml`**, never hard-coded in the scripts. Only
+  mechanical defects are errors; every judgement call is a warning, so the linter never blocks a render
+  on a false positive.
+- **Nothing hand-computes what a script computes.** `slidelint.py` does the counts, required fields,
+  licence metadata, Kolb/lane completeness, timing sums and the notes-novelty KPI; `coverage.py` checks
+  objectives and units in both directions. Do not report a KPI you did not run.
+- **`status: approved` is set by a human only.** `render` refuses a draft; `preview` stamps `[DRAFT]`.
+- **`reference.pptx` is generated, not authored** — `make_reference.py` patches pandoc's default
+  template, whose title placeholder holds only two lines at 33pt and clips the three-line sentence
+  headlines the Assertion-Evidence model produces. Re-run it inside the container if pandoc changes.
+- `tools/slides/example/fixture.yml` is the pipeline self-test — check it first to tell a bad deck
+  apart from a bad toolchain.
+
+## Known traps
+
+- **An abandoned `learning/` layout.** An older design put stores under `learning/project.md`,
+  `learning/ssot/…` and `learning/output/…`; `learning` is in `.gitignore` and nothing lives there. The
+  live agent files no longer reference it, so treat any `learning/…` path you meet as a leftover to fix,
+  and never "correct" a file that already uses the canonical paths to match it.
+- **Commented-out roster.** Lines prefixed with `#` in `learning-project-manager.md` describe
+  *planned* agents, skills, and stores. Only **two agents** (`learning-project-manager`,
+  `learning-curriculum-architect`) and **three project skills** (`learning-requirements-gatherer`,
+  `learning-slide-author`, `learning-support-agent-coherence`) actually exist — delegating to e.g.
+  `instructional-designer` will fail. Check comment status byte-exactly (`grep -n '^#' <file>`): `#`
+  also starts Markdown headings, which are live text.
+- **Duplicated theory docs.** `.claude/reference/andragogy_principles.md`,
+  `experiential_learning.md`, and `curriculum_sequencing_summary.md` are byte-identical copies of
+  `doc/pedagogic/*` / `doc/curriculum_sequencing_summary.md`. **Agents read the `.claude/reference/`
+  copies** (the architect refers to them as `reference/…`, without the `.claude/` prefix); `doc/` is
+  the human-facing research library. Edit both if the theory changes.
+
+## Where the background reasoning lives
+
+`doc/` holds the research this system implements — pedagogy (`doc/pedagogic/`: andragogy, Kolb's
+experiential cycle, cognitive load, persona definition), assessment design, content standards, and the
+LLM prerequisite-graph notes. `doc/ai-architectures/possible_architecture.md` describes the full
+aspirational agent roster and SSOT rationale; `reusable_agents.md` covers the folder-as-project-boundary
+model. Consult these before inventing a new pedagogical rule — it is probably already specified there.
