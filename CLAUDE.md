@@ -53,9 +53,9 @@ is canonical for paths:
 | LOGISTICS | `specifications/logistics.md` | learning-requirements-gatherer (skill) |
 | GOALS | `specifications/goals.md` | learning-requirements-gatherer (skill) |
 | STUDENT_PERSONAS | `specifications/student_personas.md` | learning-requirements-gatherer (skill) |
-| CURRICULUM | `design/curriculum.md` | learning-curriculum-architect |
+| DESIGN (knowledge graph) | `design/knowledge_goals_graph.md` | learning-curriculum-architect |
 | MATERIAL — slides | `material/slides/session-NN.yml` | learning-slide-author (skill) |
-| DESIGN (knowledge graph) | `design/knowledge_goals_graph.md` | not yet created |
+| CURRICULUM | `design/curriculum.md` | not yet created |
 | MATERIAL — everything else | `material/` | not yet created |
 
 Stores hold **hypotheses as well as facts** — the prerequisite graph and the personas are informed

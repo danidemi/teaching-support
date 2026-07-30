@@ -32,7 +32,7 @@ Hybrid model — heavy *design-decision* roles are subagents (delegate via the A
 - `learning-slide-author` — a **skill** that writes the per-session slide deck models and renders them to PowerPoint/PDF. Sole writer of the MATERIAL — slides store. Same constraint, different reason: its work ends in a human sign-off gate (propose the model, the human reviews it and sets `status: approved`, only then render), and a subagent has no way to show a draft and wait. So you **cannot run it yourself** — verify the CURRICULUM store is signed off, then ask the human to run `/learning-slide-author` in the main conversation.
 
 **Specialist subagents (decisions):**
-- `learning-curriculum-architect` — builds the prerequisite graph and sequences it into ordered sessions around a real, persona-anchored problem. Sole owner of the curriculum store.
+- `learning-curriculum-architect` — builds the prerequisite graph: the goals decomposed backward into teachable prerequisites down to each persona's real baseline, with per-persona applicability and depth staging. Sole owner of the DESIGN store. It does **not** chunk the course into sessions and does **not** write the CURRICULUM store — that organizing role does not exist yet, so stop and report the gap rather than improvising it.
 #- `instructional-designer` — decides how each module teaches (cognitive load, experience→reflection→theory→practice).
 #- `assessment-designer` — designs quizzes/exercises, formative vs summative, each item traced to an objective.
 #- `editor` — cross-module consistency: terminology, acronyms, tone, brand.
@@ -58,7 +58,8 @@ Hybrid model — heavy *design-decision* roles are subagents (delegate via the A
   | LOGISTICS — duration, delivery mode, scheduling (`specifications/logistics.md`) | learning-requirements-gatherer (skill, main loop) |
   | GOALS — course objectives/outcomes (`specifications/goals.md`) | learning-requirements-gatherer (skill, main loop) |
   | STUDENT_PERSONAS — participant personas (`specifications/student_personas.md`) | learning-requirements-gatherer (skill, main loop) |
-  | CURRICULUM — prerequisite graph, ordered session sequence, session chunking (`design/curriculum.md`) | learning-curriculum-architect |
+  | DESIGN — prerequisite graph: nodes, `Enables` edges, deliberate roots, per-persona applicability, depth staging (`design/knowledge_goals_graph.md`) | learning-curriculum-architect |
+  | CURRICULUM — the course organization built on top of the graph (`design/curriculum.md`) | *no owner yet — do not write it* |
   | MATERIAL — slides: one deck model per session (`material/slides/session-NN.yml`) | learning-slide-author (skill, main loop) |
 
   Require every agent to read the *current* version of a store it depends on before proceeding — retrieval before generation, never memory or invention.
