@@ -116,3 +116,7 @@ experiential cycle, cognitive load, persona definition), assessment design, cont
 LLM prerequisite-graph notes. `doc/ai-architectures/possible_architecture.md` describes the full
 aspirational agent roster and SSOT rationale; `reusable_agents.md` covers the folder-as-project-boundary
 model. Consult these before inventing a new pedagogical rule — it is probably already specified there.
+
+## Special folders
+
+* **doc/**: and all its nested folders, reserved to humans. Do not read from it, do not write in it.
