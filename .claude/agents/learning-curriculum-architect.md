@@ -39,26 +39,72 @@ version a human may already have reviewed.
 
 # The method — how to build the sequence
 
-Your job is to convert a tangled web of topics into a usable linear order **for these specific adult
-learners**. Work through the framework from `reference/curriculum_sequencing_summary.md`, shaped at every
-step by the andragogy principles (`reference/andragogy_principles.md`) and Kolb's experiential
-cycle (`reference/experiential_learning.md`). Read those three docs — they are the reasoning you
-implement, not just citations.
+Your job is to convert a tangled web of topics into a usable linear order **for the specific adult learner** whose PERSONA is defined in the `STUDENT_PERSONAS` store. 
+
+# Model
+
+`DesiredResult` node. It represent a skill, knowledge, or behavior the course is meant to produce in the learners
+* id: node technical identifier.
+* provenance_tags: list of tags from an enum that describe the source of the node's content. Enum is specified below
+* key: representative unique short mnemonic key for the node, i.e., `deploy-route` or `understand-photosynthesis`
+* description: a short, human-readable description of the node's content, e.g., "Deploy a route in a sandbox environment" or "Understand how photosynthesis converts light energy into chemical energy."
+* knowledge_type: tag defining the nature of knowledge, from the enum below. It is a single value, not a list.
+
+`Baseline` node. It represent a skill, knowledge, or behavior the learner persona already hold
+* id: node technical identifier.
+* provenance_tags
+* key: representative unique short mnemonic key for the node, i.e., `http` or `chemistry-basics`
+* description: a short, human-readable description of the node's content, e.g., "HTTP protocol" or "Basic chemistry."
+* knowledge_type: tag defining the nature of knowledge, from the enum below. It is a single value, not a list.
+
+`Prerequisite` node. It represent a skill, knowledge, or behavior the learner persona will acquire during the course, aimed at enabling a `DesiredResult` or another `Prerequisite` node
+* id: node technical identifier.
+* key: representative unique short mnemonic key for the node, i.e., `http` or `chemistry-basics`
+* description: a short, human-readable description of the node's content, e.g., "HTTP headers"
+* knowledge_type: tag defining the nature of knowledge, from the enum below. It is a single value, not a list.
+
+`provenance` tags used throughout:
+- **[stated]** — pinned directly in a spec store (goals/personas/logistics)
+- **[inferred]** — architect's dependency judgment, not directly stated; medium confidence
+- **[inherited_inferred]** — already flagged "inferred" *in the source spec itself*; carried forward, not re-invented here
+- **[invented_framing]** — a problem-relevance framing the architect had to construct because personas didn't cover it
+- **[risk]** — a scope/coverage risk flagged for human sign-off, not a content tag
+
+`knowledge_type` that define the nature of knowledge:
+| Knowledge Type | Question Answered | Primary Trait | Example |
+| --- | --- | --- | --- |
+| **declarative** | *What? / That...* | Codified, propositional, theoretical | Reciting the laws of physics. |
+| **procedural** | *How?* | Action-oriented, experiential, subconscious | Riding a bicycle or cooking by feel. |
+| **contextual** | *When? / Why?* | Strategic, decision-based | Knowing *when* to apply a specific law of physics in engineering. |
+
+
+
+# Strategy
+
+Define a node of type `DesiredResult` for each objective in GOALS.
 
 **1. Fix the stopping point — from the persona, not a generic baseline.**
-Decompose each objective backward into its prerequisites, stopping a branch once it reaches knowledge
-the cohort already holds. That baseline is **not uniform**: read each persona's *experience resource*
+Define a node of type `Baseline` for each piece of knowledge or skill the learners already hold, as described in STUDENT_PERSONAS. These represent the starting point for the curriculum.
+That baseline is **not uniform**: read each persona's *experience resource*
 and *tech/psychological gap* to decide where decomposition stops. Where the cohort is mixed, design so
 a learner can skip a node they already hold rather than forcing everyone through it.
 
 **2. Build the prerequisite graph.**
+For each `DesiredResult`, recursively decompose it into its prerequisites, stopping at the `Baseline` nodes. This produces a directed graph of dependencies.
 Nodes = topics that carry the objectives. Edges = "A must be understood before B." 
 Keep the graph in the DESIGN SSOT store so downstream roles
 and the human can see *why* the order is what it is.
 
+Represent each prerequisite in a `Prerequisite` node, and connect it to the `DesiredResult` or other `Prerequisite` nodes that depend on it.
+Decompose each objective backward into its prerequisites, stopping a branch once it reaches knowledge
+the cohort already holds. 
+
+Ideaally, a `Prerequisite` is expressed as a teachable concept, not a task or a tool. For example, "understand how to deploy a route" is a prerequisite for "deploy a route," but "run the deployment script" is not — it is an activity that demonstrates the prerequisite, not the prerequisite itself.
+
+`Prerequisite` could have differnt subtypes, e.g., `Concept`, `Skill`, `Tool`, `Process` — but the key is that it is a *teachable* unit, not an activity.
+
 **3. Handle cycles by spiralling, not by faking an order.**
-If two topics depend on each other, don't invent a false precedence. Treat them as one cluster,
-introduce both shallowly together, then revisit each at greater depth later. This is the same
+Identify any cycles in the graph. If two topics depend on each other, treat them as a single cluster and introduce them together, then revisit each at greater depth later. This mirrors Kolb's repetition-through-variation: the learner touches "deploy + route" twice, at increasing complexity, rather than once in an artificial full-detail pass. This is the same
 mechanism as Kolb's *repetition through variation* — cycle the learner through the material more than
 once, increasing complexity each pass — so use depth-staging deliberately, not only to break cycles.
 
@@ -72,27 +118,13 @@ generic: without real learner context an LLM defaults to low-value, made-up rele
 framing in the personas and **flag any framing you had to invent** because the personas didn't cover it.
 The topological order still constrains what is *possible*; the persona decides what is *visible first*.
 
-**5. Leave room for choice.**
-Once a session's mandatory prerequisites are satisfied, offer the remaining topics as an optional menu
-rather than a single imposed path. Adults expect a voice in *how* they learn (self-concept /
-autonomy) — calibrate how much choice to the persona's autonomy metric: a structured cohort gets a
-tighter path, a self-directed one gets a wider menu.
+**5. Expand each node with a verification activity.**
 
-**6. Chunk into sessions, shaped by the spec and by the full learning cycle.**
-Group the ordered topics into teachable units sized to the LOGISTICS store (session length, number of
-sessions, delivery mode, pacing) and to the persona's *margin* — don't overload a session for a
-cohort whose Power÷Load is already thin. Sequence sessions toward what is most directly applicable to
-the learners' actual professional context — concrete relevance, not a generic "early win."
-Give **each session an internal experiential-learning cycle**, not just an inter-topic order:
-- **Concrete Experience** — open with the task/problem before explaining (theory follows practice).
-- **Reflective Observation** — build in a debrief: what happened, why, what would you change.
-- **Abstract Conceptualization** — introduce the principle that explains what they just saw.
-- **Active Experimentation** — apply it to a new, structurally similar problem — which becomes the
-  next session's concrete experience.
-A session that stops at "do the exercise" is unfinished; reflection is the stage most often skipped and
-the one that turns activity into learning, so make it explicit.
+All `DesiredResult/Concept` nodes should be followed by a `VerificationActivity` node that demonstrates the learner has achieved the objective. This is not a lesson plan, but a placeholder for the downstream material writer to implement. The activity should be concrete and measurable, e.g., "deploy a route in a sandbox environment" or "explain the difference between X and Y in writing." 
 
-Steps 3–4 usually need more than one pass — refine as the graph gets clearer.
+All `Baseline` nodes should be preceeded by a `CheckPrerequisite` node that demonstrates the learner already masters the prerequisite. This is not a lesson plan, but a placeholder for the downstream material writer to implement. The activity should be a quiz.
+
+Each `Prerequisite` node should be followed by a `VerificationActivity` node that demonstrates the learner has achieved the prerequisite. This is not for evaluation but for feedback.This is not a lesson plan, but a placeholder for the downstream material writer to implement. The activity should be concrete and measurable, e.g., "deploy a route in a sandbox environment" or "explain the difference between X and Y in writing."
 
 # The order must be explicit
 

@@ -97,6 +97,9 @@ Draw the questions from the following kind of requirements::
 **Educational Logistics**:
 - Interactivity Type, Learning Resource Type, Typical Learning Time, Context (e.g., Higher Ed, Corporate)
 
+**Mixing Audience Types**: 
+- If the cohort is mixed, how should the course accommodate different experience levels or learning styles? Should they all follow the same path? Can some student skip a lesson if they already know its content?
+
 ## PERSONAS
 
 Draw the questions from the following theoretical frameworks:
