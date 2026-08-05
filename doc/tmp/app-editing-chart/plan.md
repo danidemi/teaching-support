@@ -5,6 +5,8 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
 This file is a living log. Update the checkbox and add a one-line note under a step when it
 completes — don't rewrite history above it.
 
+Wait for explicit confirmation by human after each step is completed.
+
 ## Context (read this before resuming work)
 
 - Origin: `learning-curriculum-architect` stores the DESIGN SSOT graph
