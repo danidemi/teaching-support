@@ -102,6 +102,7 @@ node table at hand. Type prefixes: `BSL-` (Baseline), `PRQ-` (Prerequisite), `DR
 * audience: which personas this node is for (see *Per-persona applicability*)
 * skippable_by / persona_variant: see *Per-persona applicability*
 * root / root_rationale: only for a deliberate root (see *Deliberate roots*)
+* depth_staging: optional, only if the knowledge represented by this node is visited more than once in the course in another related node. It is an indicator of the depth of the knowledge represented by this node, as 'shallow' or 'deep'.
 
 # Deliberate roots — a first-class node kind, not an exception
 
@@ -159,7 +160,6 @@ these fields** — not written down as a directive for someone else to honour.
 * reason: the rationale for the edge, e.g., if "A" is "HTTP" and "B" is "protocol", then reason could be "a generic idea of what a protocol is is needed before understanding HTTP."
 
 
-
 # Strategy
 
 Define a node of type `DesiredResult` for each objective in GOALS.
@@ -200,6 +200,10 @@ once, increasing complexity each pass — so use depth-staging deliberately, not
 Express staging as numbered **passes over a node** (`pass 1 — shallow`, `pass 2 — deep`, with what
 changes between them). Never anchor a pass to a session, a day, or a clock: which pass lands where is
 the downstream organizer's decision, not yours.
+If a node needs to be visited more that once because of depth staging, replaces it with two or more nodes, one per pass, and connect them in order. Each pass is a separate node with its own 
+* id: `PRQ-<MNEMONIC>-<DEPTH>` (e.g., `PRQ-DEPLOY-ROUTE-SHALLOW`, `PRQ-DEPLOY-ROUTE-DEEP`),
+* description: conceptually the same as the original node, but updated and detailed to reflect the depth of knowledge represented by this pass.
+* audience: generally the same as the original node if there are no changes in the audience, but if there are changes, update it accordingly.
 
 # Store layout
 
