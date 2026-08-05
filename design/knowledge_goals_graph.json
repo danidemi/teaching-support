@@ -1,0 +1,367 @@
+{
+  "course_name": "Spring Cloud Gateway for a Strangler-Fig Migration to GKE",
+  "personas": ["P-DEV", "P-OPS"],
+  "nodes": [
+    {
+      "id": "BSL-DOCKER",
+      "type": "Baseline",
+      "provenance_tags": ["stated"],
+      "key": "docker",
+      "description": "Docker containers: images, Dockerfile basics, running and inspecting containers.",
+      "knowledge_type": "procedural",
+      "held_by": ["P-DEV", "P-OPS"]
+    },
+    {
+      "id": "BSL-GKE-CONTAINERS",
+      "type": "Baseline",
+      "provenance_tags": ["stated"],
+      "key": "gke-containers",
+      "description": "Comfort operating containerized infrastructure on GKE (clusters, containers running in them) prior to this course.",
+      "knowledge_type": "procedural",
+      "held_by": ["P-OPS"]
+    },
+    {
+      "id": "BSL-REST",
+      "type": "Baseline",
+      "provenance_tags": ["stated"],
+      "key": "rest",
+      "description": "REST/HTTP fundamentals: verbs, status codes, request/response headers.",
+      "knowledge_type": "declarative",
+      "held_by": ["P-DEV", "P-OPS"]
+    },
+    {
+      "id": "BSL-SPRING-BOOT",
+      "type": "Baseline",
+      "provenance_tags": ["stated"],
+      "key": "spring-boot",
+      "description": "Spring Boot application development fundamentals (dependency injection, application context, common starters).",
+      "knowledge_type": "procedural",
+      "held_by": ["P-DEV"]
+    },
+    {
+      "id": "DR-DEPLOY-GATEWAY",
+      "type": "DesiredResult",
+      "provenance_tags": ["stated"],
+      "key": "deploy-gateway",
+      "description": "Stand up a Spring Cloud Gateway instance and deploy it to a GKE cluster so it is reachable and ready to route traffic.",
+      "knowledge_type": "procedural",
+      "audience": "all"
+    },
+    {
+      "id": "DR-MINT-TOKEN",
+      "type": "DesiredResult",
+      "provenance_tags": ["stated", "inferred"],
+      "key": "mint-token",
+      "description": "At the gateway, mint a custom internal token that emulates the token format the legacy application already expects, and propagate it to downstream services, so legacy/backend code does not need to change immediately.",
+      "knowledge_type": "procedural",
+      "audience": ["P-DEV"]
+    },
+    {
+      "id": "DR-STRANGLER-ROUTING",
+      "type": "DesiredResult",
+      "provenance_tags": ["stated"],
+      "key": "strangler-routing",
+      "description": "Configure path-based route splitting at the gateway so that /legacy/** paths reach the legacy system and new paths reach the migrated microservices.",
+      "knowledge_type": "procedural",
+      "audience": "all"
+    },
+    {
+      "id": "DR-TRACING",
+      "type": "DesiredResult",
+      "provenance_tags": ["stated"],
+      "key": "tracing",
+      "description": "Have the gateway participate in or initiate OpenTelemetry distributed tracing, propagating trace context across gateway, microservices, and the legacy system.",
+      "knowledge_type": "procedural",
+      "audience": "all"
+    },
+    {
+      "id": "DR-VALIDATE-AUTH",
+      "type": "DesiredResult",
+      "provenance_tags": ["stated"],
+      "key": "validate-auth",
+      "description": "Validate incoming JWTs issued by Microsoft Entra ID at the gateway, and apply CORS so legitimate cross-origin browser clients are allowed through.",
+      "knowledge_type": "procedural",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-CONTAINERIZE-GATEWAY",
+      "type": "Prerequisite",
+      "provenance_tags": ["inferred"],
+      "key": "containerize-gateway",
+      "description": "Building a container image for the Spring Cloud Gateway application (Dockerfile, build process) ready for cluster deployment.",
+      "knowledge_type": "procedural",
+      "audience": "all",
+      "persona_variant": [
+        { "persona": "P-DEV", "variant": "Authors/maintains the Dockerfile and application build for the gateway image." },
+        { "persona": "P-OPS", "variant": "Operates the image build/publish pipeline and container registry." }
+      ]
+    },
+    {
+      "id": "PRQ-CORS-CONCEPT",
+      "type": "Prerequisite",
+      "provenance_tags": ["stated"],
+      "key": "cors-concept",
+      "description": "What CORS is and why browsers enforce it: origins, preflight requests, and which response headers a server must return to allow a cross-origin call.",
+      "knowledge_type": "declarative",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-CORS-GATEWAY-CONFIG",
+      "type": "Prerequisite",
+      "provenance_tags": ["stated"],
+      "key": "cors-gateway-config",
+      "description": "Configuring CORS at the gateway (allowed origins, methods, headers) so browser-based clients can call routed services.",
+      "knowledge_type": "procedural",
+      "audience": "all",
+      "persona_variant": [
+        { "persona": "P-DEV", "variant": "Sets the CORS configuration in the gateway's code/config." },
+        { "persona": "P-OPS", "variant": "Verifies CORS behavior end-to-end against real client calls." }
+      ]
+    },
+    {
+      "id": "PRQ-CUSTOM-GLOBALFILTER-AUTHORING",
+      "type": "Prerequisite",
+      "provenance_tags": ["stated"],
+      "key": "custom-globalfilter-authoring",
+      "description": "Writing a custom GlobalFilter/GatewayFilter in Spring Cloud Gateway: filter ordering in the reactive chain, and the WebFlux/reactive gotchas involved in mutating a request or response in-flight.",
+      "knowledge_type": "procedural",
+      "audience": ["P-DEV"]
+    },
+    {
+      "id": "PRQ-DISTRIBUTED-TRACING-CONCEPTS",
+      "type": "Prerequisite",
+      "provenance_tags": ["stated"],
+      "key": "distributed-tracing-concepts",
+      "description": "Distributed tracing concepts: traces, spans, and how trace context propagates across process boundaries via request headers.",
+      "knowledge_type": "declarative",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-GATEWAY-JWT-VALIDATION-FILTER",
+      "type": "Prerequisite",
+      "provenance_tags": ["stated"],
+      "key": "gateway-jwt-validation-filter",
+      "description": "Configuring the gateway to validate incoming JWTs issued by Microsoft Entra ID before a request is allowed to proceed: signature, issuer, audience, and expiry checks.",
+      "knowledge_type": "procedural",
+      "audience": "all",
+      "persona_variant": [
+        { "persona": "P-DEV", "variant": "Implements/configures the resource-server JWT validation on the gateway route." },
+        { "persona": "P-OPS", "variant": "Supplies and wires the Entra tenant/JWKS configuration values, and verifies accepted vs rejected requests." }
+      ]
+    },
+    {
+      "id": "PRQ-GATEWAY-ROUTE-CONFIG",
+      "type": "Prerequisite",
+      "provenance_tags": ["inferred", "inherited_inferred"],
+      "key": "gateway-route-config",
+      "description": "The Spring Cloud Gateway route model: predicates and built-in filters, and how routes are declared/configured (Java DSL or YAML) to direct a request.",
+      "knowledge_type": "procedural",
+      "audience": "all",
+      "persona_variant": [
+        { "persona": "P-DEV", "variant": "Authors routes via the Java RouteLocator API or YAML configuration." },
+        { "persona": "P-OPS", "variant": "Reads and validates route configuration and the resulting traffic-split behavior, without authoring Java." }
+      ]
+    },
+    {
+      "id": "PRQ-GKE-DEPLOY-GATEWAY",
+      "type": "Prerequisite",
+      "provenance_tags": ["stated", "inherited_inferred"],
+      "key": "gke-deploy-gateway",
+      "description": "Deploying the containerized gateway onto the GKE cluster: applying manifests, exposing the service, and confirming it is reachable.",
+      "knowledge_type": "procedural",
+      "audience": "all",
+      "persona_variant": [
+        { "persona": "P-OPS", "variant": "Leads manifest authoring and the cluster deployment itself." },
+        { "persona": "P-DEV", "variant": "Understands the deployment shape well enough to debug and iterate on the running gateway." }
+      ]
+    },
+    {
+      "id": "PRQ-JWT-FUNDAMENTALS-DEEP",
+      "type": "Prerequisite",
+      "provenance_tags": ["inferred"],
+      "key": "jwt-fundamentals-deep",
+      "description": "Constructing a new JWT programmatically: choosing claims and signing a token, applied specifically to mapping validated Entra ID claims into a differently-shaped token.",
+      "knowledge_type": "procedural",
+      "audience": ["P-DEV"],
+      "depth_staging": {
+        "pass": 2,
+        "depth": "deep",
+        "note": "Revisits JWT structure to construct a new, differently-shaped token from already-validated claims, instead of only validating one."
+      }
+    },
+    {
+      "id": "PRQ-JWT-FUNDAMENTALS-SHALLOW",
+      "type": "Prerequisite",
+      "provenance_tags": ["inferred"],
+      "key": "jwt-fundamentals-shallow",
+      "description": "What a JWT is: header/claims/signature structure, and what it means to validate a token's signature and standard claims (exp, aud, iss).",
+      "knowledge_type": "declarative",
+      "audience": "all",
+      "depth_staging": {
+        "pass": 1,
+        "depth": "shallow",
+        "note": "Enough structure/claims/signature understanding to validate an incoming token."
+      }
+    },
+    {
+      "id": "PRQ-K8S-DEPLOY-CONCEPTS",
+      "type": "Prerequisite",
+      "provenance_tags": ["inferred", "inherited_inferred"],
+      "key": "k8s-deploy-concepts",
+      "description": "Kubernetes deployment concepts applied to GKE: Deployments, Services, and Ingress, and how a containerized app is exposed on a cluster.",
+      "knowledge_type": "declarative",
+      "audience": "all",
+      "skippable_by": ["P-OPS"]
+    },
+    {
+      "id": "PRQ-LEGACY-TOKEN-FORMAT",
+      "type": "Prerequisite",
+      "provenance_tags": ["risk"],
+      "key": "legacy-token-format",
+      "description": "The exact structure/claims the legacy application currently expects in its authentication token, which the minted gateway token must emulate.",
+      "knowledge_type": "declarative",
+      "audience": ["P-DEV"],
+      "root": true,
+      "root_rationale": "The legacy application's exact token shape is not detailed in the specs; it must be supplied by the client, so this node cannot be decomposed further from the current stores."
+    },
+    {
+      "id": "PRQ-LEGACY-VS-NEW-ROUTING-IMPL",
+      "type": "Prerequisite",
+      "provenance_tags": ["stated"],
+      "key": "legacy-vs-new-routing-impl",
+      "description": "Implementing and verifying the concrete path-based route rules so that /legacy/** reaches the legacy system and every other configured path reaches the correct migrated microservice.",
+      "knowledge_type": "procedural",
+      "audience": "all",
+      "persona_variant": [
+        { "persona": "P-DEV", "variant": "Writes/adjusts the concrete route rules." },
+        { "persona": "P-OPS", "variant": "Deploys the configuration and verifies traffic actually splits as intended." }
+      ]
+    },
+    {
+      "id": "PRQ-OAUTH-OIDC-ENTRA",
+      "type": "Prerequisite",
+      "provenance_tags": ["stated"],
+      "key": "oauth-oidc-entra",
+      "description": "How Microsoft Entra ID issues tokens via OAuth2/OIDC: tenant, app registration, issuer, and the JWKS endpoint used to fetch signing keys.",
+      "knowledge_type": "contextual",
+      "audience": "all",
+      "persona_variant": [
+        { "persona": "P-DEV", "variant": "Consumes issuer/JWKS values inside validation code." },
+        { "persona": "P-OPS", "variant": "Configures the Entra app registration and supplies tenant/JWKS values." }
+      ]
+    },
+    {
+      "id": "PRQ-OTEL-COLLECTOR-PIPELINE",
+      "type": "Prerequisite",
+      "provenance_tags": ["inferred"],
+      "key": "otel-collector-pipeline",
+      "description": "Setting up the OpenTelemetry collector pipeline that receives traces emitted by the gateway and downstream services, so a full trace can be observed end-to-end.",
+      "knowledge_type": "procedural",
+      "audience": "all",
+      "persona_variant": [
+        { "persona": "P-OPS", "variant": "Deploys and operates the OTel collector pipeline." },
+        { "persona": "P-DEV", "variant": "Understands the pipeline enough to interpret traces while debugging." }
+      ]
+    },
+    {
+      "id": "PRQ-OTEL-INSTRUMENTATION-GATEWAY",
+      "type": "Prerequisite",
+      "provenance_tags": ["stated"],
+      "key": "otel-instrumentation-gateway",
+      "description": "Configuring/instrumenting the gateway to participate in OpenTelemetry tracing: propagating, and where needed initiating, trace context across the request to microservices and the legacy system.",
+      "knowledge_type": "procedural",
+      "audience": "all",
+      "persona_variant": [
+        { "persona": "P-DEV", "variant": "Adds/verifies OTel instrumentation in the gateway's code path." },
+        { "persona": "P-OPS", "variant": "Wires the OTel exporter configuration on the gateway deployment." }
+      ]
+    },
+    {
+      "id": "PRQ-PATH-BASED-ROUTING",
+      "type": "Prerequisite",
+      "provenance_tags": ["stated"],
+      "key": "path-based-routing",
+      "description": "Using path-based predicates to split traffic: routing /legacy/** to the legacy system and other paths to migrated microservices.",
+      "knowledge_type": "declarative",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-SCG-BASICS",
+      "type": "Prerequisite",
+      "provenance_tags": ["stated"],
+      "key": "scg-basics",
+      "description": "What Spring Cloud Gateway is: its role as an edge reverse-proxy/API gateway sitting in front of both legacy and newly-migrated services.",
+      "knowledge_type": "declarative",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-STRANGLER-FIG-PATTERN",
+      "type": "Prerequisite",
+      "provenance_tags": ["stated"],
+      "key": "strangler-fig-pattern",
+      "description": "The strangler-fig migration pattern: incrementally routing traffic to new microservices while the legacy system keeps serving the rest, so both environments coexist during the migration window.",
+      "knowledge_type": "contextual",
+      "audience": "all",
+      "root": true,
+      "root_rationale": "The problem framing that motivates the whole course; it rests on no prior knowledge, so nothing is prerequisite to it."
+    },
+    {
+      "id": "PRQ-TOKEN-MINTING-LOGIC",
+      "type": "Prerequisite",
+      "provenance_tags": ["stated"],
+      "key": "token-minting-logic",
+      "description": "Implementing gateway logic that mints a new internal token shaped like the legacy application's expected token, populated from the validated incoming Entra ID JWT's claims.",
+      "knowledge_type": "procedural",
+      "audience": ["P-DEV"]
+    },
+    {
+      "id": "PRQ-TOKEN-PROPAGATION",
+      "type": "Prerequisite",
+      "provenance_tags": ["stated"],
+      "key": "token-propagation",
+      "description": "Propagating the minted internal token to downstream microservices and the legacy system by rewriting the outgoing request (e.g. replacing/adding the Authorization header) before it leaves the gateway.",
+      "knowledge_type": "procedural",
+      "audience": ["P-DEV"]
+    }
+  ],
+  "edges": [
+    { "from": "DR-DEPLOY-GATEWAY", "to": "PRQ-GKE-DEPLOY-GATEWAY", "reason": "The gateway is only \"deployed\" once it is running on the GKE cluster, which is exactly what this prerequisite covers." },
+    { "from": "DR-MINT-TOKEN", "to": "PRQ-TOKEN-PROPAGATION", "reason": "Minting the token is only useful once it is propagated downstream; propagation is the last teachable step this objective requires." },
+    { "from": "DR-STRANGLER-ROUTING", "to": "PRQ-LEGACY-VS-NEW-ROUTING-IMPL", "reason": "The objective is exactly the concrete implementation of the legacy-vs-new path split." },
+    { "from": "DR-TRACING", "to": "PRQ-OTEL-COLLECTOR-PIPELINE", "reason": "A gateway emitting traces is only useful if a collector pipeline exists to receive them." },
+    { "from": "DR-TRACING", "to": "PRQ-OTEL-INSTRUMENTATION-GATEWAY", "reason": "The gateway must be instrumented to participate in/initiate tracing before the objective is met." },
+    { "from": "DR-VALIDATE-AUTH", "to": "PRQ-CORS-GATEWAY-CONFIG", "reason": "The objective explicitly includes applying CORS at the gateway." },
+    { "from": "DR-VALIDATE-AUTH", "to": "PRQ-GATEWAY-JWT-VALIDATION-FILTER", "reason": "The objective explicitly includes validating incoming JWTs at the gateway." },
+    { "from": "PRQ-CONTAINERIZE-GATEWAY", "to": "BSL-DOCKER", "reason": "Building a container image assumes basic Docker/Dockerfile fluency." },
+    { "from": "PRQ-CONTAINERIZE-GATEWAY", "to": "PRQ-SCG-BASICS", "reason": "You need to know what the gateway application is before packaging it into an image." },
+    { "from": "PRQ-CORS-CONCEPT", "to": "BSL-REST", "reason": "CORS is a browser/HTTP-level mechanism, so it assumes basic REST/HTTP understanding." },
+    { "from": "PRQ-CORS-GATEWAY-CONFIG", "to": "PRQ-CORS-CONCEPT", "reason": "You must understand what CORS is and why it exists before configuring it correctly." },
+    { "from": "PRQ-CORS-GATEWAY-CONFIG", "to": "PRQ-GATEWAY-ROUTE-CONFIG", "reason": "CORS is applied through the gateway's route/filter configuration model." },
+    { "from": "PRQ-CUSTOM-GLOBALFILTER-AUTHORING", "to": "BSL-SPRING-BOOT", "reason": "Writing a custom GlobalFilter/GatewayFilter in Java requires Spring Boot fluency." },
+    { "from": "PRQ-CUSTOM-GLOBALFILTER-AUTHORING", "to": "PRQ-GATEWAY-ROUTE-CONFIG", "reason": "Custom filters extend the same route/filter model, so the general model must be understood first." },
+    { "from": "PRQ-DISTRIBUTED-TRACING-CONCEPTS", "to": "BSL-REST", "reason": "Trace context propagates via HTTP headers, so it assumes basic REST/HTTP understanding." },
+    { "from": "PRQ-GATEWAY-JWT-VALIDATION-FILTER", "to": "PRQ-GATEWAY-ROUTE-CONFIG", "reason": "JWT validation is wired into the route/filter model, so that model must be understood first." },
+    { "from": "PRQ-GATEWAY-JWT-VALIDATION-FILTER", "to": "PRQ-JWT-FUNDAMENTALS-SHALLOW", "reason": "Validating a JWT requires knowing what a JWT is and what \"valid\" means for its structure and claims." },
+    { "from": "PRQ-GATEWAY-JWT-VALIDATION-FILTER", "to": "PRQ-OAUTH-OIDC-ENTRA", "reason": "Validation depends on Entra-specific issuer/JWKS details from the OIDC flow." },
+    { "from": "PRQ-GATEWAY-ROUTE-CONFIG", "to": "PRQ-SCG-BASICS", "reason": "The route/predicate/filter model is a detail of Spring Cloud Gateway, which must first be understood as a concept." },
+    { "from": "PRQ-GKE-DEPLOY-GATEWAY", "to": "PRQ-CONTAINERIZE-GATEWAY", "reason": "You must have a container image of the gateway before it can be deployed to the cluster." },
+    { "from": "PRQ-GKE-DEPLOY-GATEWAY", "to": "PRQ-K8S-DEPLOY-CONCEPTS", "reason": "Deploying to GKE requires knowing the Kubernetes deployment concepts (Deployment/Service/Ingress) being applied." },
+    { "from": "PRQ-JWT-FUNDAMENTALS-DEEP", "to": "PRQ-JWT-FUNDAMENTALS-SHALLOW", "reason": "Constructing a token is a deeper pass over the same JWT structure already introduced at pass 1." },
+    { "from": "PRQ-JWT-FUNDAMENTALS-DEEP", "to": "PRQ-OAUTH-OIDC-ENTRA", "reason": "The claims being remapped into the new token come from the validated Entra-issued token, so the Entra OIDC flow must already be understood." },
+    { "from": "PRQ-JWT-FUNDAMENTALS-SHALLOW", "to": "BSL-REST", "reason": "JWTs are carried in HTTP headers, so basic REST/HTTP understanding is assumed." },
+    { "from": "PRQ-K8S-DEPLOY-CONCEPTS", "to": "BSL-DOCKER", "reason": "Kubernetes deployment concepts build on the container fundamentals learners already hold." },
+    { "from": "PRQ-LEGACY-VS-NEW-ROUTING-IMPL", "to": "PRQ-PATH-BASED-ROUTING", "reason": "You must understand path-based route splitting conceptually before implementing the concrete legacy-vs-new rules." },
+    { "from": "PRQ-OAUTH-OIDC-ENTRA", "to": "PRQ-JWT-FUNDAMENTALS-SHALLOW", "reason": "OIDC issues and describes JWTs, so basic JWT structure must be understood first." },
+    { "from": "PRQ-OTEL-COLLECTOR-PIPELINE", "to": "PRQ-DISTRIBUTED-TRACING-CONCEPTS", "reason": "Setting up a collector pipeline assumes understanding what traces/spans are and why they need to be collected." },
+    { "from": "PRQ-OTEL-INSTRUMENTATION-GATEWAY", "to": "PRQ-DISTRIBUTED-TRACING-CONCEPTS", "reason": "Instrumenting the gateway assumes understanding traces, spans, and context propagation first." },
+    { "from": "PRQ-OTEL-INSTRUMENTATION-GATEWAY", "to": "PRQ-GATEWAY-ROUTE-CONFIG", "reason": "Tracing instrumentation is wired into the same route/filter model." },
+    { "from": "PRQ-PATH-BASED-ROUTING", "to": "PRQ-GATEWAY-ROUTE-CONFIG", "reason": "Path-based predicates are a specific use of the general route/predicate/filter model." },
+    { "from": "PRQ-PATH-BASED-ROUTING", "to": "PRQ-STRANGLER-FIG-PATTERN", "reason": "Splitting traffic by path is only motivated once the strangler-fig migration pattern it serves is understood." },
+    { "from": "PRQ-SCG-BASICS", "to": "BSL-REST", "reason": "Understanding a gateway as a reverse-proxy assumes basic REST/HTTP understanding." },
+    { "from": "PRQ-TOKEN-MINTING-LOGIC", "to": "PRQ-CUSTOM-GLOBALFILTER-AUTHORING", "reason": "The minting logic is implemented as a custom GlobalFilter, so custom filter authoring must be understood first." },
+    { "from": "PRQ-TOKEN-MINTING-LOGIC", "to": "PRQ-GATEWAY-JWT-VALIDATION-FILTER", "reason": "The incoming Entra JWT must already be validated before its claims can be trusted and remapped." },
+    { "from": "PRQ-TOKEN-MINTING-LOGIC", "to": "PRQ-JWT-FUNDAMENTALS-DEEP", "reason": "Minting a token requires the deeper pass on JWT construction, not just validation." },
+    { "from": "PRQ-TOKEN-MINTING-LOGIC", "to": "PRQ-LEGACY-TOKEN-FORMAT", "reason": "The minted token must emulate the legacy application's expected format, so that format must be known first." },
+    { "from": "PRQ-TOKEN-PROPAGATION", "to": "PRQ-TOKEN-MINTING-LOGIC", "reason": "There must be a minted token before it can be propagated downstream." }
+  ]
+}

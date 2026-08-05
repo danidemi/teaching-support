@@ -54,7 +54,7 @@ Wait for explicit confirmation by human after each step is completed.
    strings (not persona definitions — those stay in the markdown STUDENT_PERSONAS SSOT, which this
    schema doesn't reference).
 
-2. `[ ]` **Update `.claude/agents/learning-curriculum-architect.md`** so it writes
+2. `[x]` **Update `.claude/agents/learning-curriculum-architect.md`** so it writes
    `design/knowledge_goals_graph.json` per the new schema instead of markdown tables. Keep the
    conceptual model (roles, strategy, closure check, deliberate roots, per-persona applicability)
    as-is — only the *serialization* changes.
@@ -126,3 +126,18 @@ Wait for explicit confirmation by human after each step is completed.
   `#/$defs/persona_ref`, the same pattern used by `audience`/`skippable_by`/`held_by`) — the roster of
   ids this graph refers to, not a definition of them. Re-verified with `jsonschema`: valid instance
   passes, malformed persona id string is rejected. Still waiting for human confirmation before step 2.
+- Step 2 done: rewrote `.claude/agents/learning-curriculum-architect.md` to target
+  `design/knowledge_goals_graph.json` instead of the markdown store everywhere it's named (the store
+  table, the "sole writer" statement, re-run/amend instructions, the closure-check paragraph, the
+  final write-out instruction). Added an explicit pointer to
+  `.claude/reference/knowledge_goals_graph.schema.json` as the authority on shape, with an instruction
+  to validate against it before considering a write final. Reworded the persona-roster instruction to
+  match the schema decision from step 1: emit `personas` as a flat id list only, name/cohort_count stay
+  in STUDENT_PERSONAS. Replaced the old markdown "Store layout" section (ordered tables) with a JSON
+  structure description (`course_name`/`personas`/`nodes`/`edges`) plus an explicit sort-by-id /
+  sort-by-(from,to) instruction, since the schema can't enforce ordering itself. Also fixed a stray
+  terminology bug found while in the file: edges were once called "Enables" in the node-id section,
+  inconsistent with "Requires" used everywhere else — corrected to "Requires". No conceptual/strategy
+  content changed (roles, decomposition strategy, closure check, deliberate roots, per-persona
+  applicability, depth staging are untouched) — only the serialization target. Waiting for human
+  confirmation before step 3.
