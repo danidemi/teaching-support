@@ -65,7 +65,7 @@ Wait for explicit confirmation by human after each step is completed.
 4. `[x]` **Migrate the existing example graph** at `design/knowledge_goals_graph.md` to the new
    JSON format (resolve the open question above first: hand-convert vs regenerate).
 
-5. `[ ]` **Scaffold the app** under `tools/graph/`:
+5. `[x]` **Scaffold the app** under `tools/graph/`:
    - Vite + React + TypeScript project.
    - React Flow canvas with custom node components colour-coded by node type, custom edge
      rendering showing the `reason` label.
@@ -159,3 +159,42 @@ Wait for explicit confirmation by human after each step is completed.
   repo root, distinct from `ssot_structure.md`) still says `design/knowledge_goals_graph.md` —
   not yet corrected; flag before closing out this plan. Waiting for human confirmation before
   step 5.
+- Step 5 done: hand-authored the scaffold under `tools/graph/` (Vite's own scaffolder
+  (`create-vite`) now requires Node ≥20, this host has 18 — worked around by writing
+  `package.json`/`tsconfig*`/`vite.config.ts`/`index.html` directly rather than via the CLI; the
+  Dockerfile in step 8 will pin Node 20+, matching `tools/slides/`'s image, so this doesn't block
+  anything downstream). Stack: Vite + React 18 + TypeScript, `@xyflow/react` (React Flow) for the
+  canvas, `dagre` for auto-layout, `react-hook-form` + `zod` for the edit form.
+  - `src/types/graph.ts`: TS types mirroring `.claude/reference/knowledge_goals_graph.schema.json`
+    exactly (enums, per-type required fields, id prefixes) — comment says the schema wins on drift.
+  - `src/lib/nodeFormSchema.ts`: Zod schema re-deriving the same per-type rules (audience required
+    for DesiredResult/Prerequisite, held_by for Baseline, root_rationale when root: true, id
+    prefix check) so bad values are caught in the form, not just on save.
+  - `src/lib/layout.ts`: Dagre auto-layout run fresh on every graph load, never persisted — matches
+    the locked decision that canvas positions aren't part of the SSOT.
+  - `src/components/nodes/GraphNodeView.tsx` + `typeStyles.ts`: one node component, colour-coded by
+    type (green Baseline, blue Prerequisite, orange DesiredResult), root nodes flagged inline.
+  - `src/components/edges/RequiresEdge.tsx`: straight edge with the `reason` rendered as a small
+    label at the midpoint (full text on hover via `title`).
+  - `src/components/EditPanel.tsx`: React Hook Form + Zod side panel, fields conditional on node
+    type (audience only for DR/PRQ, held_by only for Baseline, root/root_rationale only for PRQ).
+    **Known rough edge**: `audience`/`held_by`/`skippable_by` are bound as plain comma-separated
+    text inputs, but the Zod schema expects `"all" | string[]` — so editing those fields won't
+    currently pass validation as wired. Needs a text↔array transform before this form is usable
+    end-to-end; flagging now rather than glossing over it, revisit before/during step 9's smoke
+    test.
+  - `App.tsx` fetches `GET /api/graph` (the step 6 file server) and shows an explicit
+    "not connected" state until that exists — no mock/stub backend added, so nothing here needs
+    revisiting once step 6 lands.
+  - Verified: `npm install` (with an `EBADENGINE` warning only, non-fatal), `tsc -b` clean, `vite
+    build` clean (508 KB single JS chunk, unminified concerns noted but fine for a local
+    single-user tool — not code-split). `dist/` removed after the check, it's a git-ignored build
+    product. Not yet run against a real backend (step 6) or the real graph (needs step 6+7 first).
+  Waiting for human confirmation before step 6.
+- Added `tools/graph/README.md` on request (out of step order, ahead of step 10): current status,
+  how to run the dev server today (`npm install && npm run dev`, needs a Node ≥20 toolchain since
+  the system Node here is 18), the proxy setup to the not-yet-built backend, source layout, and the
+  same known gaps logged above (audience/held_by form binding, no save path, no `check` command
+  yet). This is a snapshot, not the final doc — step 8 (Docker wrapper) and step 10 will need to
+  update the "running it" section once the host only needs Docker, and the "known gaps" section
+  should shrink as steps 6/7/9 close.
