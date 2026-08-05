@@ -59,10 +59,10 @@ Wait for explicit confirmation by human after each step is completed.
    conceptual model (roles, strategy, closure check, deliberate roots, per-persona applicability)
    as-is — only the *serialization* changes.
 
-3. `[ ]` **Update `.claude/reference/ssot_structure.md`** — DESIGN store path
+3. `[x]` **Update `.claude/reference/ssot_structure.md`** — DESIGN store path
    `design/knowledge_goals_graph.md` → `design/knowledge_goals_graph.json`.
 
-4. `[ ]` **Migrate the existing example graph** at `design/knowledge_goals_graph.md` to the new
+4. `[x]` **Migrate the existing example graph** at `design/knowledge_goals_graph.md` to the new
    JSON format (resolve the open question above first: hand-convert vs regenerate).
 
 5. `[ ]` **Scaffold the app** under `tools/graph/`:
@@ -141,3 +141,21 @@ Wait for explicit confirmation by human after each step is completed.
   content changed (roles, decomposition strategy, closure check, deliberate roots, per-persona
   applicability, depth staging are untouched) — only the serialization target. Waiting for human
   confirmation before step 3.
+- Step 3 done: `.claude/reference/ssot_structure.md`'s DESIGN row updated —
+  `design/knowledge_goals_graph.md` → `.json`, `Enables` → `Requires`, persona roster reworded to
+  "persona id list" (matches step 1/2), and a pointer to
+  `.claude/reference/knowledge_goals_graph.schema.json` added as the shape authority.
+- Step 4 done, via regeneration rather than hand-conversion (per the locked decision): ran the
+  rewritten `learning-curriculum-architect` against the existing signed-off
+  `specifications/{goals,logistics,student_personas}.md`. It wrote
+  `design/knowledge_goals_graph.json` fresh — 30 nodes (4 Baseline, 21 Prerequisite, 5
+  DesiredResult), 38 edges, personas `P-DEV`/`P-OPS`. Self-validated against the schema (id
+  patterns, required fields, sort order, acyclic, closure check). Human reviewed the agent's
+  flagged judgment calls (token-format root assumption, node-count-vs-8h risk, Ops audience scope
+  on the token-minting branch, K8s skippable-by-Ops assumption, JWT shallow/deep split, the
+  two-lane `persona_variant` carriers) and accepted the graph as-is — no content changes requested.
+  The agent also independently flagged the same `.md`/`Enables` drift in `CLAUDE.md` and
+  `ssot_structure.md` that step 3 just fixed. Note: `CLAUDE.md`'s own SSOT table (the one in the
+  repo root, distinct from `ssot_structure.md`) still says `design/knowledge_goals_graph.md` —
+  not yet corrected; flag before closing out this plan. Waiting for human confirmation before
+  step 5.
