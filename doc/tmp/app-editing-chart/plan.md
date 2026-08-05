@@ -45,12 +45,14 @@ Wait for explicit confirmation by human after each step is completed.
 
 ## Steps
 
-1. `[ ]` **Write the JSON Schema** for the DESIGN store, encoding the node/edge shape currently
+1. `[x]` **Write the JSON Schema** for the DESIGN store, encoding the node/edge shape currently
    described in prose in `.claude/agents/learning-curriculum-architect.md` (node types
    `Baseline`/`Prerequisite`/`DesiredResult`, id prefixes `BSL-`/`PRQ-`/`DR-`, `provenance_tags`
    and `knowledge_type` enums, `audience`/`skippable_by`/`persona_variant`, `root`/`root_rationale`,
-   `depth_staging`, and `Requires` edges with a `reason`). Save to
-   `.claude/reference/knowledge_goals_graph.schema.json`.
+   `depth_staging`, and `Requires` edges with a `reason`). Single schema, saved to
+   `.claude/reference/knowledge_goals_graph.schema.json`. `personas` is a flat array of persona id
+   strings (not persona definitions — those stay in the markdown STUDENT_PERSONAS SSOT, which this
+   schema doesn't reference).
 
 2. `[ ]` **Update `.claude/agents/learning-curriculum-architect.md`** so it writes
    `design/knowledge_goals_graph.json` per the new schema instead of markdown tables. Keep the
@@ -97,3 +99,30 @@ Wait for explicit confirmation by human after each step is completed.
 
 - Plan created after the stack discussion in `doc/tmp/app-editing-chart/01-assessment.md`. No
   build steps started yet.
+- Step 1 done: wrote `.claude/reference/knowledge_goals_graph.schema.json`. Draft 2020-12, validates
+  as syntactically correct JSON. Encodes: persona roster (`P-` ids), the three node types with their
+  id-prefix patterns enforced via `allOf`/`if-then` (`DR-` requires `audience`, `BSL-` requires
+  `held_by`, `PRQ-` requires `audience`), `provenance_tags`/`knowledge_type` enums, `audience` as
+  `"all"` or a persona-id array, `skippable_by`, `persona_variant`, `root`/`root_rationale` (rationale
+  required when `root: true`), `depth_staging` (`pass`/`depth`/`note`), and `Requires` edges as
+  `{from, to, reason}` matching the agent file's `<A> -Requires-> <B>` semantics. `additionalProperties:
+  false` throughout to catch drift early. Node/edge ordering (sort by id) is a store-generation
+  convention, not schema-enforced (JSON Schema can't assert array ordering usefully here).
+  Waiting for human confirmation before starting step 2.
+- Step 1 revised on human request: split the single schema into two files.
+  `.claude/reference/personas.schema.json` now owns the persona roster shape (`id`/`name`/
+  `cohort_count`, `P-` id pattern) — rationale: personas are backed by their own SSOT
+  (STUDENT_PERSONAS, `specifications/student_personas.md`), so their shape shouldn't live inside the
+  graph-only schema. `.claude/reference/knowledge_goals_graph.schema.json` now `$ref`s
+  `personas.schema.json` for its `personas` property and otherwise only defines nodes/edges. Verified
+  with `jsonschema` (Draft202012Validator + RefResolver, `referencing` package unavailable offline so
+  used the resolver/store API instead): a valid instance passes, and a persona with a malformed id is
+  correctly rejected through the cross-file `$ref`. Still waiting for human confirmation before step 2.
+- Step 1 revised again on human request: reverted the split. `personas.schema.json` deleted —
+  persona *definitions* (name, cohort_count, ...) are out of scope for the graph schema entirely,
+  since they're for the time being stored in the markdown STUDENT_PERSONAS SSOT
+  (`specifications/student_personas.md`) which this schema can't `$ref`. `personas` in
+  `knowledge_goals_graph.schema.json` is now just a flat array of persona id strings (matching
+  `#/$defs/persona_ref`, the same pattern used by `audience`/`skippable_by`/`held_by`) — the roster of
+  ids this graph refers to, not a definition of them. Re-verified with `jsonschema`: valid instance
+  passes, malformed persona id string is rejected. Still waiting for human confirmation before step 2.
