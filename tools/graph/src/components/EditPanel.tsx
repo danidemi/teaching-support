@@ -1,8 +1,34 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { DEPTH_STAGES, KNOWLEDGE_TYPES, PROVENANCE_TAGS, type GraphNode } from "../types/graph";
+import { Controller, useForm } from "react-hook-form";
+import { DEPTH_STAGES, KNOWLEDGE_TYPES, PROVENANCE_TAGS, type Audience, type GraphNode } from "../types/graph";
 import { nodeFormSchema, type NodeFormValues } from "../lib/nodeFormSchema";
+
+// audience/held_by/skippable_by are "all" | string[] (or plain string[]) in the schema/Zod
+// model, but a text input can only hold a string — these convert between the two so typing
+// "P-DEV, P-OPS" produces ["P-DEV", "P-OPS"], not the literal string, which is what was failing
+// validation before (see plan log, step 5/9).
+function listToText(list?: string[]): string {
+  return (list ?? []).join(", ");
+}
+
+function textToList(text: string): string[] {
+  return text
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function audienceToText(audience?: Audience): string {
+  return audience === "all" ? "all" : listToText(audience);
+}
+
+function textToAudience(text: string): Audience | undefined {
+  const trimmed = text.trim();
+  if (!trimmed) return undefined;
+  if (trimmed.toLowerCase() === "all") return "all";
+  return textToList(text);
+}
 
 interface EditPanelProps {
   node: GraphNode | null;
@@ -16,6 +42,7 @@ export function EditPanel({ node, onSave, onClose }: EditPanelProps) {
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors },
   } = useForm<NodeFormValues>({
     resolver: zodResolver(nodeFormSchema),
@@ -88,17 +115,59 @@ export function EditPanel({ node, onSave, onClose }: EditPanelProps) {
         </div>
 
         {(node.type === "DesiredResult" || node.type === "Prerequisite") && (
-          <div>
-            <label>audience (comma-separated persona ids, or "all")</label>
-            <input {...register("audience" as never)} style={{ width: "100%" }} />
-            {errors.audience && <span style={{ color: "crimson" }}>{String(errors.audience.message)}</span>}
-          </div>
+          <>
+            <div>
+              <label>audience (comma-separated persona ids, or "all")</label>
+              <Controller
+                name="audience"
+                control={control}
+                render={({ field }) => (
+                  <input
+                    value={audienceToText(field.value)}
+                    onChange={(e) => field.onChange(textToAudience(e.target.value))}
+                    onBlur={field.onBlur}
+                    style={{ width: "100%" }}
+                  />
+                )}
+              />
+              {errors.audience && <span style={{ color: "crimson" }}>{String(errors.audience.message)}</span>}
+            </div>
+            <div>
+              <label>skippable_by (comma-separated persona ids already holding this)</label>
+              <Controller
+                name="skippable_by"
+                control={control}
+                render={({ field }) => (
+                  <input
+                    value={listToText(field.value)}
+                    onChange={(e) => field.onChange(textToList(e.target.value))}
+                    onBlur={field.onBlur}
+                    style={{ width: "100%" }}
+                  />
+                )}
+              />
+              {errors.skippable_by && (
+                <span style={{ color: "crimson" }}>{String(errors.skippable_by.message)}</span>
+              )}
+            </div>
+          </>
         )}
 
         {node.type === "Baseline" && (
           <div>
             <label>held_by (comma-separated persona ids)</label>
-            <input {...register("held_by" as never)} style={{ width: "100%" }} />
+            <Controller
+              name="held_by"
+              control={control}
+              render={({ field }) => (
+                <input
+                  value={listToText(field.value)}
+                  onChange={(e) => field.onChange(textToList(e.target.value))}
+                  onBlur={field.onBlur}
+                  style={{ width: "100%" }}
+                />
+              )}
+            />
             {errors.held_by && <span style={{ color: "crimson" }}>{String(errors.held_by.message)}</span>}
           </div>
         )}

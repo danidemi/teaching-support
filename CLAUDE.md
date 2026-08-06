@@ -53,7 +53,7 @@ is canonical for paths:
 | LOGISTICS | `specifications/logistics.md` | learning-requirements-gatherer (skill) |
 | GOALS | `specifications/goals.md` | learning-requirements-gatherer (skill) |
 | STUDENT_PERSONAS | `specifications/student_personas.md` | learning-requirements-gatherer (skill) |
-| DESIGN (knowledge graph) | `design/knowledge_goals_graph.md` | learning-curriculum-architect |
+| DESIGN (knowledge graph) | `design/knowledge_goals_graph.json` | learning-curriculum-architect |
 | MATERIAL — slides | `material/slides/session-NN.yml` | learning-slide-author (skill) |
 | CURRICULUM | `design/curriculum.md` | not yet created |
 | MATERIAL — everything else | `material/` | not yet created |
@@ -65,8 +65,9 @@ still-provisional store is blocked pending sign-off.
 
 ## The slide pipeline (`tools/slides/`)
 
-The repo's only toolchain, and it is fully containerised — the host needs Docker and nothing else.
-First `slides build` takes a few minutes and ~1.6 GB of disk.
+One of the repo's two toolchains (the other is `tools/graph/`, below), and it is fully
+containerised — the host needs Docker and nothing else. First `slides build` takes a few minutes
+and ~1.6 GB of disk.
 
 ```bash
 tools/slides/slides check   material/slides/session-01.yml   # lint + coverage
@@ -90,6 +91,29 @@ tools/slides/slides render  material/slides/session-01.yml   # requires status: 
   headlines the Assertion-Evidence model produces. Re-run it inside the container if pandoc changes.
 - `tools/slides/example/fixture.yml` is the pipeline self-test — check it first to tell a bad deck
   apart from a bad toolchain.
+
+## The knowledge graph editor (`tools/graph/`)
+
+The repo's other toolchain — a browser app for viewing, editing, and certifying the DESIGN store
+(`design/knowledge_goals_graph.json`). Also fully containerised.
+
+```bash
+tools/graph/graph edit  design/knowledge_goals_graph.json   # opens a browser, view/edit/save
+tools/graph/graph check design/knowledge_goals_graph.json   # schema + closure check, headless
+```
+
+- **The JSON file is the source; the canvas layout is not** — positions are re-computed with
+  Dagre on every load and never persisted, so they can't pollute a diff. Model reference:
+  `.claude/reference/knowledge_goals_graph_model.md`; shape authority:
+  `.claude/reference/knowledge_goals_graph.schema.json`.
+- **A git commit of the JSON file is the certification** — unlike the slide pipeline there's no
+  `status: approved` flag; the store is plain text, one writer, human-reviewed via the normal git
+  diff.
+- **Nothing hand-computes what `check.mjs` computes.** Schema validation and the closure check
+  (every node needs a path down to a `Baseline`, unless it's marked `root: true`) run there; do
+  not eyeball a graph for either and report it as checked.
+- `tools/graph/README.md` covers running it in detail; `doc/tmp/app-editing-chart/plan.md` is the
+  build log for how this toolchain came to exist, including the bugs found along the way.
 
 ## Known traps
 

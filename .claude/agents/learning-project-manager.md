@@ -58,7 +58,7 @@ Hybrid model — heavy *design-decision* roles are subagents (delegate via the A
   | LOGISTICS — duration, delivery mode, scheduling (`specifications/logistics.md`) | learning-requirements-gatherer (skill, main loop) |
   | GOALS — course objectives/outcomes (`specifications/goals.md`) | learning-requirements-gatherer (skill, main loop) |
   | STUDENT_PERSONAS — participant personas (`specifications/student_personas.md`) | learning-requirements-gatherer (skill, main loop) |
-  | DESIGN — prerequisite graph: nodes, `Enables` edges, deliberate roots, per-persona applicability, depth staging (`design/knowledge_goals_graph.md`) | learning-curriculum-architect |
+  | DESIGN — prerequisite graph: nodes, `Requires` edges, deliberate roots, per-persona applicability, depth staging (`design/knowledge_goals_graph.json`) | learning-curriculum-architect |
   | CURRICULUM — the course organization built on top of the graph (`design/curriculum.md`) | *no owner yet — do not write it* |
   | MATERIAL — slides: one deck model per session (`material/slides/session-NN.yml`) | learning-slide-author (skill, main loop) |
 

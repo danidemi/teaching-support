@@ -2,12 +2,20 @@
 // Localhost-only, no auth, no database — single local human user, same spirit as tools/slides/.
 //
 // Endpoints:
-//   GET  /api/graph  -> current contents of design/knowledge_goals_graph.json
+//   GET  /api/graph  -> current contents of the target graph file (default: design/knowledge_goals_graph.json)
 //   PUT  /api/graph  -> body is a full graph object; validated against the JSON Schema and,
 //                       if valid, written back (sorted, pretty-printed) to the same file.
 //
 // Plain Node + Express (no build step) so this can run directly under Node 20+ without
 // going through Vite/TypeScript — see tools/graph/README.md for how it's started.
+//
+// Env overrides (used by the Docker wrapper, tools/graph/graph, for step 8's `edit <file>` —
+// unset in the plain `npm run server` path, which keeps the original localhost-only defaults):
+//   GRAPH_FILE          repo-relative path to the graph file to serve (default: the DESIGN store)
+//   GRAPH_SERVER_HOST   bind address (default: 127.0.0.1). Docker binds 0.0.0.0 *inside* the
+//                        container — `docker run -p 127.0.0.1:...` is what keeps it
+//                        localhost-only from the host's point of view; see the wrapper script.
+//   GRAPH_SERVER_PORT   bind port (default: 3001)
 
 import express from "express";
 import { readFile, writeFile } from "node:fs/promises";
@@ -21,11 +29,13 @@ import { formatGraph } from "./formatGraph.mjs";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // server/index.mjs -> tools/graph -> tools -> repo root.
 const REPO_ROOT = path.resolve(__dirname, "../../..");
-const GRAPH_PATH = path.join(REPO_ROOT, "design/knowledge_goals_graph.json");
+const GRAPH_PATH = process.env.GRAPH_FILE
+  ? path.resolve(REPO_ROOT, process.env.GRAPH_FILE)
+  : path.join(REPO_ROOT, "design/knowledge_goals_graph.json");
 const SCHEMA_PATH = path.join(REPO_ROOT, ".claude/reference/knowledge_goals_graph.schema.json");
 
-const HOST = "127.0.0.1";
-const PORT = 3001;
+const HOST = process.env.GRAPH_SERVER_HOST || "127.0.0.1";
+const PORT = Number(process.env.GRAPH_SERVER_PORT) || 3001;
 
 let cachedValidate = null;
 async function getValidator() {

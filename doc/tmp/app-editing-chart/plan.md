@@ -76,23 +76,23 @@ Wait for explicit confirmation by human after each step is completed.
 6. `[x]` **Local file server**: minimal Node/Express process bound to `localhost` only. Endpoints:
    read the JSON file, validate + write it back on save. No auth, no database.
 
-7. `[ ]` **`check` command**: schema validation + the closure check (every node has an incoming
+7. `[x]` **`check` command**: schema validation + the closure check (every node has an incoming
    edge or is a `Baseline`/`root: true`) as a standalone script, mirroring `tools/slides/slidelint.py`'s
    "linter computes it, nobody hand-verifies" philosophy.
 
-8. `[ ]` **Dockerfile + wrapper script** `tools/graph/graph` with subcommands `edit <file>` (start
+8. `[x]` **Dockerfile + wrapper script** `tools/graph/graph` with subcommands `edit <file>` (start
    server, open browser) and `check <file>` (run step 7 headless) — same invocation shape as
    `tools/slides/slides`.
 
-9. `[ ]` **Smoke test** against the migrated example graph (step 4): open it, confirm layout is
+9. `[x]` **Smoke test** against the migrated example graph (step 4): open it, confirm layout is
    readable, add/remove/edit a node and edge, save, confirm the git diff is small and readable,
    confirm `check` passes.
 
-10. `[ ]` **Documentation**: short reference doc for the JSON model (mirroring
+10. `[x]` **Documentation**: short reference doc for the JSON model (mirroring
     `.claude/reference/slide_model_spec.md`'s role for slides) plus a `tools/graph/README.md`
     covering install/run, analogous to how `tools/slides/` is documented in `CLAUDE.md`.
 
-11. `[ ]` **Run `learning-support-agent-coherence`** after steps 2–3 land, before considering the
+11. `[x]` **Run `learning-support-agent-coherence`** after steps 2–3 land, before considering the
     agent-side change final — it audits exactly this kind of name/path drift.
 
 ## Log
@@ -102,7 +102,7 @@ Wait for explicit confirmation by human after each step is completed.
 - Step 1 done: wrote `.claude/reference/knowledge_goals_graph.schema.json`. Draft 2020-12, validates
   as syntactically correct JSON. Encodes: persona roster (`P-` ids), the three node types with their
   id-prefix patterns enforced via `allOf`/`if-then` (`DR-` requires `audience`, `BSL-` requires
-  `held_by`, `PRQ-` requires `audience`), `provenance_tags`/`knowledge_type` enums, `audience` as
+  `held_by`, `PRQ-` requires `audience`), `provenance_tags`/`knowledge_type` enums, `audience` as 
   `"all"` or a persona-id array, `skippable_by`, `persona_variant`, `root`/`root_rationale` (rationale
   required when `root: true`), `depth_staging` (`pass`/`depth`/`note`), and `Requires` edges as
   `{from, to, reason}` matching the agent file's `<A> -Requires-> <B>` semantics. `additionalProperties:
@@ -229,3 +229,135 @@ Wait for explicit confirmation by human after each step is completed.
     `server/index.mjs` is plain `.mjs`, outside `tsconfig.app.json`'s `include: ["src"]`, so it
     isn't type-checked and needs no `@types/express`.
   Waiting for human confirmation before step 7.
+- Step 7 done: `tools/graph/check.mjs`, a standalone script (no server, no port — deliberately
+  separate from `server/index.mjs` per the plan) that runs schema validation (same
+  `ajv/dist/2020.js` 2020-12 validator) plus the closure check, and prints a `slidelint.py`-style
+  report (`✗`/`✓` per file, error count, exit 1 on any error, 2 if a file can't be read/parsed).
+  - Direction correction found while implementing: the agent doc's closure-check paragraph says
+    "tabulate the edge list by target and list every node that never appears as a target" — read
+    literally (`target` = edge.to) this flags every `DesiredResult` node, because nothing ever
+    requires a `DesiredResult` as someone else's prerequisite, so it never appears as `to`.
+    Round-tripped the real, human-approved `design/knowledge_goals_graph.json` to settle it: every
+    `DesiredResult` and non-root `Prerequisite` appears as `from` on some edge (it requires
+    something), while every `Baseline` and `root: true` `Prerequisite` never does. So the check
+    implemented is "every node has an outgoing edge (`from`) unless it's a `Baseline` or a
+    `root: true` `Prerequisite`" — the doc's prose and the schema's field names didn't line up
+    cleanly, but the actual approved data is unambiguous. Confirmed clean (0 errors) against the
+    real graph, and confirmed it fails clearly (both schema and JSON-parse errors) against
+    malformed input.
+  - Added `npm run check` (`node check.mjs`) to `package.json`.
+  - Out of scope, left for later per the plan text (which only asks for the closure check): the
+    agent doc also describes an *audience-reachability* check ("if every incoming edge starts
+    from a Baseline a persona in the audience doesn't hold, that persona has no path in") —
+    not implemented here, flagging it as a possible future addition to `check.mjs`.
+  Waiting for human confirmation before step 8.
+- Step 8 done: `tools/graph/Dockerfile` (plain `node:20-bookworm-slim`, nothing else — unlike
+  `tools/slides/Dockerfile` there's no system package to install, this image exists purely to
+  supply the Node ≥20 the host may not have) and the wrapper script `tools/graph/graph`, same
+  invocation shape as `tools/slides/slides`:
+  - `graph build` — build/rebuild the image.
+  - `graph edit <file>` — starts `server/index.mjs` and `vite --host 0.0.0.0` inside the
+    container, maps both ports back to the host as `127.0.0.1:PORT` only (the container binds
+    `0.0.0.0` *inside* the container — that's not reachable from outside it — the `-p
+    127.0.0.1:...` on the host side is what keeps the actual security boundary), best-effort
+    opens a browser once Vite is up, `ctrl-c` stops the container (`trap ... docker stop` +
+    docker's default signal-proxying).
+  - `graph check <file>...` — runs `check.mjs` (step 7) headless, no ports, one-shot.
+  - `node_modules` is deliberately **not** baked into the image: the whole repo is bind-mounted at
+    runtime, so `graph`'s `ensure_deps` runs `npm install` inside the container on first use,
+    landing the files on the host owned by the invoking user (`-u $(id -u):$(id -g)`, same
+    reasoning `tools/slides/slides` uses) — a fresh clone needs nothing but Docker, matching the
+    plan's "host needs Docker and nothing else" goal.
+  - `server/index.mjs` gained three env overrides for this (`GRAPH_FILE`, `GRAPH_SERVER_HOST`,
+    `GRAPH_SERVER_PORT`) — unset outside Docker, so `npm run server`'s old localhost-only/DESIGN-
+    store-only defaults are unchanged.
+  - **Bug caught and fixed during testing**: the first version of `graph`'s shared `run()` helper
+    passed the container command through the same `"$@"` as the docker flags
+    (`run node check.mjs "$file"`), so `docker run --rm node check.mjs ...` treated `node` as the
+    *image name* (docker takes the first bare word after its own flags as the image) — it silently
+    ran the public, unpinned `node` image instead of `piattaforma-corsi/graph:1` and failed with a
+    `MODULE_NOT_FOUND` on `/check.mjs`. Fixed by switching to a `common_flags` array inserted
+    between `docker run --rm` and the image name at each call site, with the container's own
+    command always written explicitly after the image name — flags and command can no longer mix.
+  - Verified: `graph build` (fast, cached base layer); `graph check
+    design/knowledge_goals_graph.json` → clean, exit 0; `graph check` against a copy with an edge
+    deleted → correctly reports the resulting closure-check dead end, exit 1; `graph edit
+    design/knowledge_goals_graph.json` → both `GET /api/graph` (correct file content) and Vite's
+    `/` (200) reachable at `127.0.0.1`, container removed cleanly on stop (`docker ps -a` shows
+    nothing left over), `git status` unaffected by any of this.
+  - Also fixed along the way: `edit`'s first cut used `docker run -it`, which fails outside a real
+    terminal (`cannot attach stdin to a TTY-enabled container because stdin is not a terminal`) —
+    dropped `-it` (not needed, this is just log output; docker still proxies `SIGINT` by default
+    without it) for `edit`, kept `-it` only for the interactive `shell` subcommand.
+  Waiting for human confirmation before step 9.
+- Fixed the known gap flagged during step 5, before running step 9 as that step's text requires:
+  `audience`/`held_by`/`skippable_by` in `EditPanel.tsx` were plain text inputs bound directly onto
+  fields typed `"all" | string[]` / `string[]`, so editing them couldn't validate. Switched all
+  three to `react-hook-form`'s `Controller`, with `listToText`/`textToList`/`audienceToText`/
+  `textToAudience` helpers converting between the comma-separated display string and the real
+  array/`"all"` value on every change — the array itself is what reaches Zod/save, the text is
+  purely presentational. Also added `skippable_by` to the form (previously missing entirely, not
+  just mis-bound). `persona_variant` stays out of the form (not part of this gap, not touched by
+  the plan) — since it's never registered, `react-hook-form` carries it through unchanged from
+  `defaultValues` on save, so no data loss there. `tsc -b` clean.
+- Step 9 done. **Caveat**: no browser-automation tool is available in this environment (no
+  Playwright/Puppeteer/similar registered), so the canvas/layout/click-driven part of "open it,
+  confirm layout is readable" could not literally be exercised through a browser — the layout and
+  canvas rendering are unchanged from step 5's own `vite build`/`tsc -b` verification and are not
+  re-verified here beyond that. What *was* run, end-to-end, through the real running stack
+  (`graph edit`, i.e. the step 8 container + step 6 server + step 6/7's format/validate/closure
+  logic, exactly what the UI would call): a backup of `design/knowledge_goals_graph.json` was
+  taken, then, via `GET`/`PUT /api/graph` against the live server (the same calls `App.tsx` makes
+  on load/save):
+  - **Add**: a new `Prerequisite` node (`PRQ-SMOKE-TEST`) plus an incoming and an outgoing edge,
+    wired the way a human would via the form (something above it requires it, it requires
+    something below it, so closure holds). Saved — `git diff --stat`: 12 insertions/1 deletion,
+    12 lines total; inspected the diff, confirmed it's exactly the new node/edges in correct sort
+    position, no reformatting noise elsewhere in the 367-line file. `graph check` → clean.
+  - **Edit**: appended text to an existing node's (`PRQ-SCG-BASICS`) `description`. Included in the
+    same save above; diff showed exactly that one field changed.
+  - **Remove**: deleted `PRQ-SMOKE-TEST` and its two edges via a second `PUT`. Diff dropped to a
+    single 2-line change (just the earlier description edit remained). `graph check` → clean
+    again.
+  - Reverted with `git checkout -- design/knowledge_goals_graph.json`; `git status --porcelain`
+    confirms the DESIGN store is back to exactly what's on `HEAD` (this was a smoke test, not an
+    intended content change to certify).
+  - This also incidentally re-confirms step 6/7/8's pieces all interoperate correctly end-to-end
+    under the containerized `graph edit` path specifically (not just the plain `npm run
+    server`/`npm run dev` path step 6 was verified under).
+  Waiting for human confirmation before step 10.
+- Step 10 done:
+  - `.claude/reference/knowledge_goals_graph_model.md` — new, mirrors
+    `.claude/reference/slide_model_spec.md`'s role: top-level shape, the three node types and their
+    id prefixes, edge semantics, the closure check (with the direction note from step 7's log),
+    the audience-reachability check that's *not* automated yet, and the exact formatting/sort
+    convention `formatGraph.mjs` encodes.
+  - `tools/graph/README.md` rewritten from a "step 5/6 snapshot" into a finished-tool doc: status
+    now says all 11 steps are done; "Running it" leads with the Docker path (`graph edit`/`graph
+    check`, no host Node needed) and keeps the non-Docker `npm run …` path as a secondary option;
+    added a "What loading/saving actually does" section; updated the source layout to cover
+    `check.mjs`, the env overrides on `server/index.mjs`, the `Controller`-based
+    audience/held_by/skippable_by binding, and the Docker files; "Known gaps" now lists only the
+    two genuinely still-open items (audience-reachability check not automated, `persona_variant`
+    has no dedicated UI) instead of the resolved save-path/check-command/form-binding gaps.
+  - `CLAUDE.md` fixed on two fronts, closing out the drift flagged repeatedly since step 4's log:
+    the SSOT table's DESIGN row now says `design/knowledge_goals_graph.json` (was still `.md`);
+    added a "The knowledge graph editor (`tools/graph/`)" section analogous to "The slide
+    pipeline", and reworded the slide section's "the repo's only toolchain" (no longer true) to
+    "one of the repo's two toolchains".
+  Waiting for human confirmation before step 11.
+- Step 11 done: ran `learning-support-agent-coherence`. It found the exact class of drift it
+  exists to catch — `learning-project-manager.md`'s own SSOT table (line 61) still said DESIGN was
+  `design/knowledge_goals_graph.md` with `Enables` edges, never updated when steps 2/3 fixed
+  `ssot_structure.md` and the architect's own file. Human approved fixing that plus one more it
+  surfaced (the coherence skill's own example text in `SKILL.md` cited the same stale `.md` path
+  as an example of a not-yet-created runtime output — no longer true now that the file is real and
+  populated; swapped the example to `design/curriculum.md`, which genuinely has no writer yet).
+  Declined for now: dropping the unused `Skill` tool grant from `learning-curriculum-architect`'s
+  frontmatter (flagged as a 🟡 improvement, left as-is).
+
+## All 11 steps done.
+
+Remaining open item, not part of this plan's steps but noted along the way: none — the
+`CLAUDE.md` SSOT-table drift flagged repeatedly earlier was fixed in step 10, and the
+`learning-project-manager.md` drift found in step 11 is now fixed too.
