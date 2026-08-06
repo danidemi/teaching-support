@@ -73,7 +73,7 @@ Wait for explicit confirmation by human after each step is completed.
    - Side panel: React Hook Form + Zod, form fields mirroring the JSON Schema enums, so invalid
      values are caught before save, not after.
 
-6. `[ ]` **Local file server**: minimal Node/Express process bound to `localhost` only. Endpoints:
+6. `[x]` **Local file server**: minimal Node/Express process bound to `localhost` only. Endpoints:
    read the JSON file, validate + write it back on save. No auth, no database.
 
 7. `[ ]` **`check` command**: schema validation + the closure check (every node has an incoming
@@ -198,3 +198,34 @@ Wait for explicit confirmation by human after each step is completed.
   yet). This is a snapshot, not the final doc — step 8 (Docker wrapper) and step 10 will need to
   update the "running it" section once the host only needs Docker, and the "known gaps" section
   should shrink as steps 6/7/9 close.
+- Step 6 done: `tools/graph/server/index.mjs`, plain Node + Express, bound to `127.0.0.1:3001`
+  (matches `vite.config.ts`'s existing proxy). `GET /api/graph` serves the raw file content.
+  `PUT /api/graph` validates the request body against
+  `.claude/reference/knowledge_goals_graph.schema.json` (via `ajv`) before writing anything; on
+  failure it returns `400` with the Ajv error list and leaves the file untouched.
+  - Schema gotcha caught before it shipped: the schema declares `"$schema":
+    ".../draft/2020-12/schema"`, but the plain `ajv` default export only understands up to
+    draft-2019-09 and throws `no schema with key or ref .../draft/2020-12/schema` at validation
+    time. Fixed by importing `ajv/dist/2020.js` instead.
+  - Bigger gotcha, caught by round-tripping the real file rather than a synthetic one: naive
+    `JSON.stringify(graph, null, 2)` does not match the file's actual on-disk style (every array
+    printed one element per line), so the first save would have reformatted the entire file as a
+    non-semantic diff — exactly what step 9 needs to avoid. Wrote `tools/graph/server/formatGraph.mjs`,
+    a small deterministic pretty-printer, and reverse-engineered the real rule by round-tripping
+    `design/knowledge_goals_graph.json` until the output was byte-identical: arrays of primitives
+    render inline (`["P-DEV", "P-OPS"]`); array-item objects with ≤3 keys, all leaf-valued (e.g.
+    edges' `{from,to,reason}`, `persona_variant`'s `{persona,variant}`), compact onto one line;
+    everything else (nodes, `depth_staging` as a property value) expands multi-line. Verified:
+    formatting the checked-in graph produces a byte-identical file. The agent's own instructions
+    (`.claude/agents/learning-curriculum-architect.md:227`) just say "2-space indent, like the rest
+    of the repo's JSON" without spelling this rule out — worth tightening later, but out of scope
+    for this step since it doesn't block the server.
+  - Smoke-tested directly against the real `design/knowledge_goals_graph.json` (on a backed-up
+    copy, restored after): valid PUT round-trips byte-identical; PUT missing `course_name` is
+    rejected with a clear `400` and the file is left untouched. `git status` clean afterward.
+  - Wired `tools/graph/src/App.tsx`'s `handleSave` to actually call `PUT /api/graph` (previously
+    only touched local React state) and added a visible save-error banner. `tsc -b` clean.
+  - Added `express`/`ajv` to `package.json` dependencies and an `npm run server` script.
+    `server/index.mjs` is plain `.mjs`, outside `tsconfig.app.json`'s `include: ["src"]`, so it
+    isn't type-checked and needs no `@types/express`.
+  Waiting for human confirmation before step 7.
