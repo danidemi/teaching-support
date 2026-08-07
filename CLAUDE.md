@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repository is
 
-There is no application code, build, test, or lint step here — everything is Markdown. The repo is
+There is no application code, build, test, or lint step here. The repo is
 two things at once:
 
 1. **A Claude Code agent/skill system** (`.claude/`) for planning adult courses and producing their didactic material (slides, quizzes, exercises, manuals).
@@ -133,14 +133,28 @@ tools/graph/graph check design/knowledge_goals_graph.json   # schema + closure c
   copies** (the architect refers to them as `reference/…`, without the `.claude/` prefix); `doc/` is
   the human-facing research library. Edit both if the theory changes.
 
-## Where the background reasoning lives
+## Special folders
 
-`doc/` holds the research this system implements — pedagogy (`doc/pedagogic/`: andragogy, Kolb's
+* **doc/**: and all its nested folders, reserved to humans. Do not read from it, do not write in it unless explicitly told.
+This directory holds the research this system implements — pedagogy (`doc/pedagogic/`: andragogy, Kolb's
 experiential cycle, cognitive load, persona definition), assessment design, content standards, and the
 LLM prerequisite-graph notes. `doc/ai-architectures/possible_architecture.md` describes the full
 aspirational agent roster and SSOT rationale; `reusable_agents.md` covers the folder-as-project-boundary
 model. Consult these before inventing a new pedagogical rule — it is probably already specified there.
 
-## Special folders
+## Editing rules for agents and skills
 
-* **doc/**: and all its nested folders, reserved to humans. Do not read from it, do not write in it.
+To ensure maximum accessibility for non-native English speakers and international audiences, strictly follow these writing guidelines when asked to create, edit, review skills and agents:
+
+1. **Avoid Idioms and Metaphors:** Do not use idiomatic expressions, regional slang, or figurative phrases (e.g., avoid "touch base," "get your feet wet," "hit the ground running," or "running to land").
+2. **Use Literal & Direct Terms:** State concepts using clear, precise, and literal language. Choose the most direct verb or phrase to describe an action or state.
+3. **Prefer Plain Language:** Use widely recognized standard vocabulary. Avoid rare, obscure, or overly complex prose when simple, standard English conveys the same meaning.
+4. **Maintain Clarity Over Rhetoric:** Prioritize scannability, clarity, and ease of translation over clever phrasing or literary flair.
+
+#### Examples:
+* **Avoid:** "This concept needs to be seen running to land."
+  **Use:** "Students need to see this system execute live to fully understand it."
+* **Avoid:** "Before we jump into the weeds, let's touch base on the setup."
+  **Use:** "Before we discuss the detailed steps, let's review the required setup."
+* **Avoid:** "This feature is currently on the back burner."
+  **Use:** "This feature is currently deprioritized."
