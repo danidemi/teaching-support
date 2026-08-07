@@ -1,0 +1,522 @@
+{
+  "course_name": "Spring Cloud Gateway for a Strangler-Fig Migration to GKE",
+  "source_design_graph": {
+    "path": "design/knowledge_goals_graph.json",
+    "checked": false
+  },
+  "sequencing_rules": [
+    "Respect every Requires edge in DESIGN (a node is only taught once all nodes it points to are already taught).",
+    "Prefer the order that reaches each DesiredResult fastest from the Baseline nodes, subject to that constraint.",
+    "Group topologically-tied nodes into a coherent narrative arc per session rather than strictly interleaving by minimal graph depth, when a session boundary or the 1-week gap between sessions makes that clearer for a mixed Dev/Ops room.",
+    "Keep every hands-on block offering a meaningful role to both personas (multi_lane) unless the underlying DESIGN node's audience/skippable_by/persona_variant restricts it to one persona."
+  ],
+  "design_decisions": [
+    {
+      "category": "risk",
+      "summary": "PRQ-LEGACY-TOKEN-FORMAT is a root node tagged [risk] in DESIGN: the legacy application's exact expected token shape is not in the specs and must be supplied by the client. It is scheduled briefly near the start of the token-minting block in Session 2; if the client has not supplied it by then, PRQ-TOKEN-MINTING-LOGIC, PRQ-TOKEN-PROPAGATION and DR-MINT-TOKEN cannot proceed as scheduled and this whole tail of Session 2 would need to fall back to a worked example instead of the team's real format.",
+      "node_refs": ["PRQ-LEGACY-TOKEN-FORMAT", "PRQ-TOKEN-MINTING-LOGIC", "PRQ-TOKEN-PROPAGATION", "DR-MINT-TOKEN"],
+      "owner": "client",
+      "due": "before Session 2"
+    },
+    {
+      "category": "risk",
+      "summary": "The dev-only token-minting block at the end of Session 2 (custom filter authoring through DR-MINT-TOKEN, ~70 minutes) leaves both Ops participants in an observer role for a sustained stretch, which runs against the cross-persona design directive that every hands-on block give Ops a meaningful task. This is accepted because DR-MINT-TOKEN's audience is P-DEV only per DESIGN, but the trainer should actively use Ops's observer time (e.g. having them shadow-verify the resulting downstream request, or prep the capstone's operational checklist) rather than letting them disengage.",
+      "node_refs": ["PRQ-CUSTOM-GLOBALFILTER-AUTHORING", "PRQ-LEGACY-TOKEN-FORMAT", "PRQ-JWT-FUNDAMENTALS-DEEP", "PRQ-TOKEN-MINTING-LOGIC", "PRQ-TOKEN-PROPAGATION", "DR-MINT-TOKEN"],
+      "owner": "instructor"
+    },
+    {
+      "category": "deferred_decision",
+      "summary": "LOGISTICS states 2 sessions x 4h but does not itemize a setup/break buffer. This curriculum assumes 225 usable minutes per 240-minute session (a 15-minute buffer per session for Teams/remote friction, breaks, and questions) and budgets items against that figure. Confirm with the human whether 225 is the right usable-minutes figure before sign-off.",
+      "owner": "human reviewer"
+    },
+    {
+      "category": "deviation",
+      "summary": "Strict quickest-path-per-node-depth would let DR-DEPLOY-GATEWAY, DR-VALIDATE-AUTH and DR-TRACING interleave more tightly since they sit at similar graph depth. Instead, DR-DEPLOY-GATEWAY and DR-STRANGLER-ROUTING (the two objectives already reachable once route config exists) are grouped into Session 1 as a 'get something running and split traffic' arc, and DR-VALIDATE-AUTH, DR-TRACING and DR-MINT-TOKEN are grouped into Session 2 as a 'secure, observe, extend' arc. This still respects every Requires edge; it optimizes for narrative coherence across the 1-week gap between sessions over strict depth-interleaving.",
+      "node_refs": ["DR-DEPLOY-GATEWAY", "DR-STRANGLER-ROUTING", "DR-VALIDATE-AUTH", "DR-TRACING", "DR-MINT-TOKEN"]
+    },
+    {
+      "category": "deviation",
+      "summary": "PRQ-K8S-DEPLOY-CONCEPTS is marked skippable_by P-OPS in DESIGN (Ops already hold this via BSL-GKE-CONTAINERS). It is kept as a short single_lane refresher for developers only rather than dropped entirely, since P-DEV's baseline does not include GKE comfort and PRQ-GKE-DEPLOY-GATEWAY depends on it.",
+      "node_refs": ["PRQ-K8S-DEPLOY-CONCEPTS"]
+    }
+  ],
+  "sessions": [
+    {
+      "session_number": 1,
+      "title": "Deploying the Gateway and Splitting Traffic (Strangler Routing)",
+      "target_minutes": 215,
+      "usable_minutes": 225,
+      "total_minutes": 215,
+      "items": [
+        {
+          "sequence": "1",
+          "node_ref": "PRQ-STRANGLER-FIG-PATTERN",
+          "item_type": "lesson",
+          "title": "The strangler-fig migration pattern",
+          "style": "lecture_discussion",
+          "delivery_pattern": "shared",
+          "duration_minutes": 15,
+          "support_material": [
+            { "kind": "reading", "description": "Short reference article/summary on the strangler-fig pattern for legacy migrations." },
+            { "kind": "diagram", "description": "Diagram of legacy + gateway + migrated microservices coexisting during the migration window." }
+          ],
+          "notes": "Root node in DESIGN (no prerequisite); opens the course as the motivating framing for every DR that follows."
+        },
+        {
+          "sequence": "2",
+          "node_ref": "PRQ-SCG-BASICS",
+          "item_type": "lesson",
+          "title": "What Spring Cloud Gateway is: an edge reverse-proxy in front of legacy and new services",
+          "style": "lecture",
+          "delivery_pattern": "shared",
+          "duration_minutes": 15,
+          "support_material": [
+            { "kind": "diagram", "description": "Request-flow diagram: client -> Spring Cloud Gateway -> {legacy system, migrated microservices}." }
+          ]
+        },
+        {
+          "sequence": "3",
+          "node_ref": "PRQ-K8S-DEPLOY-CONCEPTS",
+          "item_type": "lesson",
+          "title": "Kubernetes deployment concepts on GKE (Deployments, Services, Ingress) — refresher for developers",
+          "style": "lecture",
+          "delivery_pattern": "single_lane",
+          "duration_minutes": 10,
+          "lane_tasks": [
+            { "persona": "P-DEV", "task": "Refresh Deployment/Service/Ingress concepts as applied on GKE.", "role": "contributor" },
+            { "persona": "P-OPS", "task": "Already fluent via prior GKE experience; sits this one out.", "role": "skip" }
+          ],
+          "notes": "skippable_by P-OPS per DESIGN (covered by BSL-GKE-CONTAINERS)."
+        },
+        {
+          "sequence": "4",
+          "node_ref": "PRQ-CONTAINERIZE-GATEWAY",
+          "item_type": "lesson",
+          "title": "Building a container image for the gateway",
+          "style": "hands_on_practical",
+          "delivery_pattern": "multi_lane",
+          "duration_minutes": 30,
+          "lane_tasks": [
+            { "persona": "P-DEV", "task": "Author/maintain the Dockerfile and application build for the gateway image.", "role": "contributor" },
+            { "persona": "P-OPS", "task": "Operate the image build/publish pipeline and container registry.", "role": "contributor" }
+          ],
+          "support_material": [
+            { "kind": "config_template", "description": "Sample Dockerfile for a Spring Boot / Spring Cloud Gateway image." },
+            { "kind": "exercise_sheet", "description": "Step-by-step: build, tag, and push the gateway image to the team's registry." }
+          ]
+        },
+        {
+          "sequence": "5",
+          "node_ref": "PRQ-GKE-DEPLOY-GATEWAY",
+          "item_type": "lesson",
+          "title": "Deploying the containerized gateway to the GKE cluster",
+          "style": "hands_on_practical",
+          "delivery_pattern": "multi_lane",
+          "duration_minutes": 40,
+          "lane_tasks": [
+            { "persona": "P-OPS", "task": "Lead manifest authoring and the cluster deployment itself.", "role": "lead" },
+            { "persona": "P-DEV", "task": "Follow the deployment closely enough to debug and iterate on the running gateway later.", "role": "observer" }
+          ],
+          "support_material": [
+            { "kind": "config_template", "description": "Sample Deployment/Service/Ingress manifests for the gateway on GKE." },
+            { "kind": "reference_doc", "description": "Checklist for confirming a GKE-deployed service is reachable." }
+          ]
+        },
+        {
+          "sequence": "6",
+          "node_ref": "DR-DEPLOY-GATEWAY",
+          "item_type": "checkpoint",
+          "title": "Checkpoint: gateway reachable on GKE",
+          "delivery_pattern": "multi_lane",
+          "duration_minutes": 15,
+          "rubric": "Pass if: the gateway pod is Running/Ready in GKE, a Service/Ingress exposes it, and a test HTTP request from outside the cluster reaches the gateway and gets a response (even a default 404 from an unrouted path counts, provided it is the gateway responding, not a network timeout).",
+          "lane_tasks": [
+            { "persona": "P-OPS", "task": "Confirm the gateway pod is healthy and reachable from the exposing Service/Ingress.", "role": "contributor" },
+            { "persona": "P-DEV", "task": "Hit the gateway from a client and confirm it responds.", "role": "contributor" }
+          ],
+          "support_material": [
+            { "kind": "rubric", "description": "Pass/fail checklist for gateway reachability, shared with participants before the check." }
+          ]
+        },
+        {
+          "sequence": "7",
+          "node_ref": "PRQ-GATEWAY-ROUTE-CONFIG",
+          "item_type": "lesson",
+          "title": "The route model: predicates and filters, declared via Java DSL or YAML",
+          "style": "lecture_demo",
+          "delivery_pattern": "shared",
+          "duration_minutes": 15,
+          "support_material": [
+            { "kind": "cheat_sheet", "description": "One-page reference of common built-in predicates and filters." }
+          ]
+        },
+        {
+          "sequence": "8",
+          "node_ref": "PRQ-PATH-BASED-ROUTING",
+          "item_type": "lesson",
+          "title": "Splitting traffic by path: /legacy/** vs migrated paths",
+          "style": "lecture_demo",
+          "delivery_pattern": "shared",
+          "duration_minutes": 10,
+          "support_material": [
+            { "kind": "diagram", "description": "Diagram of a path-based predicate splitting /legacy/** from other paths at the gateway." }
+          ]
+        },
+        {
+          "sequence": "9",
+          "node_ref": "PRQ-LEGACY-VS-NEW-ROUTING-IMPL",
+          "item_type": "lesson",
+          "title": "Implementing and verifying the concrete legacy-vs-new route split",
+          "style": "hands_on_practical",
+          "delivery_pattern": "multi_lane",
+          "duration_minutes": 30,
+          "lane_tasks": [
+            { "persona": "P-DEV", "task": "Write/adjust the concrete route rules for /legacy/** vs each migrated microservice.", "role": "contributor" },
+            { "persona": "P-OPS", "task": "Deploy the updated route configuration and verify traffic actually splits as intended.", "role": "contributor" }
+          ],
+          "support_material": [
+            { "kind": "exercise_sheet", "description": "Route rules exercise: given a small set of paths, write and deploy the split." },
+            { "kind": "test_script", "description": "Script of sample requests to fire at the gateway to confirm the split." }
+          ]
+        },
+        {
+          "sequence": "10",
+          "node_ref": "DR-STRANGLER-ROUTING",
+          "item_type": "checkpoint",
+          "title": "Checkpoint: legacy-vs-new traffic split",
+          "delivery_pattern": "multi_lane",
+          "duration_minutes": 15,
+          "rubric": "Pass if a request to /legacy/** is routed to the legacy system and a request to a migrated path is routed to the corresponding microservice, verified live against the deployed gateway by both participants.",
+          "lane_tasks": [
+            { "persona": "P-DEV", "task": "Confirm the route rules match the intended split.", "role": "contributor" },
+            { "persona": "P-OPS", "task": "Fire test requests at the live gateway and confirm the observed split.", "role": "contributor" }
+          ]
+        },
+        {
+          "sequence": "11",
+          "node_ref": "PRQ-CORS-CONCEPT",
+          "item_type": "lesson",
+          "title": "What CORS is and why browsers enforce it",
+          "style": "lecture",
+          "delivery_pattern": "shared",
+          "duration_minutes": 10,
+          "support_material": [
+            { "kind": "reading", "description": "Short reference on origins, preflight requests, and the response headers a server must return to allow a cross-origin call." }
+          ],
+          "notes": "Moved to the end of Session 1 (depends only on BSL-REST) to give Session 2 more slack; PRQ-CORS-GATEWAY-CONFIG and DR-VALIDATE-AUTH stay in Session 2."
+        },
+        {
+          "sequence": "12",
+          "node_ref": "PRQ-JWT-FUNDAMENTALS-SHALLOW",
+          "item_type": "lesson",
+          "title": "JWT structure: header, claims, signature, and what 'valid' means",
+          "style": "lecture",
+          "delivery_pattern": "shared",
+          "duration_minutes": 10,
+          "support_material": [
+            { "kind": "worked_example", "description": "A decoded sample JWT annotated header/claims/signature." }
+          ],
+          "notes": "Moved to the end of Session 1 (depends only on BSL-REST) to give Session 2 more slack; PRQ-OAUTH-OIDC-ENTRA and the JWT-validation work stay in Session 2."
+        }
+      ],
+      "homework": [
+        {
+          "description": "Keep the deployed gateway and route split running against the GKE cluster; note any environment issues (registry access, cluster quota, DNS) to raise at the start of Session 2.",
+          "node_ref": "DR-STRANGLER-ROUTING",
+          "owner": "shared",
+          "due": "before Session 2"
+        },
+        {
+          "description": "Skim the team's Microsoft Entra ID app registration details (tenant, issuer, JWKS endpoint) that Ops will share, so Session 2's JWT validation work lands faster.",
+          "node_ref": "PRQ-OAUTH-OIDC-ENTRA",
+          "owner": "P-DEV",
+          "due": "before Session 2"
+        },
+        {
+          "description": "Confirm the Entra ID app registration and JWKS endpoint values are ready to hand to developers ahead of Session 2.",
+          "node_ref": "PRQ-OAUTH-OIDC-ENTRA",
+          "owner": "P-OPS",
+          "due": "before Session 2"
+        }
+      ]
+    },
+    {
+      "session_number": 2,
+      "title": "Securing, Observing, and Extending the Gateway (Auth, Tracing, Legacy Token Compatibility)",
+      "target_minutes": 205,
+      "usable_minutes": 225,
+      "total_minutes": 205,
+      "items": [
+        {
+          "sequence": "13",
+          "node_ref": "PRQ-OAUTH-OIDC-ENTRA",
+          "item_type": "lesson",
+          "title": "How Microsoft Entra ID issues tokens: tenant, app registration, issuer, JWKS",
+          "style": "lecture_discussion",
+          "delivery_pattern": "persona_led",
+          "duration_minutes": 10,
+          "lane_tasks": [
+            { "persona": "P-OPS", "task": "Walk through the Entra app registration, tenant, issuer, and JWKS endpoint the team uses.", "role": "lead" },
+            { "persona": "P-DEV", "task": "Note which issuer/JWKS values validation code will need to consume.", "role": "contributor" }
+          ]
+        },
+        {
+          "sequence": "14",
+          "node_ref": "PRQ-GATEWAY-JWT-VALIDATION-FILTER",
+          "item_type": "lesson",
+          "title": "Validating incoming Entra JWTs at the gateway",
+          "style": "hands_on_practical",
+          "delivery_pattern": "multi_lane",
+          "duration_minutes": 30,
+          "lane_tasks": [
+            { "persona": "P-DEV", "task": "Implement/configure the resource-server JWT validation on the gateway route.", "role": "contributor" },
+            { "persona": "P-OPS", "task": "Supply and wire the Entra tenant/JWKS configuration values, and verify accepted vs rejected requests.", "role": "contributor" }
+          ],
+          "support_material": [
+            { "kind": "config_template", "description": "Sample resource-server config for Entra ID JWT validation." },
+            { "kind": "test_script", "description": "Set of valid/invalid/expired tokens to fire at the route." }
+          ]
+        },
+        {
+          "sequence": "15",
+          "node_ref": "PRQ-CORS-GATEWAY-CONFIG",
+          "item_type": "lesson",
+          "title": "Configuring CORS at the gateway",
+          "style": "hands_on_practical",
+          "delivery_pattern": "multi_lane",
+          "duration_minutes": 15,
+          "lane_tasks": [
+            { "persona": "P-DEV", "task": "Set the CORS configuration in the gateway's code/config.", "role": "contributor" },
+            { "persona": "P-OPS", "task": "Verify CORS behavior end-to-end against a real cross-origin client call.", "role": "contributor" }
+          ],
+          "support_material": [
+            { "kind": "config_template", "description": "Sample gateway CORS configuration (allowed origins, methods, headers)." }
+          ]
+        },
+        {
+          "sequence": "16",
+          "node_ref": "DR-VALIDATE-AUTH",
+          "item_type": "checkpoint",
+          "title": "Checkpoint: JWT validation and CORS",
+          "delivery_pattern": "multi_lane",
+          "duration_minutes": 10,
+          "rubric": "Pass if: a request with a valid Entra-issued JWT is accepted and routed, a request with an invalid/expired/wrong-audience JWT is rejected, and a browser-style cross-origin preflight+call from an allowed origin succeeds end-to-end.",
+          "lane_tasks": [
+            { "persona": "P-DEV", "task": "Confirm the validation filter accepts/rejects correctly.", "role": "contributor" },
+            { "persona": "P-OPS", "task": "Confirm the cross-origin call from an allowed origin succeeds.", "role": "contributor" }
+          ],
+          "support_material": [
+            { "kind": "rubric", "description": "Pass/fail checklist for JWT validation and CORS, shared with participants before the check." }
+          ]
+        },
+        {
+          "sequence": "17",
+          "node_ref": "PRQ-DISTRIBUTED-TRACING-CONCEPTS",
+          "item_type": "lesson",
+          "title": "Traces, spans, and context propagation across process boundaries",
+          "style": "lecture",
+          "delivery_pattern": "shared",
+          "duration_minutes": 10,
+          "support_material": [
+            { "kind": "diagram", "description": "Diagram of a trace with spans across gateway, microservice, and legacy system." }
+          ]
+        },
+        {
+          "sequence": "18",
+          "node_ref": "PRQ-OTEL-COLLECTOR-PIPELINE",
+          "item_type": "lesson",
+          "title": "Setting up the OpenTelemetry collector pipeline",
+          "style": "hands_on_practical",
+          "delivery_pattern": "single_lane",
+          "duration_minutes": 15,
+          "lane_tasks": [
+            { "persona": "P-OPS", "task": "Deploy and operate the OTel collector pipeline.", "role": "lead" },
+            { "persona": "P-DEV", "task": "Observe the pipeline shape well enough to interpret traces while debugging later.", "role": "observer" }
+          ],
+          "support_material": [
+            { "kind": "config_template", "description": "Sample OTel collector deployment/config for receiving gateway and service traces." }
+          ]
+        },
+        {
+          "sequence": "19",
+          "node_ref": "PRQ-OTEL-INSTRUMENTATION-GATEWAY",
+          "item_type": "lesson",
+          "title": "Instrumenting the gateway to propagate/initiate trace context",
+          "style": "hands_on_practical",
+          "delivery_pattern": "multi_lane",
+          "duration_minutes": 15,
+          "lane_tasks": [
+            { "persona": "P-DEV", "task": "Add/verify OTel instrumentation in the gateway's code path.", "role": "contributor" },
+            { "persona": "P-OPS", "task": "Wire the OTel exporter configuration on the gateway deployment.", "role": "contributor" }
+          ],
+          "support_material": [
+            { "kind": "config_template", "description": "Sample OTel exporter/instrumentation configuration for the gateway." }
+          ]
+        },
+        {
+          "sequence": "20",
+          "node_ref": "DR-TRACING",
+          "item_type": "checkpoint",
+          "title": "Checkpoint: end-to-end trace",
+          "delivery_pattern": "multi_lane",
+          "duration_minutes": 10,
+          "rubric": "Pass if a single request through the gateway produces a connected trace spanning the gateway and at least one downstream service (or the legacy system), visible end-to-end in the collector's backend/UI.",
+          "lane_tasks": [
+            { "persona": "P-DEV", "task": "Fire a request and confirm the gateway's span appears correctly linked.", "role": "contributor" },
+            { "persona": "P-OPS", "task": "Confirm the trace is visible end-to-end in the collector backend/UI.", "role": "contributor" }
+          ],
+          "support_material": [
+            { "kind": "rubric", "description": "Pass/fail checklist for the end-to-end trace check, shared with participants before the check." }
+          ]
+        },
+        {
+          "sequence": "21",
+          "node_ref": "PRQ-CUSTOM-GLOBALFILTER-AUTHORING",
+          "item_type": "lesson",
+          "title": "Writing a custom GlobalFilter/GatewayFilter: ordering and reactive gotchas",
+          "style": "hands_on_practical",
+          "delivery_pattern": "single_lane",
+          "duration_minutes": 15,
+          "lane_tasks": [
+            { "persona": "P-DEV", "task": "Write a custom GlobalFilter/GatewayFilter, handling filter ordering and WebFlux/reactive gotchas.", "role": "lead" },
+            { "persona": "P-OPS", "task": "Observe — no Java authoring expected of Ops; will operate the resulting behavior after handover.", "role": "observer" }
+          ],
+          "support_material": [
+            { "kind": "worked_example", "description": "A minimal custom GlobalFilter showing correct ordering and non-blocking request/response mutation." }
+          ]
+        },
+        {
+          "sequence": "22",
+          "node_ref": "PRQ-LEGACY-TOKEN-FORMAT",
+          "item_type": "lesson",
+          "title": "The legacy application's expected token format",
+          "style": "briefing",
+          "delivery_pattern": "single_lane",
+          "duration_minutes": 5,
+          "lane_tasks": [
+            { "persona": "P-DEV", "task": "Receive the legacy application's exact expected token shape/claims, as supplied by the client.", "role": "contributor" },
+            { "persona": "P-OPS", "task": "Not applicable to this item.", "role": "skip" }
+          ],
+          "notes": "Root node tagged [risk] in DESIGN — external dependency on client-supplied token format; see design_decisions."
+        },
+        {
+          "sequence": "23",
+          "node_ref": "PRQ-JWT-FUNDAMENTALS-DEEP",
+          "item_type": "lesson",
+          "title": "Constructing a new JWT: mapping validated claims into a differently-shaped token",
+          "style": "lecture",
+          "delivery_pattern": "single_lane",
+          "duration_minutes": 10,
+          "lane_tasks": [
+            { "persona": "P-DEV", "task": "Revisit JWT structure to construct a new, differently-shaped token from already-validated claims.", "role": "lead" },
+            { "persona": "P-OPS", "task": "Observe.", "role": "observer" }
+          ],
+          "support_material": [
+            { "kind": "worked_example", "description": "Side-by-side of the validated Entra claims and the differently-shaped token to be constructed from them." }
+          ]
+        },
+        {
+          "sequence": "24",
+          "node_ref": "PRQ-TOKEN-MINTING-LOGIC",
+          "item_type": "lesson",
+          "title": "Minting an internal token shaped like the legacy application's expected token",
+          "style": "hands_on_practical",
+          "delivery_pattern": "single_lane",
+          "duration_minutes": 20,
+          "lane_tasks": [
+            { "persona": "P-DEV", "task": "Implement gateway logic that mints a new internal token, populated from validated Entra claims, matching the legacy format.", "role": "lead" },
+            { "persona": "P-OPS", "task": "Observe.", "role": "observer" }
+          ],
+          "support_material": [
+            { "kind": "worked_example", "description": "Worked example mapping Entra claims into a legacy-shaped token inside a custom filter." }
+          ]
+        },
+        {
+          "sequence": "25",
+          "node_ref": "PRQ-TOKEN-PROPAGATION",
+          "item_type": "lesson",
+          "title": "Propagating the minted token downstream",
+          "style": "hands_on_practical",
+          "delivery_pattern": "single_lane",
+          "duration_minutes": 10,
+          "lane_tasks": [
+            { "persona": "P-DEV", "task": "Rewrite the outgoing request to carry the minted token downstream (e.g. replace/add the Authorization header).", "role": "lead" },
+            { "persona": "P-OPS", "task": "Observe — will monitor this behavior operationally after handover.", "role": "observer" }
+          ],
+          "support_material": [
+            { "kind": "worked_example", "description": "Worked example of rewriting the outgoing Authorization header before the request leaves the gateway." }
+          ]
+        },
+        {
+          "sequence": "26",
+          "node_ref": "DR-MINT-TOKEN",
+          "item_type": "checkpoint",
+          "title": "Checkpoint: minted token reaches downstream/legacy",
+          "delivery_pattern": "single_lane",
+          "duration_minutes": 10,
+          "rubric": "Pass if a request validated at the gateway with an Entra JWT results in a downstream/legacy-bound request carrying a newly minted token that matches the legacy application's expected claim shape.",
+          "lane_tasks": [
+            { "persona": "P-DEV", "task": "Confirm a downstream/legacy-bound request carries the minted token in the expected shape.", "role": "contributor" },
+            { "persona": "P-OPS", "task": "Observe the verification to be able to support it after handover.", "role": "observer" }
+          ],
+          "support_material": [
+            { "kind": "rubric", "description": "Pass/fail checklist for the minted-token downstream check, shared with participants before the check." }
+          ]
+        },
+        {
+          "sequence": "27",
+          "item_type": "assessment",
+          "title": "End-to-end strangler-fig gateway capstone",
+          "delivery_pattern": "shared",
+          "duration_minutes": 20,
+          "assessment_kind": "capstone",
+          "covers_node_refs": ["DR-DEPLOY-GATEWAY", "DR-STRANGLER-ROUTING", "DR-VALIDATE-AUTH", "DR-TRACING", "DR-MINT-TOKEN"],
+          "rubric": "Pass if, in one integrated run against the live GKE-deployed gateway: (1) the gateway is reachable, (2) /legacy/** and migrated paths split correctly, (3) a valid Entra JWT is accepted (an invalid one rejected) and CORS allows the approved origin, (4) a trace connects the gateway to a downstream/legacy call across the request, and (5) a downstream/legacy call carries a correctly-shaped minted token. Both participants jointly narrate and verify their part of the running system.",
+          "lane_tasks": [
+            { "persona": "P-DEV", "task": "Narrate and verify the code-side behavior: routing rules, JWT validation, filters, minted token, instrumentation.", "role": "contributor" },
+            { "persona": "P-OPS", "task": "Narrate and verify the operational side: deployment health, traffic split, CORS, collector pipeline, configuration.", "role": "contributor" }
+          ],
+          "support_material": [
+            { "kind": "rubric", "description": "Capstone pass/fail checklist covering all five DesiredResults, handed to participants before the run." }
+          ]
+        }
+      ]
+    }
+  ],
+  "coverage": {
+    "taught_node_refs": [
+      "PRQ-STRANGLER-FIG-PATTERN",
+      "PRQ-SCG-BASICS",
+      "PRQ-K8S-DEPLOY-CONCEPTS",
+      "PRQ-CONTAINERIZE-GATEWAY",
+      "PRQ-GKE-DEPLOY-GATEWAY",
+      "DR-DEPLOY-GATEWAY",
+      "PRQ-GATEWAY-ROUTE-CONFIG",
+      "PRQ-PATH-BASED-ROUTING",
+      "PRQ-LEGACY-VS-NEW-ROUTING-IMPL",
+      "DR-STRANGLER-ROUTING",
+      "PRQ-CORS-CONCEPT",
+      "PRQ-JWT-FUNDAMENTALS-SHALLOW",
+      "PRQ-OAUTH-OIDC-ENTRA",
+      "PRQ-GATEWAY-JWT-VALIDATION-FILTER",
+      "PRQ-CORS-GATEWAY-CONFIG",
+      "DR-VALIDATE-AUTH",
+      "PRQ-DISTRIBUTED-TRACING-CONCEPTS",
+      "PRQ-OTEL-COLLECTOR-PIPELINE",
+      "PRQ-OTEL-INSTRUMENTATION-GATEWAY",
+      "DR-TRACING",
+      "PRQ-CUSTOM-GLOBALFILTER-AUTHORING",
+      "PRQ-LEGACY-TOKEN-FORMAT",
+      "PRQ-JWT-FUNDAMENTALS-DEEP",
+      "PRQ-TOKEN-MINTING-LOGIC",
+      "PRQ-TOKEN-PROPAGATION",
+      "DR-MINT-TOKEN"
+    ],
+    "untaught_baseline_node_refs": [
+      "BSL-DOCKER",
+      "BSL-GKE-CONTAINERS",
+      "BSL-REST",
+      "BSL-SPRING-BOOT"
+    ]
+  }
+}
