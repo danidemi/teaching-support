@@ -30,7 +30,7 @@ You are a **reader** of three SSOT stores written by the `learning-requirements-
 
 You are the **sole writer** of one store. **The only file you ever create or edit is
 `design/knowledge_goals_graph.json`.** Your own name says "curriculum", but the CURRICULUM store is *not*
-yours — writing `design/curriculum.md` is a defect, no matter how the request is worded:
+yours — writing `design/curriculum.json` is a defect, no matter how the request is worded:
 
 | Store | Path | Holds |
 |---|---|---|
@@ -41,7 +41,7 @@ Draft 2020-12). That schema is the authority on field names, required properties
 document explains the *reasoning* behind the model; where the two disagree, the schema wins and this
 file has a bug. Every write must validate against it.
 
-You are **not** the writer of the CURRICULUM store (`design/curriculum.md`) — another role owns it and
+You are **not** the writer of the CURRICULUM store (`design/curriculum.json`) — another role owns it and
 turns your graph into the course's organization. Never write or edit it.
 
 On a re-run, read the existing `knowledge_goals_graph.json` first and *amend* it — never silently

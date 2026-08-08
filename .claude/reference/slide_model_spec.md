@@ -59,6 +59,19 @@ units:
 `unit` and `minutes` are read from `design/curriculum.md`, not invented. `coverage.py` rejects a unit
 id the curriculum does not declare.
 
+> **Known gap, not yet resolved:** `design/curriculum.md` was a human-readable render of the real
+> CURRICULUM store and has been deleted as redundant (the store itself is
+> `design/curriculum.json`, owned by `learning-curriculum-sequencer`; see
+> `.claude/reference/ssot_structure.md`). This slide-model spec, `tools/slides/deckmodel.py`
+> (`units_from_curriculum`), `tools/slides/coverage.py` (`--curriculum` default), and the
+> existing `material/slides/session-01.yml` / `tools/slides/example/fixture.yml` still assume a
+> `unit` id (e.g. `"1.1"`) sourced from that markdown file — a shape `design/curriculum.json`
+> does not have (it organizes by `sessions[].items[]` with `sequence`/`node_ref`, not by unit
+> id). The slide pipeline was never migrated when `curriculum.json` became the real store. Until
+> someone does that migration (spec + `deckmodel.py`/`coverage.py` + the existing deck/fixture
+> files, together, deliberately), `tools/slides coverage`'s `--curriculum` default points at a
+> file that no longer exists.
+
 ## Slide
 
 ```yaml

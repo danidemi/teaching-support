@@ -125,7 +125,8 @@ write different files while believing they share one)*
 - References to docs resolve. But separate two kinds of path: **input docs that must already exist**
   (e.g. `doc/pedagogic/…` and `.claude/reference/…` the agents read as source material) *should*
   resolve now, and a broken one is a real finding — whereas **runtime/output paths** the pipeline
-  creates later (`design/curriculum.md`, `material/…`, `material/slides/out/…`) are
+  creates later (`material/teacher/books/session-01-teacher-book.adoc`, `material/…`,
+  `material/slides/out/…`) are
   expected to be absent before that phase has run. Do **not** flag those as broken; the agents already
   guard for their absence. Only flag a runtime path if it's *spelled inconsistently* between agents
   (that's check B), not for merely not existing yet.

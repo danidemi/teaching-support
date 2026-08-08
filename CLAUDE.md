@@ -13,21 +13,31 @@ two things at once:
 ## Pipeline and how to invoke it
 
 Phases (`.claude/reference/phases.md`): requirements gathering → curriculum design → instructional
-design → materials development. Phase 3 has **no owner**; phase 4 covers slides only.
+design → materials development. Phase 3 has **no owner**; phase 4 covers slides plus the wider
+material catalog below (teacher/student books, quizzes, demo scripts, hands-on guides, project
+work, rubrics, reading guides).
 
 - `/learning-requirements-gatherer` — **must be run by the human in the main conversation loop.** It
-  interviews the human and writes LOGISTICS, GOALS, STUDENT_PERSONAS.
+  interviews the human and writes LOGISTICS, GOALS, STUDENT_PERSONAS, EDITORIAL_GUIDELINES.
 - `learning-curriculum-architect` — a subagent; `learning-project-manager` delegates to it with the
-  Agent tool once the three requirement stores exist and are signed off.
-- `/learning-slide-author` — a main-loop skill (its sign-off gate needs conversation). Writes the
-  per-session deck models and renders them. See the slide pipeline below.
+  Agent tool once the three requirement stores exist and are signed off. Writes DESIGN.
+- `learning-curriculum-sequencer` — a subagent; delegated to once DESIGN is signed off. Writes
+  CURRICULUM (`design/curriculum.json`), organizing the DESIGN graph into delivery sessions.
+- The slide pipeline (see below) turns approved CURRICULUM items into per-session slide decks.
+- `/learning-material-author` — a main-loop skill (its sign-off gate needs conversation). Fans out
+  the 8 material-authoring subagents (teacher/student book, quiz, demo script, hands-on guide,
+  project work, rubric, reading guide) per CURRICULUM item, collects drafts, and runs the human
+  sign-off loop. Registry of which type applies to which item:
+  `.claude/reference/material_catalog.md`. Shared authoring rules:
+  `design/material_authoring_rules.md`.
 - `learning-support-agent-coherence` — run this skill after editing **any** file under
   `.claude/agents/` or `.claude/skills/`. It audits name/path/ownership drift, reports first, and only
   edits after explicit human approval.
 
-Because phase 3 has no owner, the slide author necessarily makes some instructional-design decisions.
-It records them in each deck's `instructional_decisions` list tagged `awaiting: instructional-designer`
-rather than burying them in slide wording — that list is the handover when a phase-3 owner exists.
+Because phase 3 has no owner, the phase-4 authoring roles necessarily make some
+instructional-design decisions. Each records them in an `instructional_decisions` list tagged
+`awaiting: instructional-designer` rather than burying them in the material's wording — that list
+is the handover when a phase-3 owner exists.
 
 ## The rule that shapes the whole design: skill vs. subagent
 
@@ -53,10 +63,11 @@ is canonical for paths:
 | LOGISTICS | `specifications/logistics.md` | learning-requirements-gatherer (skill) |
 | GOALS | `specifications/goals.md` | learning-requirements-gatherer (skill) |
 | STUDENT_PERSONAS | `specifications/student_personas.md` | learning-requirements-gatherer (skill) |
+| EDITORIAL_GUIDELINES | `specifications/editorial_guidelines.md` | learning-requirements-gatherer (skill) |
 | DESIGN (knowledge graph) | `design/knowledge_goals_graph.json` | learning-curriculum-architect |
-| MATERIAL — slides | `material/slides/session-NN.yml` | learning-slide-author (skill) |
-| CURRICULUM | `design/curriculum.md` | not yet created |
-| MATERIAL — everything else | `material/` | not yet created |
+| CURRICULUM | `design/curriculum.json` | learning-curriculum-sequencer |
+| MATERIAL — slides | `material/slides/session-NN.yml` | no main-loop skill currently drives this; see `tools/slides/` |
+| MATERIAL — everything else | `material/teacher/`, `material/student/` | the 8 phase-4 authoring subagents, fanned out by `/learning-material-author`; see `.claude/reference/material_catalog.md` |
 
 Stores hold **hypotheses as well as facts** — the prerequisite graph and the personas are informed
 guesses. Every entry carries a confidence/provenance tag (`[stated]`, `[inferred]`,
@@ -122,11 +133,14 @@ tools/graph/graph check design/knowledge_goals_graph.json   # schema + closure c
   live agent files no longer reference it, so treat any `learning/…` path you meet as a leftover to fix,
   and never "correct" a file that already uses the canonical paths to match it.
 - **Commented-out roster.** Lines prefixed with `#` in `learning-project-manager.md` describe
-  *planned* agents, skills, and stores. Only **two agents** (`learning-project-manager`,
-  `learning-curriculum-architect`) and **three project skills** (`learning-requirements-gatherer`,
-  `learning-slide-author`, `learning-support-agent-coherence`) actually exist — delegating to e.g.
-  `instructional-designer` will fail. Check comment status byte-exactly (`grep -n '^#' <file>`): `#`
-  also starts Markdown headings, which are live text.
+  *planned* agents, skills, and stores that do not exist — e.g. `instructional-designer`,
+  `assessment-designer`, `editor`, `proof-reader`, `pedagogy-reviewer`; delegating to any of them
+  will fail. Check comment status byte-exactly (`grep -n '^#' <file>`): `#` also starts Markdown
+  headings, which are live text. The agents and skills that do exist: `learning-project-manager`,
+  `learning-curriculum-architect`, `learning-curriculum-sequencer`, and the 8 phase-4 authoring
+  subagents listed in `.claude/reference/material_catalog.md`; the skills
+  `learning-requirements-gatherer`, `learning-material-author`, and
+  `learning-support-agent-coherence`.
 - **Duplicated theory docs.** `.claude/reference/andragogy_principles.md`,
   `experiential_learning.md`, and `curriculum_sequencing_summary.md` are byte-identical copies of
   `doc/pedagogic/*` / `doc/curriculum_sequencing_summary.md`. **Agents read the `.claude/reference/`

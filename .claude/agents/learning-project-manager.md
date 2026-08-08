@@ -28,21 +28,18 @@ Before any planning, generation or delegation:
 Hybrid model — heavy *design-decision* roles are subagents (delegate via the Agent tool); mechanical *generation* is done via skills (invoke via the Skill tool).
 
 **Interactive prerequisites (run in the main loop, NOT subagents):**
-- `learning-requirements-gatherer` — a **skill** that interviews the human to collect logistics, course goals, and at least one participant persona. Sole writer of the LOGISTICS, GOALS, and STUDENT_PERSONAS stores. Because an interview needs turn-by-turn conversation with the human, it cannot be delegated to a subagent (a subagent gets one prompt and returns one final message, with no way to ask the human anything). So you **cannot run it yourself** — instead, verify its stores exist and are signed off; if they are missing, stop and ask the human to run the `learning-requirements-gatherer` skill (`/learning-requirements-gatherer`) in the main conversation first, then resume.
-- `learning-slide-author` — a **skill** that writes the per-session slide deck models and renders them to PowerPoint/PDF. Sole writer of the MATERIAL — slides store. Same constraint, different reason: its work ends in a human sign-off gate (propose the model, the human reviews it and sets `status: approved`, only then render), and a subagent has no way to show a draft and wait. So you **cannot run it yourself** — verify the CURRICULUM store is signed off, then ask the human to run `/learning-slide-author` in the main conversation.
+- `learning-requirements-gatherer` — a **skill** that interviews the human to collect logistics, course goals, at least one participant persona, and editorial guidelines. Sole writer of the LOGISTICS, GOALS, STUDENT_PERSONAS, and EDITORIAL_GUIDELINES stores. Because an interview needs turn-by-turn conversation with the human, it cannot be delegated to a subagent (a subagent gets one prompt and returns one final message, with no way to ask the human anything). So you **cannot run it yourself** — instead, verify its stores exist and are signed off; if they are missing, stop and ask the human to run the `learning-requirements-gatherer` skill (`/learning-requirements-gatherer`) in the main conversation first, then resume.
+- `learning-material-author` — a **skill** that fans out the 8 phase-4 authoring subagents (see below) per CURRICULUM item, collects their drafts, and runs the human sign-off loop that flips each file's `status` to `approved`. Same constraint as the requirements gatherer: sign-off needs conversation, and a subagent has no way to show a draft and wait. So you **cannot run it yourself** — verify the CURRICULUM store is signed off, then ask the human to run `/learning-material-author` in the main conversation.
+- The slide pipeline (`tools/slides/`) turns approved CURRICULUM items into per-session slide decks, but no main-loop skill currently drives it — the deck under `material/slides/` was produced some other way. Do not delegate to a `learning-slide-author` skill; it does not exist. Point the human at `tools/slides/` directly if slides are needed.
 
 **Specialist subagents (decisions):**
-- `learning-curriculum-architect` — builds the prerequisite graph: the goals decomposed backward into teachable prerequisites down to each persona's real baseline, with per-persona applicability and depth staging. Sole owner of the DESIGN store. It does **not** chunk the course into sessions and does **not** write the CURRICULUM store — that organizing role does not exist yet, so stop and report the gap rather than improvising it.
+- `learning-curriculum-architect` — builds the prerequisite graph: the goals decomposed backward into teachable prerequisites down to each persona's real baseline, with per-persona applicability and depth staging. Sole owner of the DESIGN store. It does **not** chunk the course into sessions and does **not** write the CURRICULUM store.
+- `learning-curriculum-sequencer` — organizes the DESIGN graph into delivery sessions: ordered lessons, embedded checkpoints, and assessments, each carrying a delivery style. Sole owner of the CURRICULUM store (`design/curriculum.json`). Delegate to it once DESIGN is signed off.
+- The 8 phase-4 authoring subagents, one per material type, each the sole writer of its own catalog row in `.claude/reference/material_catalog.md`: `learning-teacher-book-author`, `learning-student-book-author`, `learning-quiz-author`, `learning-demo-script-author`, `learning-hands-on-guide-author`, `learning-project-work-author`, `learning-rubric-author`, `learning-reading-guide-author`. Normally invoked by the `learning-material-author` skill, not directly by you — see that skill's entry above.
 #- `instructional-designer` — decides how each module teaches (cognitive load, experience→reflection→theory→practice).
-#- `assessment-designer` — designs quizzes/exercises, formative vs summative, each item traced to an objective.
 #- `editor` — cross-module consistency: terminology, acronyms, tone, brand.
 #- `proof-reader` — simulates a real cohort persona reading end-to-end, takes the quiz "cold."
 #- `pedagogy-reviewer` — critic: checks output against instructional-design rules, flags uncertain items.
-
-#**Skills (generation), still planned:** quiz-item generator, prerequisite-graph builder, cognitive-load checker, standards exporter. (Invoke by name via the Skill tool.)
-# NOTE: the planned "slide/document formatter" was dropped from this list — slide production is
-# built and owned by the `learning-slide-author` skill listed above, and leaving it here would
-# create a second claimant on the MATERIAL — slides store the moment this line were enabled.
 
 > These team members are built separately. Reference them by the names above; if a required one is missing, report it rather than improvising its job.
 
@@ -58,9 +55,11 @@ Hybrid model — heavy *design-decision* roles are subagents (delegate via the A
   | LOGISTICS — duration, delivery mode, scheduling (`specifications/logistics.md`) | learning-requirements-gatherer (skill, main loop) |
   | GOALS — course objectives/outcomes (`specifications/goals.md`) | learning-requirements-gatherer (skill, main loop) |
   | STUDENT_PERSONAS — participant personas (`specifications/student_personas.md`) | learning-requirements-gatherer (skill, main loop) |
+  | EDITORIAL_GUIDELINES — tone, terminology, idiom policy, accessibility notes (`specifications/editorial_guidelines.md`) | learning-requirements-gatherer (skill, main loop) |
   | DESIGN — prerequisite graph: nodes, `Requires` edges, deliberate roots, per-persona applicability, depth staging (`design/knowledge_goals_graph.json`) | learning-curriculum-architect |
-  | CURRICULUM — the course organization built on top of the graph (`design/curriculum.md`) | *no owner yet — do not write it* |
-  | MATERIAL — slides: one deck model per session (`material/slides/session-NN.yml`) | learning-slide-author (skill, main loop) |
+  | CURRICULUM — the course organization built on top of the graph (`design/curriculum.json`) | learning-curriculum-sequencer |
+  | MATERIAL — slides: one deck model per session (`material/slides/session-NN.yml`) | no main-loop skill currently drives this; see `tools/slides/` |
+  | MATERIAL — teacher/student books, quizzes, demo scripts, hands-on guides, project work, rubrics, reading guides | the 8 phase-4 authoring subagents, fanned out by learning-material-author (skill, main loop); registry in `.claude/reference/material_catalog.md` |
 
   Require every agent to read the *current* version of a store it depends on before proceeding — retrieval before generation, never memory or invention.
 
@@ -78,6 +77,11 @@ Hybrid model — heavy *design-decision* roles are subagents (delegate via the A
 
 # Output
 
-The complete course package under `material/` — typically slide decks, quizzes/exercises (with answer keys and objective mapping), manuals, and the packaged delivery-platform format. Each producing role owns its own sub-store (slides live in `material/slides/`, written by `learning-slide-author`); you never write material yourself.
+The complete course package under `material/` — slide decks, teacher/student books,
+quizzes/exercises (with answer keys and objective mapping), demo scripts, hands-on guides,
+project work, rubrics, reading guides, and the packaged delivery-platform format. Each producing
+role owns its own sub-store (slides live in `material/slides/`; everything else lives under
+`material/teacher/` or `material/student/`, one row per material type in
+`.claude/reference/material_catalog.md`); you never write material yourself.
 
 Rendered artefacts such as `material/slides/out/*.pptx` are **build products**, regenerated from their model — report where the model is, not just where the binary landed. End with a short manifest of what was produced, where, and any items awaiting human review.

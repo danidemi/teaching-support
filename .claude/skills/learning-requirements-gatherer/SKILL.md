@@ -1,6 +1,6 @@
 ---
 name: learning-requirements-gatherer
-description: Interviews the human to collect everything needed to organize an adult class — technical setup (duration, delivery mode, scheduling), target skills/objectives, and at least one participant persona. Runs the interview in the main conversation loop and writes the LOGISTICS, GOALS, and STUDENT_PERSONAS SSOT stores. Invoke before any curriculum or material exists, e.g. "gather the course requirements", "start the requirements interview", "/learning-requirements-gatherer".
+description: Interviews the human to collect everything needed to organize an adult class — technical setup (duration, delivery mode, scheduling), target skills/objectives, at least one participant persona, and editorial guidelines. Runs the interview in the main conversation loop and writes the LOGISTICS, GOALS, STUDENT_PERSONAS, and EDITORIAL_GUIDELINES SSOT stores. Invoke before any curriculum or material exists, e.g. "gather the course requirements", "start the requirements interview", "/learning-requirements-gatherer".
 ---
 
 # Role
@@ -23,6 +23,7 @@ You are the only writer of the following stores:
 * GOALS — `specifications/goals.md`
 * LOGISTICS — `specifications/logistics.md`
 * STUDENT_PERSONAS — `specifications/student_personas.md`
+* EDITORIAL_GUIDELINES — `specifications/editorial_guidelines.md`
 
 Everyone else in the system reads these; only this interview writes them.
 
@@ -35,6 +36,8 @@ Retrieval before generation: if a store already exists (a re-run, or a revised r
 - **LOGISTICS** covers at minimum: total length (hours/sessions/weeks), delivery mode (**human-taught / self-paced / hybrid / other**), synchronous vs asynchronous, schedule and pacing constraints, language, expected cohort size, prerequisites assumed, and the target delivery platform, whether students work in a specific sector or company. Ask about anything else that would shape the material.
 
 - **STUDENT_PERSONAS** — **at least one is mandatory**; you may not finish without it. Prefer several when the cohort is mixed. A persona here is not demographics — it is a *map of competing priorities*.
+
+- **EDITORIAL_GUIDELINES** covers: instructional language and tone/register, terminology consistency rules, idiom/metaphor policy, a named visual template or branding pointer if the client has one, and accessibility notes. This store shapes every phase-4 material file (teacher/student books, quizzes, demo scripts, hands-on guides, project work, rubrics, reading guides), not only slides.
 
 # How to run the interview
 
@@ -123,6 +126,39 @@ Adapt: skip what's obvious from earlier answers, dig where answers are thin.
 ### Hypotheses vs. facts
 
 Personas are hypotheses about how real people will react; some technical answers may be tentative. Tag each entry with confidence/provenance (e.g. *stated by client* vs. *inferred*). Flag low-confidence or invented-to-fill-a-gap entries for human review rather than presenting them as settled.
+
+## EDITORIAL GUIDELINES
+
+Ask this after PERSONAS — the answers you already have about the cohort's language mix and
+autonomy expectations shape the defaults you propose here, so do not ask this section cold.
+
+Draw the questions from these considerations, then propose a default for each and get the human
+to confirm or amend it — do not leave any of them unset:
+
+- **Idiom/metaphor policy.** Default proposal: avoid idioms and metaphors whenever the cohort is
+  not entirely native speakers of the instructional language, mirroring this repository's own
+  editing rule for agents and skills (`CLAUDE.md`, "Editing rules for agents and skills"). Ask
+  whether the cohort is entirely native speakers; if unsure or mixed, the avoid-idioms default
+  applies.
+- **Terminology consistency.** One terminology list per course, so the same concept is never
+  named two different ways across sessions (e.g. always "route" or always "path rule", not
+  both). Ask for any terms the client already uses internally that must be kept, and any terms
+  to avoid.
+- **Visual template / branding.** Ask whether the client has a named slide template, logo, or
+  color scheme the material must use. Default when there is none: plain and neutral, no invented
+  branding.
+- **Tone and register.** Formal vs. conversational. Default: match the autonomy expectation
+  already captured in STUDENT_PERSONAS — a cohort expecting a structured, guided path reads
+  better with a more formal register; a cohort expecting self-directed autonomy reads better
+  with a more conversational one. Ask when personas are mixed on this axis.
+- **Accessibility notes.** Ask about any known accessibility requirements (screen-reader
+  compatibility, color-blindness-safe diagrams, large-print needs) that phase-4 material authors
+  must account for. Default when none are stated: no special requirement, but do not invent one
+  either way — record "none stated" explicitly rather than leaving the question unaddressed.
+
+Tag every entry the same way as PERSONAS: confidence/provenance (*stated by client* vs.
+*inferred*/*proposed default, confirmed*), and flag anything the human did not explicitly
+confirm.
 
 # When you are done
 
