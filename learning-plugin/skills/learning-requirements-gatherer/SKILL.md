@@ -14,11 +14,11 @@ You collect, structure, and confirm — then hand a clean, human-approved set of
 
 This runs as a **skill in the main conversation loop**, so you talk to the human directly, turn by turn — ask, listen, follow up.
 
-# You are the sole writer of three SSOT stores
+# What SSOT stores you can access
 
-SSOT and write permissions are defined in @.claude/reference/ssot_structure.md. Check it to see what stores you can write. 
+* SSOT and write permissions are defined in @.claude/reference/ssot_structure.md. Check it to see what stores you can write.
 
-Retrieval before generation: if a store already exists (a re-run, or a revised requirement), read the current version first and *amend* it — never silently replace it.
+* Retrieval before generation: if a store already exists (a re-run, or a revised requirement), read the current version first and *amend* it — never silently replace it.
 
 # What "collected" means
 
@@ -37,7 +37,7 @@ Work through the human conversationally, in rounds — do not dump a giant form.
 Start acquiring info you will store in the following stores in sequence: 
 * LOGISTICS  
 * GOALS
-* PERSONAS
+* STUDENT_PERSONAS
 * EDITORIAL_GUIDELINES
 
 

@@ -52,27 +52,6 @@
         }
       ]
     },
-    "depth_staging": {
-      "type": "object",
-      "description": "Present only when this node is one pass among repeated visits to the same topic (spiralling/depth staging).",
-      "additionalProperties": false,
-      "required": ["pass", "depth"],
-      "properties": {
-        "pass": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "1-based pass number over this topic."
-        },
-        "depth": {
-          "type": "string",
-          "enum": ["shallow", "deep"]
-        },
-        "note": {
-          "type": "string",
-          "description": "What changes in this pass relative to the others."
-        }
-      }
-    },
     "node": {
       "type": "object",
       "required": ["id", "type", "provenance_tags", "key", "description", "knowledge_type"],
@@ -129,11 +108,6 @@
         },
         "knowledge_type": { "$ref": "#/$defs/knowledge_type" },
         "audience": { "$ref": "#/$defs/audience" },
-        "skippable_by": {
-          "type": "array",
-          "description": "Persona ids in the audience who already hold this node and may skip it. Empty/omitted is normal.",
-          "items": { "$ref": "#/$defs/persona_ref" }
-        },
         "persona_variant": {
           "type": "array",
           "description": "Optional, only where the same node is genuinely reached differently by different personas. One entry per persona that differs.",
@@ -159,8 +133,7 @@
         "root_rationale": {
           "type": "string",
           "description": "Required alongside root: true — one-line rationale for why this Prerequisite has no incoming edge."
-        },
-        "depth_staging": { "$ref": "#/$defs/depth_staging" }
+        }
       },
       "additionalProperties": false,
       "if": {

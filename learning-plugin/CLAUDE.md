@@ -1,14 +1,8 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## What this folder is
 
-## What this repository is
-
-There is no application code, build, test, or lint step here. The repo is
-two things at once:
-
-1. **A Claude Code plugin** (`learning-plugin`) for planning adult courses and producing their didactic material (slides, quizzes, exercises, manuals).
-2. **Few live test course project** (`learning-test-course-<TOPIC>`), likely courses that human can regenerate for testing purpose.
+1. **A Claude Code plugin** for planning adult courses and producing their didactic material (slides, quizzes, exercises, manuals).
 
 ## Pipeline and how to invoke it
 
@@ -56,52 +50,13 @@ message to run in parallel, dependent ones are chained.
 
 One authoritative store per domain, **exactly one writer**, everyone else reads the *current* version
 before generating — retrieval before generation, never memory or invention. `.claude/reference/ssot_structure.md`
-is canonical for paths:
 
-| Store | Path | Writer |
-|---|---|---|
-| LOGISTICS | `specifications/logistics.md` | learning-requirements-gatherer (skill) |
-| GOALS | `specifications/goals.md` | learning-requirements-gatherer (skill) |
-| STUDENT_PERSONAS | `specifications/student_personas.md` | learning-requirements-gatherer (skill) |
-| EDITORIAL_GUIDELINES | `specifications/editorial_guidelines.md` | learning-requirements-gatherer (skill) |
-| DESIGN (knowledge graph) | `design/knowledge_goals_graph.json` | learning-curriculum-architect |
-| CURRICULUM | `design/curriculum.json` | learning-curriculum-sequencer |
-| MATERIAL — slides | `material/slides/session-NN.yml` | no main-loop skill currently drives this; see `tools/slides/` |
-| MATERIAL — everything else | `material/teacher/`, `material/student/` | the 8 phase-4 authoring subagents, fanned out by `/learning-material-author`; see `.claude/reference/material_catalog.md` |
 
 Stores hold **hypotheses as well as facts** — the prerequisite graph and the personas are informed
 guesses. Every entry carries a confidence/provenance tag (`[stated]`, `[inferred]`,
 `[invented framing]`, `[risk]`); low-confidence entries route to human review, and downstream work on a
 still-provisional store is blocked pending sign-off.
 
-## The slide pipeline (`tools/slides/`)
-
-One of the repo's two toolchains (the other is `tools/graph/`, below), and it is fully
-containerised — the host needs Docker and nothing else. First `slides build` takes a few minutes
-and ~1.6 GB of disk.
-
-```bash
-tools/slides/slides check   material/slides/session-01.yml   # lint + coverage
-tools/slides/slides preview material/slides/session-01.yml   # DRAFT-stamped render
-tools/slides/slides render  material/slides/session-01.yml   # requires status: approved
-```
-
-- **The model is the source; `.pptx`/`.pdf` are build products** under `material/slides/out/`,
-  git-ignored, never hand-edited. Model format: `.claude/reference/slide_model_spec.md`. Design rules:
-  `.claude/reference/slide_design_rules.md` (distilled from `doc/writing_effective_slides.md` — a
-  rewrite, not a mirror copy, so re-derive it rather than diffing).
-- **Thresholds live in `tools/slides/slide_rules.yml`**, never hard-coded in the scripts. Only
-  mechanical defects are errors; every judgement call is a warning, so the linter never blocks a render
-  on a false positive.
-- **Nothing hand-computes what a script computes.** `slidelint.py` does the counts, required fields,
-  licence metadata, Kolb/lane completeness, timing sums and the notes-novelty KPI; `coverage.py` checks
-  objectives and units in both directions. Do not report a KPI you did not run.
-- **`status: approved` is set by a human only.** `render` refuses a draft; `preview` stamps `[DRAFT]`.
-- **`reference.pptx` is generated, not authored** — `make_reference.py` patches pandoc's default
-  template, whose title placeholder holds only two lines at 33pt and clips the three-line sentence
-  headlines the Assertion-Evidence model produces. Re-run it inside the container if pandoc changes.
-- `tools/slides/example/fixture.yml` is the pipeline self-test — check it first to tell a bad deck
-  apart from a bad toolchain.
 
 ## The knowledge graph editor (`tools/graph/`)
 
@@ -126,35 +81,11 @@ tools/graph/graph check design/knowledge_goals_graph.json   # schema + closure c
 - `tools/graph/README.md` covers running it in detail; `doc/tmp/app-editing-chart/plan.md` is the
   build log for how this toolchain came to exist, including the bugs found along the way.
 
-## Known traps
 
-- **An abandoned `learning/` layout.** An older design put stores under `learning/project.md`,
-  `learning/ssot/…` and `learning/output/…`; `learning` is in `.gitignore` and nothing lives there. The
-  live agent files no longer reference it, so treat any `learning/…` path you meet as a leftover to fix,
-  and never "correct" a file that already uses the canonical paths to match it.
-- **Commented-out roster.** Lines prefixed with `#` in `learning-project-manager.md` describe
-  *planned* agents, skills, and stores that do not exist — e.g. `instructional-designer`,
-  `assessment-designer`, `editor`, `proof-reader`, `pedagogy-reviewer`; delegating to any of them
-  will fail. Check comment status byte-exactly (`grep -n '^#' <file>`): `#` also starts Markdown
-  headings, which are live text. The agents and skills that do exist: `learning-project-manager`,
-  `learning-curriculum-architect`, `learning-curriculum-sequencer`, and the 8 phase-4 authoring
-  subagents listed in `.claude/reference/material_catalog.md`; the skills
-  `learning-requirements-gatherer`, `learning-material-author`, and
-  `learning-support-agent-coherence`.
-- **Duplicated theory docs.** `.claude/reference/andragogy_principles.md`,
-  `experiential_learning.md`, and `curriculum_sequencing_summary.md` are byte-identical copies of
-  `doc/pedagogic/*` / `doc/curriculum_sequencing_summary.md`. **Agents read the `.claude/reference/`
-  copies** (the architect refers to them as `reference/…`, without the `.claude/` prefix); `doc/` is
-  the human-facing research library. Edit both if the theory changes.
 
-## Special folders
 
-* **doc/**: and all its nested folders, reserved to humans. Do not read from it, do not write in it unless explicitly told.
-This directory holds the research this system implements — pedagogy (`doc/pedagogic/`: andragogy, Kolb's
-experiential cycle, cognitive load, persona definition), assessment design, content standards, and the
-LLM prerequisite-graph notes. `doc/ai-architectures/possible_architecture.md` describes the full
-aspirational agent roster and SSOT rationale; `reusable_agents.md` covers the folder-as-project-boundary
-model. Consult these before inventing a new pedagogical rule — it is probably already specified there.
+
+
 
 ## Editing rules for agents and skills
 
@@ -172,3 +103,4 @@ To ensure maximum accessibility for non-native English speakers and internationa
   **Use:** "Before we discuss the detailed steps, let's review the required setup."
 * **Avoid:** "This feature is currently on the back burner."
   **Use:** "This feature is currently deprioritized."
+  
