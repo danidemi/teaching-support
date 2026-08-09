@@ -1,31 +1,19 @@
 # Material catalog
 
-Registry of every didactic material type phase 4 produces. Every authoring subagent and the
+Registry of every kind of didactic material can be produced. 
+Every authoring subagent `learning-<TYPE>-author` and the
 `learning-material-author` orchestrating skill read this file instead of re-deriving the
-mapping. Adding a future material type is one new row here plus one new agent file — nothing
-else in the pipeline needs to change.
+mapping. 
 
 Trigger values (`delivery_style`, `item_type`, `support_material_kind`) are the enums defined in
-`.claude/reference/curriculum.schema.json`. Read that schema, do not guess at its enum values.
-
-## Known gap: `support_material_kind` has no dedicated value yet for most of these types
-
-The current `support_material_kind` enum (`reading`, `video`, `reference_doc`, `diagram`,
-`cheat_sheet`, `config_template`, `exercise_sheet`, `test_script`, `rubric`, `worked_example`,
-`other`) predates this catalog and does not name `quiz`, `demo_script`, `hands_on_setup_guide`,
-`hands_on_solving_guide`, `project_work`, `teacher_book`, `student_book`, or `reading_guide`.
-Extending the enum is listed as an optional, non-blocking follow-up in
-`.claude/planning/didactic_material_plan.md` and is **not done by this catalog**. Until it is,
-triggers below key off `item_type` and `style` (both already stable, required fields on every
-`item`), not off `support_material_kind`, except for the one row that already has a matching
-kind (`reading` → reading guide) or a matching field (`rubric` → rubric).
+`reference/curriculum.schema.json`. Read that schema, do not guess at its enum values.
 
 ## Registry
 
-| Material type | Audience | Format | Owning subagent | Trigger | Path pattern | Filename pattern |
+| Material type | Audience | Preferred Formats | Owning subagent | Trigger | Path pattern | Filename pattern |
 |---|---|---|---|---|---|---|
-| Teacher book | Teacher | AsciiDoc | learning-teacher-book-author | One per CURRICULUM session (compiles every item in that session, any `item_type`/`style`) | `material/teacher/books/` | `session-NN-teacher-book.adoc` |
-| Student book | Student | AsciiDoc | learning-student-book-author | One per CURRICULUM session (same scope as the teacher book, learner-facing content only) | `material/student/books/` | `session-NN-student-book.adoc` |
+| Teacher book | Teacher | AsciiDoc | learning-teacher-book-author | One per CURRICULUM session (compiles every item in that session, any `item_type`/`style`) | `material/teacher/books/` | `session-<NN>-teacher-book.adoc` |
+| Student book | Student | AsciiDoc | learning-student-book-author | One per whole course, learner-facing content only | `material/student/books/` | `student-book.adoc` |
 | Quiz (student paper) | Student | Markdown | learning-quiz-author | Item with `item_type: checkpoint` or `item_type: assessment` → `kind: assessment`. A `kind: prereq-check` or `kind: engagement` quiz has no automatic curriculum trigger yet — the orchestrating skill offers it as an optional extra per session/item on human request, and the author records that choice as an `instructional_decisions` entry | `material/student/quizzes/` | `session-NN-<node_ref>-quiz-<kind>.md` |
 | Quiz answer key (teacher) | Teacher | Markdown | learning-quiz-author | Same trigger as the paired student quiz — every quiz gets a key | `material/teacher/quizzes/` | `session-NN-<node_ref>-quiz-<kind>-key.md` |
 | Demo script | Teacher | AsciiDoc | learning-demo-script-author | Item with `style: lecture_demo` | `material/teacher/demo-scripts/` | `session-NN-<node_ref>-demo-script.adoc` |
