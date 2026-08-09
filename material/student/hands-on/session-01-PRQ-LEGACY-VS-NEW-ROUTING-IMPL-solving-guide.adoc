@@ -1,0 +1,50 @@
+= Solving guide: Implementing and verifying the concrete legacy-vs-new route split
+:status: draft
+:node_ref: PRQ-LEGACY-VS-NEW-ROUTING-IMPL
+:session: 1
+:sequence: 9
+:audience: student
+
+== The exercise
+
+Implement and verify the concrete route rules on the gateway you already deployed and confirmed
+reachable earlier in this session, so that requests to `/legacy/**` reach the legacy system and
+requests to every other configured path reach the correct migrated microservice. `[stated]`,
+from `PRQ-LEGACY-VS-NEW-ROUTING-IMPL`.
+
+This builds directly on the route model (predicates and filters) and the path-based-routing
+concept you just covered.
+
+== Your task
+
+If you are P-DEV::
+Write and adjust the concrete route rules for `/legacy/**` versus each migrated microservice.
+`[stated]`, from CURRICULUM's `lane_tasks`.
+
+If you are P-OPS::
+Deploy the updated route configuration and verify that traffic actually splits as intended.
+`[stated]`, from CURRICULUM's `lane_tasks`.
+
+Both roles are active on this exercise — there is no observer role here.
+
+== Steps
+
+. Using the exercise sheet handed out in class, note the small set of paths you are working
+  with: at least one `/legacy/**` path and one path per migrated microservice. PLACEHOLDER: the
+  exact path list and each backend's address will be given to you in class, together with
+  whether your team declares routes in Java DSL or YAML — this is not fixed in advance.
+. P-DEV: write or adjust the route rules so each path predicate points at the intended backend.
+. P-OPS: deploy the updated route configuration to the running gateway.
+. P-OPS: using the sample requests from the handed-out test script, fire a request at each path.
+. Both: compare what you observe against what you expect for that path.
+
+== What done looks like
+
+* Firing the sample requests from the handed-out test script, a request to a `/legacy/**` path
+  is answered by the legacy system, and a request to each migrated path is answered by its
+  corresponding microservice. `[stated]`, anchored on the item's `test_script` support material.
+* Every path in your exercise set resolves to the backend you intended — no migrated path
+  answered by the legacy system, and no `/legacy/**` path answered by a microservice.
+
+This is the same behavior the checkpoint right after this exercise will check, live, against
+your deployed gateway.

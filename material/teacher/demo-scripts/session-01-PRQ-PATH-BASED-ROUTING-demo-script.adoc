@@ -1,0 +1,129 @@
+= Demo script: Splitting traffic by path — +/legacy/**+ vs migrated paths
+:status: draft
+:node_ref: PRQ-PATH-BASED-ROUTING
+:session: 1
+:sequence: 8
+:time_minutes: 10
+
+[instructional_decisions]
+****
+* decision: "`specifications/editorial_guidelines.md` did not exist when this file was written.
+  Fell back to this repository's own editing rules (`CLAUDE.md`, 'Editing rules for agents and
+  skills'): avoid idioms and metaphors, use literal and direct terms, prefer plain language,
+  prioritize clarity over rhetoric."
+  rationale: "Required fallback per `design/material_authoring_rules.md`, 'Missing
+  EDITORIAL_GUIDELINES' section."
+  confidence: stated
+  awaiting: instructional-designer
+* decision: "The live sequence uses a route pair already declared before class. No step edits,
+  authors, or deploys route configuration live."
+  rationale: "PRQ-LEGACY-VS-NEW-ROUTING-IMPL (session 1, sequence 9, hands-on, 30 minutes)
+  `requires` this node and owns writing and verifying the concrete route rules. This item's own
+  DESIGN description ('Using path-based predicates to split traffic') is declarative knowledge,
+  not authoring. Keeping this demo to observation only avoids pre-empting sequence 9's scope."
+  confidence: inferred
+  awaiting: instructional-designer
+* decision: "The fallback section scripts the pre-captured-transcript path fully (what to say,
+  what to point at) but leaves the decision of exactly when to cut to it — after one failed
+  retry, or immediately — to the teacher's judgement in the moment."
+  rationale: "A rigid retry count cannot anticipate every way a live request can misbehave in
+  front of a class; the teacher watching the room is better placed to decide the cutover moment
+  than a fixed rule written in advance."
+  confidence: invented
+  awaiting: instructional-designer
+****
+
+== Before class
+
+* Have the gateway from PRQ-GATEWAY-ROUTE-CONFIG (session 1, sequence 7) already running and
+  reachable, with two routes already declared and deployed: one route whose predicate matches
+  +/legacy/**+ and directs to the legacy system, and one route whose predicate matches at least
+  one other path and directs to a migrated microservice. [inferred] Neither store gives the exact
+  path names or target addresses used in this deployment; see the placeholder in the live
+  sequence below.
+* Do not author or edit any route configuration for this demo. The route pair must already exist
+  and already be deployed — writing or adjusting the concrete rules is the scope of
+  PRQ-LEGACY-VS-NEW-ROUTING-IMPL, taught right after this item (session 1, sequence 9). This item
+  only makes the already-declared split observable.
+* Have the diagram attached to this CURRICULUM item open and visible (the support material
+  described as "Diagram of a path-based predicate splitting +/legacy/**+ from other paths at the
+  gateway"). [invented framing, placeholder] No store supplies a file or URI for this diagram; it
+  has not been produced by any authoring subagent yet. Confirm with the client/course team where
+  this diagram lives before class, or produce a simple one, since it is also the fallback
+  artifact in this script.
+* Have a terminal or client (browser, curl, or an HTTP client tool) ready to send a request to
+  each of the two paths. [invented framing, placeholder] No store gives the exact command, tool,
+  or client the team uses; confirm this with the client before class.
+* Confirm both target systems (the legacy system and the migrated microservice used in the demo)
+  are reachable and responding, so a failure during the live sequence is attributable to the
+  gateway's routing behavior and not to an unrelated outage.
+
+== Live sequence
+
+. *Show* the diagram briefly. *Say:* "This is the shape we are about to make happen live: one
+  path pattern, +/legacy/**+, goes to the legacy system. Every other configured path goes to a
+  migrated microservice. The route model itself — predicates and filters — was covered a moment
+  ago; what's new here is using a path predicate specifically to decide which system gets the
+  request."
+. *Run* a request against a path that matches +/legacy/**+ [invented framing, placeholder]:
++
+[source,placeholder]
+----
+<< exact request (URL, method, tool) against the deployed gateway's /legacy/** route — no store
+   gives this deployment's actual host, port, or path; confirm with the client before class >>
+----
++
+*Say:* "Watch where this lands. The predicate matched +/legacy/**+, so the gateway sends it to
+the legacy system, not to any of the new microservices."
+. *Point at* the response (or, if visible, the target system's own log line showing it received
+  the request). *Say:* "That's the legacy system answering — the path predicate decided that on
+  its own."
+. *Run* a second request against a path that does not match +/legacy/**+ [invented framing,
+  placeholder]:
++
+[source,placeholder]
+----
+<< exact request (URL, method, tool) against the deployed gateway's non-/legacy/** route — no
+   store gives this deployment's actual host, port, or path; confirm with the client before
+   class >>
+----
++
+*Say:* "Same gateway, same moment in time, different path. This one lands on the migrated
+microservice instead — same predicate mechanism, opposite outcome."
+. *Point at* the diagram again, then at both responses side by side. *Say:* "This is the whole
+  idea: one path pattern is the switch. Nothing in the request itself was rewritten to make this
+  happen — the path alone decided the destination. Making this split solid and verified for our
+  own real paths is exactly what we do next."
+
+== What to watch for
+
+* [inferred] Participants with an Ops background have just spent sequences 3 and 5 working with
+  Kubernetes Ingress and GKE service exposure. They may expect this path split to be an
+  Ingress-level or load-balancer-level rule. Say explicitly that this is the gateway
+  application's own route configuration, evaluated inside the gateway process after a request has
+  already reached it — not a Kubernetes or network-layer rule.
+* Watch the room during the pause between sending each request and the response appearing. This
+  is a 10-minute item with two request/response round-trips; if either pause runs long, narrate
+  what should be happening ("the predicate is being matched right now") rather than standing
+  silently.
+* After the second request lands on the migrated microservice, check that the room connects it
+  back to the strangler-fig framing from PRQ-STRANGLER-FIG-PATTERN (sequence 1): this predicate
+  is the mechanism that lets the legacy system and the new microservices coexist behind one
+  address during the migration window.
+
+== Fallback
+
+* If either request in the live sequence does not return the expected response, do not debug the
+  route configuration live — that risks pre-empting or contradicting sequence 9's hands-on
+  correction of the same rules. Switch to a pre-captured transcript of a known-good run of both
+  requests. [invented framing, placeholder] No such transcript exists yet; capture one (terminal
+  output or screenshot for both the +/legacy/**+ request and the non-+/legacy/**+ request) during
+  a dry run before this item is first taught, and save it at a path the teacher can name here.
+  Narrate it as "this is what a working split looks like."
+* If the whole gateway or either target system is unreachable, skip the live requests entirely
+  and stay on the diagram already open from Before class. Narrate the same two-request story
+  against the diagram: point at the +/legacy/**+ branch, say what would happen, point at the
+  other branch, say what would happen there.
+* Whichever fallback is used, close on the same line as the live version: "the path alone decides
+  the destination" — so the transition into sequence 9's hands-on implementation still lands on
+  the right idea even if nothing ran live.

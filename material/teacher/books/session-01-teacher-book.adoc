@@ -1,0 +1,614 @@
+= Session 1 Teacher Book — Deploying the Gateway and Splitting Traffic (Strangler Routing)
+:status: draft
+:session: 1
+:course: Spring Cloud Gateway for a Strangler-Fig Migration to GKE
+:toc:
+
+[instructional_decisions]
+====
+* Decision: "EDITORIAL_GUIDELINES does not exist yet (`specifications/editorial_guidelines.md` is
+  missing). This file follows the fallback in `design/material_authoring_rules.md`: the
+  repository's own editing rules in `CLAUDE.md` ('Editing rules for agents and skills') — avoid
+  idioms and metaphors, use literal and direct terms, prefer plain language, prioritize clarity
+  over rhetoric."
+  Rationale: "material_authoring_rules.md requires this fallback and a recorded decision whenever
+  EDITORIAL_GUIDELINES is absent, so the file is revisited once that store exists."
+  Confidence: stated
+  Awaiting: instructional-designer
+
+* Decision: "Both session-1 checkpoints (DR-DEPLOY-GATEWAY, DR-STRANGLER-ROUTING) are treated as
+  triggering a paired student quiz and teacher answer key, per material_catalog.md row 3
+  ('Item with item_type: checkpoint or item_type: assessment -> kind: assessment'), even though
+  teacher_book_spec.md's own worked example for DR-DEPLOY-GATEWAY says 'This item has no quiz.'"
+  Rationale: "material_authoring_rules.md and teacher_book_spec.md both name the catalog as the
+  authority for computing Related material pointers; the spec's own example is illustrative, not
+  a trigger rule, and the catalog's trigger is unconditional on item_type/kind. Treating the
+  spec's example as authoritative would silently drop a required pointer."
+  Confidence: inferred
+  Awaiting: instructional-designer
+
+* Decision: "The session's three homework entries (keep the gateway/route split running before
+  Session 2; Dev skims Entra ID app registration details; Ops confirms Entra ID values are ready)
+  are placed in the Facilitation notes of the last item, PRQ-JWT-FUNDAMENTALS-SHALLOW (sequence
+  12), as a closing-the-session note, because teacher_book_spec.md defines no dedicated homework
+  field or section."
+  Rationale: "The homework entries exist in CURRICULUM and must not be silently dropped, but the
+  spec's per-item section shape has no homework field. Attaching them to the last item's
+  facilitation notes keeps them visible without inventing a new top-level section the spec does
+  not define."
+  Confidence: inferred
+  Awaiting: instructional-designer
+
+* Decision: "For sequence 3 (PRQ-K8S-DEPLOY-CONCEPTS, single_lane, P-OPS role: skip), the
+  facilitation notes suggest a concrete task for the two Ops participants during the 10 minutes
+  they sit out, instead of leaving them idle."
+  Rationale: "CURRICULUM marks this item skippable_by P-OPS and gives Ops no task, but
+  STUDENT_PERSONAS flags Sara's risk as disengagement outside her lane; 10 idle minutes for half
+  the room is worth a suggested use, not a silent gap. The specific task (previewing the
+  containerize/deploy hands-on ahead) is invented framing, not a store fact."
+  Confidence: invented
+  Awaiting: instructional-designer
+
+* Decision: "This file treats CURRICULUM's own deferred_decision about the 225-usable-minutes
+  assumption as still open, and does not add a session-level timing section to resolve it, since
+  teacher_book_spec.md defines only per-item Timing guidance, not a session-level one."
+  Rationale: "The session's item durations sum to exactly 215 minutes against a stated
+  target/total of 215, so no item-level padding or cutting is needed on that account; the
+  225-usable-minutes figure itself is still marked 'confirm with the human' in CURRICULUM and is
+  out of scope for this file to resolve."
+  Confidence: inferred
+  Awaiting: instructional-designer
+====
+
+[[PRQ-STRANGLER-FIG-PATTERN]]
+== PRQ-STRANGLER-FIG-PATTERN — The strangler-fig migration pattern
+
+*Sequence:* 1 +
+*Item type:* lesson +
+*Style:* lecture_discussion +
+*Delivery pattern:* shared +
+*Duration:* 15 min
+
+=== Facilitation notes
+
+This is a root node in DESIGN — nothing is prerequisite to it — and CURRICULUM's own note calls
+it "the motivating framing for every DR that follows." `[stated]` Open with the coexistence
+problem directly: the legacy system and the new microservices must answer requests side by side
+for the whole migration window, not only at a final cutover. `[stated]` Before showing any
+diagram, ask the group whether they have lived through a big-bang cutover and how it went — this
+is the discussion stop the `lecture_discussion` style calls for. `[inferred]`
+
+=== Key points to land
+
+* The pattern's name comes from the legacy system being progressively "strangled" as traffic
+  moves away from it, not replaced in one step, so both environments coexist during the migration
+  window. `[stated]`
+* This is the framing for every DesiredResult taught in this course; refer back to it whenever a
+  DR is introduced. `[inferred]`
+
+=== Common misconceptions to watch for
+
+Learners sometimes assume the legacy system is deleted as soon as one microservice replaces a
+piece of it. Correct this before moving to PRQ-SCG-BASICS: the legacy system keeps serving every
+path not yet migrated until the migration is complete. `[inferred]`
+
+=== Timing guidance
+
+Budgeted 15 min per CURRICULUM. If the discussion runs long, cut the second discussion prompt
+rather than the pattern definition — the definition is required for every later item in this
+session, most directly PRQ-PATH-BASED-ROUTING (sequence 8), which DESIGN lists as requiring this
+node. `[inferred]`
+
+=== Related material
+
+* Support material listed in CURRICULUM: reading (short reference article on the strangler-fig
+  pattern), diagram (legacy + gateway + migrated services coexisting).
+* Reading guide (student): `material/student/reading-guides/session-01-PRQ-STRANGLER-FIG-PATTERN-reading-guide.md`
+* Student book section: `material/student/books/session-01-student-book.adoc`, section
+  `PRQ-STRANGLER-FIG-PATTERN`.
+
+[[PRQ-SCG-BASICS]]
+== PRQ-SCG-BASICS — What Spring Cloud Gateway is: an edge reverse-proxy in front of legacy and new services
+
+*Sequence:* 2 +
+*Item type:* lesson +
+*Style:* lecture +
+*Delivery pattern:* shared +
+*Duration:* 15 min
+
+=== Facilitation notes
+
+DESIGN describes this node as understanding the gateway's role as an edge reverse-proxy/API
+gateway sitting in front of both legacy and newly-migrated services. `[stated]` Walk the
+request-flow diagram left to right: client, then gateway, then a branch to either the legacy
+system or a migrated microservice. `[inferred]` This node requires only BSL-REST per DESIGN, so
+both personas arrive with the background it needs. `[stated]`
+
+=== Key points to land
+
+* Spring Cloud Gateway is a single edge point that both the legacy system and the new
+  microservices sit behind. `[stated]`
+* This node is a prerequisite for PRQ-CONTAINERIZE-GATEWAY and PRQ-GATEWAY-ROUTE-CONFIG per
+  DESIGN — everything hands-on today builds on this concept. `[stated]`
+
+=== Common misconceptions to watch for
+
+Learners may confuse the gateway with a load balancer that only distributes traffic across
+identical replicas. Clarify that its routing decision here is content-based (legacy vs. migrated
+path), not a round-robin split. `[inferred]`
+
+=== Timing guidance
+
+Budgeted 15 min per CURRICULUM. If time is short, compress the request-flow walkthrough rather
+than skip it — sequence 3 through 5 (K8s concepts, containerizing, deploying) all reuse "the
+gateway" as a concrete artifact from this point forward. `[inferred]`
+
+=== Related material
+
+* Support material listed in CURRICULUM: diagram (request-flow: client -> gateway ->
+  {legacy, migrated microservices}).
+* Student book section: `material/student/books/session-01-student-book.adoc`, section
+  `PRQ-SCG-BASICS`.
+
+[[PRQ-K8S-DEPLOY-CONCEPTS]]
+== PRQ-K8S-DEPLOY-CONCEPTS — Kubernetes deployment concepts on GKE (Deployments, Services, Ingress) — refresher for developers
+
+*Sequence:* 3 +
+*Item type:* lesson +
+*Style:* lecture +
+*Delivery pattern:* single_lane +
+*Duration:* 10 min
+
+=== Facilitation notes
+
+This node is `skippable_by P-OPS` in DESIGN because Ops already hold it via BSL-GKE-CONTAINERS.
+`[stated]` CURRICULUM keeps it as a short single-lane refresher only for developers, since P-DEV's
+baseline does not include GKE comfort and PRQ-GKE-DEPLOY-GATEWAY (sequence 5) depends on it.
+`[stated]` Run this as a direct Dev-facing refresher on Deployments, Services, and Ingress as
+applied on GKE. `[inferred]`
+
+Marco's persona notes flag developers as "likely thinner on GKE deployment specifics ... than on
+Spring itself" `[inferred, from STUDENT_PERSONAS]` — this item exists specifically to close that
+gap before the hands-on deploy step.
+
+The two Ops participants sit this item out per their `lane_tasks` entry (`role: skip`).
+`[stated]` Rather than leave them idle for 10 minutes, ask them to preview the containerize/deploy
+hands-on exercise sheet for sequence 4-5 so they can start setting up the registry/build pipeline
+the moment the group reconvenes. `[invented framing]`
+
+=== Key points to land
+
+* Deployments, Services, and Ingress are the three GKE building blocks the group will use in the
+  next two items to actually get the gateway running. `[inferred]`
+
+=== Common misconceptions to watch for
+
+Developers new to Kubernetes may conflate a Service with an Ingress, expecting either one alone to
+expose the gateway externally. Clarify the distinction directly, since sequence 5's hands-on
+deploy step and its checkpoint (sequence 6) both depend on this being clear. `[inferred]`
+
+=== Timing guidance
+
+Budgeted 10 min per CURRICULUM, single_lane for P-DEV only. This is a tight budget for three
+concepts; protect the Ingress explanation specifically, since the checkpoint's rubric (sequence 6)
+requires an externally reachable request, and cut depth on Deployments/Services first if time is
+short — those two are more familiar analogues from Docker. `[risk]`
+
+=== Related material
+
+* Student book section: `material/student/books/session-01-student-book.adoc`, section
+  `PRQ-K8S-DEPLOY-CONCEPTS`.
+
+[[PRQ-CONTAINERIZE-GATEWAY]]
+== PRQ-CONTAINERIZE-GATEWAY — Building a container image for the gateway
+
+*Sequence:* 4 +
+*Item type:* lesson +
+*Style:* hands_on_practical +
+*Delivery pattern:* multi_lane +
+*Duration:* 30 min
+
+=== Facilitation notes
+
+DESIGN's persona_variant splits this cleanly: P-DEV authors/maintains the Dockerfile and
+application build, P-OPS operates the image build/publish pipeline and container registry.
+`[inferred]` This matches CURRICULUM's `lane_tasks` exactly — both personas are `contributor` here,
+so make sure both lanes are visibly active for the full 30 minutes, not just Dev writing code
+while Ops watches. `[stated]`
+
+=== Key points to land
+
+* The gateway needs a container image before it can be deployed to GKE — this node requires
+  BSL-DOCKER and PRQ-SCG-BASICS per DESIGN. `[stated]`
+* Building the image and pushing it to the registry are two separate, both-necessary steps; do not
+  let either lane consider the exercise done at "it builds locally." `[inferred]`
+
+=== Common misconceptions to watch for
+
+Developers may treat a successful local `docker build` as sufficient, forgetting the push-to-
+registry step Ops needs before GKE deployment (sequence 5) can pull the image. `[inferred]`
+
+=== Timing guidance
+
+Budgeted 30 min per CURRICULUM. If running long, protect the push-to-registry step over
+Dockerfile polish — sequence 5's hands-on deploy cannot start without an image already in the
+registry. `[inferred]`
+
+=== Related material
+
+* Hands-on setup guide (teacher): `material/teacher/hands-on/session-01-PRQ-CONTAINERIZE-GATEWAY-setup-guide.adoc`
+* Hands-on solving guide (student): `material/student/hands-on/session-01-PRQ-CONTAINERIZE-GATEWAY-solving-guide.adoc`
+* Support material listed in CURRICULUM: config_template (sample Dockerfile), exercise_sheet
+  (build/tag/push steps).
+* Student book section: `material/student/books/session-01-student-book.adoc`, section
+  `PRQ-CONTAINERIZE-GATEWAY`.
+
+[[PRQ-GKE-DEPLOY-GATEWAY]]
+== PRQ-GKE-DEPLOY-GATEWAY — Deploying the containerized gateway to the GKE cluster
+
+*Sequence:* 5 +
+*Item type:* lesson +
+*Style:* hands_on_practical +
+*Delivery pattern:* multi_lane +
+*Duration:* 40 min
+
+=== Facilitation notes
+
+DESIGN's persona_variant gives Ops the lead here — manifest authoring and the cluster deployment
+itself — while Dev follows closely enough to debug and iterate on the running gateway later.
+`[stated]` CURRICULUM's `lane_tasks` matches this: P-OPS `lead`, P-DEV `observer`. `[stated]` Keep
+Dev's observer role active, not passive — have them read the manifest alongside Ops and ask about
+any field they would need to change later, since Dev needs to debug this deployment independently
+after handover. `[inferred]`
+
+=== Key points to land
+
+* This node requires PRQ-CONTAINERIZE-GATEWAY (an image must exist first) and
+  PRQ-K8S-DEPLOY-CONCEPTS (the Deployment/Service/Ingress concepts) per DESIGN. `[stated]`
+* "Deployed" here means applying manifests, exposing the service, and confirming it is reachable
+  — all three steps, not just `kubectl apply` succeeding. `[stated]`
+
+=== Common misconceptions to watch for
+
+A learner may treat `kubectl apply` completing without error as "deployed." DESIGN's own
+description requires confirming reachability as part of this node — a pod can be `Running` and
+still be unreachable if the Service/Ingress is misconfigured. This directly sets up the checkpoint
+immediately after (sequence 6). `[inferred]`
+
+=== Timing guidance
+
+Budgeted 40 min per CURRICULUM — the longest single item in the session. This is a tight budget
+against three real steps (manifest authoring, applying, confirming reachability) plus keeping the
+observer lane meaningfully engaged; protect the reachability-confirmation step above manifest
+polish, since the checkpoint (sequence 6) fails outright without it. `[risk]`
+
+=== Related material
+
+* Hands-on setup guide (teacher): `material/teacher/hands-on/session-01-PRQ-GKE-DEPLOY-GATEWAY-setup-guide.adoc`
+* Hands-on solving guide (student): `material/student/hands-on/session-01-PRQ-GKE-DEPLOY-GATEWAY-solving-guide.adoc`
+* Support material listed in CURRICULUM: config_template (sample manifests), reference_doc
+  (reachability checklist).
+* Student book section: `material/student/books/session-01-student-book.adoc`, section
+  `PRQ-GKE-DEPLOY-GATEWAY`.
+
+[[DR-DEPLOY-GATEWAY]]
+== DR-DEPLOY-GATEWAY — Checkpoint: gateway reachable on GKE
+
+*Sequence:* 6 +
+*Item type:* checkpoint +
+*Delivery pattern:* multi_lane +
+*Duration:* 15 min
+
+=== Facilitation notes
+
+Run this live against the group's own deployed gateway, not a recording — the rubric requires an
+actual HTTP response, and a canned example would not tell the teacher whether this specific
+cohort's deployment works. `[inferred]` CURRICULUM's `lane_tasks` splits the check itself: Ops
+confirms the pod is healthy and reachable from the exposing Service/Ingress, Dev hits the gateway
+from a client and confirms a response. `[stated]`
+
+=== Solution walkthrough
+
+Pass condition, restated from CURRICULUM's rubric: the gateway pod is `Running`/`Ready` in GKE, a
+Service/Ingress exposes it, and a test HTTP request from outside the cluster reaches the gateway
+and gets a response — even a default 404 from an unrouted path counts, as long as the response
+came from the gateway and not a network timeout. `[stated, from CURRICULUM rubric]`
+
+=== Common misconceptions to watch for
+
+A learner may treat a connection timeout as "the gateway works, the path is just wrong" — it is
+the opposite: a timeout means the gateway was never reached. Only an HTTP response, of any status,
+counts, per the rubric. `[inferred]`
+
+=== Timing guidance
+
+Budgeted 15 min per CURRICULUM. If the group fails on first attempt, use the reachability
+checklist from sequence 5's support material to diagnose live rather than re-teaching the
+deployment step from scratch. `[inferred]`
+
+=== Related material
+
+* Quiz answer key (teacher): `material/teacher/quizzes/session-01-DR-DEPLOY-GATEWAY-quiz-assessment-key.md`
+* Student quiz: `material/student/quizzes/session-01-DR-DEPLOY-GATEWAY-quiz-assessment.md`
+* Rubric (student-facing, teacher reads the same file):
+  `material/student/rubrics/session-01-DR-DEPLOY-GATEWAY-rubric.md`
+
+[[PRQ-GATEWAY-ROUTE-CONFIG]]
+== PRQ-GATEWAY-ROUTE-CONFIG — The route model: predicates and filters, declared via Java DSL or YAML
+
+*Sequence:* 7 +
+*Item type:* lesson +
+*Style:* lecture_demo +
+*Delivery pattern:* shared +
+*Duration:* 15 min
+
+=== Facilitation notes
+
+DESIGN's persona_variant: Dev authors routes via the Java `RouteLocator` API or YAML; Ops reads and
+validates route configuration and the resulting traffic-split behavior, without authoring Java.
+`[inferred]` Run this as a live demo (the item's `lecture_demo` style) showing both a Java DSL
+route and its YAML equivalent side by side, so Ops can follow the YAML shape even without writing
+the Java. `[inferred]` This directly addresses Sara's stated gap ("No Java/Spring ... needs
+concepts framed as configuration and behavior") — frame the demo around what the route
+configuration does, not only how the Java is written. `[stated, from STUDENT_PERSONAS]`
+
+=== Key points to land
+
+* A route is composed of predicates (what to match) and filters (what to do to the
+  request/response), declared either via Java DSL or YAML. `[inferred]`
+* This node requires PRQ-SCG-BASICS per DESIGN, and is itself required by PRQ-CORS-GATEWAY-CONFIG,
+  PRQ-GATEWAY-JWT-VALIDATION-FILTER, PRQ-CUSTOM-GLOBALFILTER-AUTHORING, PRQ-PATH-BASED-ROUTING, and
+  PRQ-OTEL-INSTRUMENTATION-GATEWAY — nearly everything else in this course sits on top of this
+  node. `[stated]`
+
+=== Common misconceptions to watch for
+
+Ops participants may assume they need to read Java to validate a route, since the demo shows Java
+DSL first. Reassure them the YAML form is equivalent and is what they will actually work with in
+sequence 9's hands-on exercise. `[inferred]`
+
+=== Timing guidance
+
+Budgeted 15 min per CURRICULUM. If running long, cut extra predicate/filter examples from the
+cheat sheet rather than the YAML equivalent — Ops's lane in every following hands-on item depends
+on being comfortable reading YAML routes. `[inferred]`
+
+=== Related material
+
+* Demo script (teacher): `material/teacher/demo-scripts/session-01-PRQ-GATEWAY-ROUTE-CONFIG-demo-script.adoc`
+* Support material listed in CURRICULUM: cheat_sheet (built-in predicates/filters reference).
+* Student book section: `material/student/books/session-01-student-book.adoc`, section
+  `PRQ-GATEWAY-ROUTE-CONFIG`.
+
+[[PRQ-PATH-BASED-ROUTING]]
+== PRQ-PATH-BASED-ROUTING — Splitting traffic by path: /legacy/** vs migrated paths
+
+*Sequence:* 8 +
+*Item type:* lesson +
+*Style:* lecture_demo +
+*Delivery pattern:* shared +
+*Duration:* 10 min
+
+=== Facilitation notes
+
+DESIGN ties this node back to the strangler-fig pattern explicitly: splitting traffic by path is
+only motivated once that pattern (sequence 1) is understood. `[stated]` Demo a path predicate
+routing `/legacy/**` to the legacy system and other paths to migrated microservices, using the
+same route model just introduced in sequence 7. `[stated]`
+
+=== Key points to land
+
+* `/legacy/**` and "everything else" is the concrete path split this course builds toward for
+  DR-STRANGLER-ROUTING. `[stated]`
+* This node requires PRQ-GATEWAY-ROUTE-CONFIG and PRQ-STRANGLER-FIG-PATTERN per DESIGN — call back
+  to both explicitly. `[stated]`
+
+=== Common misconceptions to watch for
+
+Learners may think any path-matching predicate automatically implies traffic "splits" correctly
+without also confirming what happens to paths that match neither rule. Point out that an unrouted
+path still needs a defined behavior (this is exactly what the checkpoint in sequence 6 tested with
+its 404 case). `[inferred]`
+
+=== Timing guidance
+
+Budgeted 10 min per CURRICULUM. Short by design — this is a concept bridge from sequence 7's model
+to sequence 9's concrete implementation; do not let it expand into implementation detail sequence
+9 already covers. `[inferred]`
+
+=== Related material
+
+* Demo script (teacher): `material/teacher/demo-scripts/session-01-PRQ-PATH-BASED-ROUTING-demo-script.adoc`
+* Support material listed in CURRICULUM: diagram (path-based predicate splitting `/legacy/**`).
+* Student book section: `material/student/books/session-01-student-book.adoc`, section
+  `PRQ-PATH-BASED-ROUTING`.
+
+[[PRQ-LEGACY-VS-NEW-ROUTING-IMPL]]
+== PRQ-LEGACY-VS-NEW-ROUTING-IMPL — Implementing and verifying the concrete legacy-vs-new route split
+
+*Sequence:* 9 +
+*Item type:* lesson +
+*Style:* hands_on_practical +
+*Delivery pattern:* multi_lane +
+*Duration:* 30 min
+
+=== Facilitation notes
+
+DESIGN's persona_variant: Dev writes/adjusts the concrete route rules, Ops deploys the
+configuration and verifies traffic actually splits as intended. `[stated]` This matches
+CURRICULUM's `lane_tasks` exactly. `[stated]` Given Sara's stated gap on Java/Spring, keep her lane
+squarely on deploying and firing verification requests (the provided test script), not on writing
+route YAML herself unless she chooses to. `[inferred]`
+
+=== Key points to land
+
+* This node is exactly the concrete implementation of the path split just demoed conceptually in
+  sequence 8, and DR-STRANGLER-ROUTING (the checkpoint right after) requires it directly per
+  DESIGN. `[stated]`
+* Both writing the rules and verifying them live are required — a route file that "looks right"
+  is not the same as confirmed traffic behavior. `[inferred]`
+
+=== Common misconceptions to watch for
+
+A learner may treat a syntactically valid route file as sufficient without redeploying it or
+firing the verification test script — DESIGN's description of this node explicitly includes
+"verifying," not only "writing." `[stated]`
+
+=== Timing guidance
+
+Budgeted 30 min per CURRICULUM. This is a tight budget across writing, deploying, and verifying
+two-plus route rules with both lanes active; protect the verification step (test script) over
+polishing additional route variants, since the checkpoint immediately after (sequence 10) is a
+live verification, not a code review. `[risk]`
+
+=== Related material
+
+* Hands-on setup guide (teacher): `material/teacher/hands-on/session-01-PRQ-LEGACY-VS-NEW-ROUTING-IMPL-setup-guide.adoc`
+* Hands-on solving guide (student): `material/student/hands-on/session-01-PRQ-LEGACY-VS-NEW-ROUTING-IMPL-solving-guide.adoc`
+* Support material listed in CURRICULUM: exercise_sheet (route rules exercise), test_script
+  (sample requests to confirm the split).
+* Student book section: `material/student/books/session-01-student-book.adoc`, section
+  `PRQ-LEGACY-VS-NEW-ROUTING-IMPL`.
+
+[[DR-STRANGLER-ROUTING]]
+== DR-STRANGLER-ROUTING — Checkpoint: legacy-vs-new traffic split
+
+*Sequence:* 10 +
+*Item type:* checkpoint +
+*Delivery pattern:* multi_lane +
+*Duration:* 15 min
+
+=== Facilitation notes
+
+Run this live against the group's own deployed route configuration. CURRICULUM's `lane_tasks`:
+Dev confirms the route rules match the intended split, Ops fires test requests at the live gateway
+and confirms the observed split — both are required, matching the rubric's "verified live ... by
+both participants." `[stated]`
+
+=== Solution walkthrough
+
+Pass condition, restated from CURRICULUM's rubric: a request to `/legacy/**` is routed to the
+legacy system and a request to a migrated path is routed to the corresponding microservice,
+verified live against the deployed gateway by both participants. `[stated, from CURRICULUM
+rubric]` Both halves of "verified ... by both participants" are part of the pass bar — a Dev-only
+code review or an Ops-only request test alone does not satisfy the rubric as written.
+
+=== Common misconceptions to watch for
+
+A learner may consider the checkpoint passed once one of the two paths (legacy or migrated) routes
+correctly, without checking the other. The rubric requires both directions of the split to be
+confirmed. `[inferred]`
+
+=== Timing guidance
+
+Budgeted 15 min per CURRICULUM. If the split fails on first attempt, use sequence 9's test script
+directly to isolate which route rule is wrong rather than re-explaining path predicates from
+sequence 8. `[inferred]`
+
+=== Related material
+
+* Quiz answer key (teacher): `material/teacher/quizzes/session-01-DR-STRANGLER-ROUTING-quiz-assessment-key.md`
+* Student quiz: `material/student/quizzes/session-01-DR-STRANGLER-ROUTING-quiz-assessment.md`
+* Rubric (student-facing, teacher reads the same file):
+  `material/student/rubrics/session-01-DR-STRANGLER-ROUTING-rubric.md`
+
+[[PRQ-CORS-CONCEPT]]
+== PRQ-CORS-CONCEPT — What CORS is and why browsers enforce it
+
+*Sequence:* 11 +
+*Item type:* lesson +
+*Style:* lecture +
+*Delivery pattern:* shared +
+*Duration:* 10 min
+
+=== Facilitation notes
+
+CURRICULUM's own note explains the placement: this item was moved to the end of Session 1 because
+it depends only on BSL-REST, giving Session 2 more slack; PRQ-CORS-GATEWAY-CONFIG and
+DR-VALIDATE-AUTH stay in Session 2. `[stated]` Teach the concept only here — origins, preflight
+requests, and which response headers a server must return — without configuring anything at the
+gateway yet. `[stated]`
+
+=== Key points to land
+
+* CORS is a browser-enforced mechanism, not a server-side restriction the gateway invents;
+  DESIGN's description centers on why browsers enforce it. `[stated]`
+* This is concept only; the gateway configuration for it (PRQ-CORS-GATEWAY-CONFIG) is Session 2's
+  first hands-on CORS work. `[stated]`
+
+=== Common misconceptions to watch for
+
+Because this item lands right after two hands-on route items, learners may expect to configure
+CORS today. State explicitly, per CURRICULUM's own note, that the gateway-side configuration is
+deferred to Session 2 — this is a scheduling choice, not something forgotten. `[inferred]`
+
+=== Timing guidance
+
+Budgeted 10 min per CURRICULUM. Keep this strictly conceptual; any request to "just show us the
+config" should be deferred to Session 2's PRQ-CORS-GATEWAY-CONFIG item rather than absorbing time
+here. `[inferred]`
+
+=== Related material
+
+* Reading guide (student): `material/student/reading-guides/session-01-PRQ-CORS-CONCEPT-reading-guide.md`
+* Support material listed in CURRICULUM: reading (origins, preflight requests, required response
+  headers).
+* Student book section: `material/student/books/session-01-student-book.adoc`, section
+  `PRQ-CORS-CONCEPT`.
+
+[[PRQ-JWT-FUNDAMENTALS-SHALLOW]]
+== PRQ-JWT-FUNDAMENTALS-SHALLOW — JWT structure: header, claims, signature, and what 'valid' means
+
+*Sequence:* 12 +
+*Item type:* lesson +
+*Style:* lecture +
+*Delivery pattern:* shared +
+*Duration:* 10 min
+
+=== Facilitation notes
+
+CURRICULUM's own note explains the placement: moved to the end of Session 1 because it depends
+only on BSL-REST, giving Session 2 more slack; PRQ-OAUTH-OIDC-ENTRA and the JWT-validation work
+stay in Session 2. `[stated]` DESIGN's `depth_staging` marks this as pass 1 ("shallow"): enough
+structure/claims/signature understanding to validate an incoming token, not to construct one.
+`[stated]` Walk through the annotated worked-example JWT (header/claims/signature) rather than an
+abstract definition. `[inferred]`
+
+Before closing the session, hand out the three CURRICULUM homework items for the week between
+sessions: `[stated, from CURRICULUM homework]`
+
+* Shared: keep the deployed gateway and route split running against the GKE cluster; note any
+  environment issues (registry access, cluster quota, DNS) to raise at the start of Session 2.
+* P-DEV: skim the team's Microsoft Entra ID app registration details (tenant, issuer, JWKS
+  endpoint) that Ops will share, so Session 2's JWT validation work lands faster.
+* P-OPS: confirm the Entra ID app registration and JWKS endpoint values are ready to hand to
+  developers ahead of Session 2.
+
+=== Key points to land
+
+* A JWT has three parts: header, claims (payload), and signature. `[inferred]`
+* "Valid" here means the signature checks out and standard claims (`exp`, `aud`, `iss`) are
+  acceptable — this is the pass-1, shallow depth per DESIGN's `depth_staging`. `[stated]`
+* Constructing a new JWT (pass 2, deep) is Session 2's PRQ-JWT-FUNDAMENTALS-DEEP — do not teach
+  construction here. `[stated]`
+
+=== Common misconceptions to watch for
+
+Because "constructing" a token feels like the natural next question after "structure," learners
+may push into token construction today. DESIGN's `depth_staging` explicitly reserves that for pass
+2 in Session 2 (PRQ-JWT-FUNDAMENTALS-DEEP); redirect the question there rather than answering it
+now. `[inferred]`
+
+=== Timing guidance
+
+Budgeted 10 min per CURRICULUM, the last item of the session. If running long, cut worked-example
+elaboration rather than the three-part structure or the "valid" definition — Session 2's JWT
+validation work (PRQ-GATEWAY-JWT-VALIDATION-FILTER) depends directly on this node per DESIGN.
+`[inferred]`
+
+=== Related material
+
+* Support material listed in CURRICULUM: worked_example (decoded sample JWT annotated
+  header/claims/signature).
+* Student book section: `material/student/books/session-01-student-book.adoc`, section
+  `PRQ-JWT-FUNDAMENTALS-SHALLOW`.

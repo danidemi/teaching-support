@@ -1,0 +1,109 @@
+= Setup guide: Implementing and verifying the concrete legacy-vs-new route split
+:status: draft
+:node_ref: PRQ-LEGACY-VS-NEW-ROUTING-IMPL
+:session: 1
+:sequence: 9
+:audience: teacher
+
+[.instructional_decisions]
+====
+* Decision: EDITORIAL_GUIDELINES (`specifications/editorial_guidelines.md`) does not exist yet.
+  This guide falls back to the plain-language editing rules in `CLAUDE.md` ("Editing rules for
+  agents and skills"): no idioms or metaphors, literal and direct terms, plain vocabulary.
+  Rationale: `design/material_authoring_rules.md` requires this fallback and a recorded note when
+  EDITORIAL_GUIDELINES is missing. Confidence: stated. Awaiting: instructional-designer.
+* Decision: this guide does not fix whether route rules are declared in Java DSL or YAML.
+  `PRQ-GATEWAY-ROUTE-CONFIG` (DESIGN) states routes may be declared either way, and its
+  P-OPS `persona_variant` reads and validates configuration "without authoring Java" — implying
+  a non-Java-authoring path is expected for that lane. No store fixes which form this specific
+  team uses. This changes what P-OPS's task ("deploy the updated route configuration") actually
+  costs inside the 30-minute slot: a config/ConfigMap edit and reload, versus a rebuild-and-
+  redeploy cycle if routes live in application Java code. Decide the declaration form for this
+  class before the session and adjust the "before class" provisioning below accordingly.
+  Rationale: the exercise timing and the P-OPS lane's real workload depend on this choice, and
+  CURRICULUM/DESIGN leave it open. Confidence: inferred. Awaiting: instructional-designer.
+* Decision: "what done correctly looks like" below is scoped to what the instructor can observe
+  from admin/log access (which backend actually answered), not to a deeper systems check (e.g.
+  confirming no other route silently intercepts a path). Rationale: CURRICULUM's own scope for
+  this item is the visible split behavior — the checkpoint immediately after (`DR-STRANGLER-
+  ROUTING`) verifies exactly this and nothing deeper. Confidence: inferred. Awaiting:
+  instructional-designer.
+====
+
+== Before class
+
+This item runs immediately after the gateway has already been deployed to GKE and confirmed
+reachable (sequence 5, `PRQ-GKE-DEPLOY-GATEWAY`, and the sequence 6 checkpoint
+`DR-DEPLOY-GATEWAY`). It also follows the route-model lecture-demo (`PRQ-GATEWAY-ROUTE-CONFIG`,
+sequence 7) and the path-based-routing concept lesson (`PRQ-PATH-BASED-ROUTING`, sequence 8) —
+`[stated]`, per the `PRQ-LEGACY-VS-NEW-ROUTING-IMPL -> PRQ-PATH-BASED-ROUTING` edge in DESIGN.
+There is little fresh environment provisioning; this is mostly making sure the running gateway
+from earlier in the session is still in a known-good state.
+
+* Confirm: the gateway deployed in sequence 5 is still Running/Ready and reachable, exactly as
+  checkpointed at sequence 6. `[stated]`.
+* Decide and have ready: a small, concrete set of paths for the exercise — at minimum one
+  `/legacy/**` path and one path per migrated microservice the room is using. CURRICULUM names
+  only "a small set of paths" (`exercise_sheet` support material) without listing them —
+  PLACEHOLDER: the exact path list and each backend's address (legacy system URI, each
+  microservice's in-cluster address) are not in any store and must be supplied by the
+  instructor/client before class.
+* Have ready: the `exercise_sheet` support material ("Route rules exercise: given a small set of
+  paths, write and deploy the split") and the `test_script` support material ("Script of sample
+  requests to fire at the gateway to confirm the split"), both named on this CURRICULUM item.
+  `[stated]`.
+* Resolve beforehand (see instructional_decisions above): whether route rules are declared via
+  Java DSL or YAML config for this team, since it changes how "deploy the updated route
+  configuration" is actually done and how long it takes. `[inferred]`.
+* Verify beforehand: apply the intended route split yourself against the deployed gateway and
+  confirm each path resolves to the correct backend before the room attempts it, so an
+  environment problem (a wrong backend address, an unreachable legacy system) is caught before
+  it looks like a student error. `[inferred]`.
+
+== What the lanes do
+
+P-DEV (contributor)::
+Writes/adjusts the concrete route rules for `/legacy/**` vs each migrated microservice.
+`[stated]`, from the item's `lane_tasks`.
+
+P-OPS (contributor)::
+Deploys the updated route configuration and verifies traffic actually splits as intended.
+`[stated]`, from the item's `lane_tasks`.
+
+Both lanes are active contributors on this item — there is no observer or skip role here.
+
+== Common failure points to watch for
+
+* P-DEV lane: a `/legacy/**`-style predicate written broadly enough that it also matches a
+  migrated path, so the migrated path is silently swallowed by the legacy rule instead of
+  reaching its microservice. `[inferred]`.
+* P-DEV lane: route ordering — if a general or catch-all route is declared before the specific
+  legacy/migrated rules, it can intercept requests meant for the more specific routes.
+  `[inferred]`.
+* P-OPS lane: deploying the updated configuration but not confirming the gateway actually picked
+  it up (stale routes served from a not-yet-reloaded or not-yet-restarted instance).
+  `[inferred]`.
+* P-OPS lane: firing test requests from inside the exercise sheet's script without checking each
+  one lands on the intended backend — treating "the gateway responded" as sufficient, when the
+  actual check is "the correct backend responded." `[inferred]`.
+
+== What done correctly looks like
+
+Applying the sample requests from the `test_script` support material against the deployed
+gateway, a request to a `/legacy/**` path is answered by the legacy system, and a request to
+each migrated path is answered by the corresponding microservice — confirmed by the instructor
+from admin/log access (e.g. which backend's logs show the request landing, or a response body/
+header identifying the backend), not merely by the gateway returning any HTTP response.
+`[inferred]`, scoped per the instructional_decisions entry above.
+
+== How the following checkpoint will be verified
+
+The next item, `DR-STRANGLER-ROUTING` (sequence 10), is the checkpoint for this work. Its
+rubric, verbatim: "Pass if a request to /legacy/** is routed to the legacy system and a request
+to a migrated path is routed to the corresponding microservice, verified live against the
+deployed gateway by both participants." `[stated]`. Its lane split mirrors this item's: P-DEV
+confirms the route rules match the intended split, P-OPS fires test requests at the live gateway
+and confirms the observed split. `[stated]`. Unlike several other checkpoints in this
+curriculum, `DR-STRANGLER-ROUTING` does not carry a `support_material` rubric entry — do not
+tell participants a written checklist will be shared before the check; the rubric text above is
+the only artifact CURRICULUM associates with this checkpoint.
