@@ -1,4 +1,4 @@
-# piattaforma-corsi
+# teaching-support
 
 This repository is a monorepo with three kinds of content:
 
@@ -25,8 +25,9 @@ it was registered as a **local marketplace** pointing at this checkout:
 - The marketplace and the plugin were then registered with the Claude Code CLI:
 
   ```bash
-  claude plugin marketplace add .
+  claude plugin marketplace add ./
   claude plugin install learning-plugin@learning-tools
+  claude plugin enable learning-plugin@learning-tools
   ```
 
 These two commands write to your **user-level** `~/.claude/settings.json`
