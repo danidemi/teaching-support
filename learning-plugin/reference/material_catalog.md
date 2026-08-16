@@ -8,39 +8,67 @@ mapping.
 Trigger values (`delivery_style`, `item_type`, `support_material_kind`) are the enums defined in
 `reference/curriculum.schema.json`. Read that schema, do not guess at its enum values.
 
-## Registry
+# Materials
 
-| Material type | Audience | Preferred Formats | Owning subagent | Trigger | Path pattern | Filename pattern |
-|---|---|---|---|---|---|---|
-| Teacher book | Teacher | AsciiDoc | learning-teacher-book-author | One per CURRICULUM session (compiles every item in that session, any `item_type`/`style`) | `material/teacher/books/` | `session-<NN>-teacher-book.adoc` |
-| Student book | Student | AsciiDoc | learning-student-book-author | One per whole course, learner-facing content only | `material/student/books/` | `student-book.adoc` |
-| Quiz (student paper) | Student | Markdown | learning-quiz-author | Item with `item_type: checkpoint` or `item_type: assessment` → `kind: assessment`. A `kind: prereq-check` or `kind: engagement` quiz has no automatic curriculum trigger yet — the orchestrating skill offers it as an optional extra per session/item on human request, and the author records that choice as an `instructional_decisions` entry | `material/student/quizzes/` | `session-NN-<node_ref>-quiz-<kind>.md` |
-| Quiz answer key (teacher) | Teacher | Markdown | learning-quiz-author | Same trigger as the paired student quiz — every quiz gets a key | `material/teacher/quizzes/` | `session-NN-<node_ref>-quiz-<kind>-key.md` |
-| Demo script | Teacher | AsciiDoc | learning-demo-script-author | Item with `style: lecture_demo` | `material/teacher/demo-scripts/` | `session-NN-<node_ref>-demo-script.adoc` |
-| Hands-on setup guide | Teacher | AsciiDoc | learning-hands-on-guide-author | Item with `style: hands_on_practical` | `material/teacher/hands-on/` | `session-NN-<node_ref>-setup-guide.adoc` |
-| Hands-on solving guide | Student | AsciiDoc | learning-hands-on-guide-author | Same trigger as the paired setup guide — every `hands_on_practical` item gets both | `material/student/hands-on/` | `session-NN-<node_ref>-solving-guide.adoc` |
-| Project work brief | Student | AsciiDoc | learning-project-work-author | Item with `style: project_based` | `material/student/project-work/` | `session-NN-<node_ref>-project-work.adoc` |
-| Project work facilitation notes | Teacher | AsciiDoc | learning-project-work-author | Same trigger as the paired brief — every `project_based` item gets both | `material/teacher/project-work/` | `session-NN-<node_ref>-facilitation-notes.adoc` |
-| Rubric | Student (teacher reads the same file) | Markdown | learning-rubric-author | Item with a non-empty `rubric` field (`item_type: checkpoint` or `assessment`) | `material/student/rubrics/` | `session-NN-<node_ref>-rubric.md` |
-| Reading guide | Student | Markdown | learning-reading-guide-author | An item's `support_material` array contains an entry with `kind: reading` | `material/student/reading-guides/` | `session-NN-<node_ref>-reading-guide.md` |
+## Material 1
 
-`node_ref` in a filename is the item's own `node_ref`. For the capstone/final assessment, which
-may omit `node_ref` and instead carry `covers_node_refs`, use `capstone` in place of `<node_ref>`.
+```
+type: Course Slides
+audience: Students
+preferred_formats: PowerPoint
+owning_subagent: learning-slides-author
+trigger: One per session, learner-facing content only, used by teacher
+path_pattern: `material/student/slides/`
+filename_pattern: `slides.pptx`
+```
 
-## Notes for every subagent
+## Material 2
 
-- Rubrics are **not** duplicated into the teacher tree. Students see the exact rubric they are
-  scored against — that is the point of putting it under `material/student/`. If a rubric needs
-  scoring nuance the student copy should not carry, `learning-rubric-author` appends a small
-  teacher-only addendum file next to it (same directory naming, `-addendum` suffix) instead of
-  forking the whole rubric into `material/teacher/`.
-- A quiz `kind` (`prereq-check`, `engagement`, `assessment`) is a field inside the quiz model,
-  not a different owning subagent — one spec, one agent, covers all three, per
-  `design/quiz_spec.md`.
-- A hands-on item and a project-work item each produce **two** files, one per tree, from **one**
-  subagent run — the two files describe the same exercise from two angles (how to set it up and
-  operate it vs. how to work through it as a learner), not two different exercises.
-- No subagent writes to `design/curriculum.json`. A material's existence is discovered by
-  matching this catalog's filename pattern against `node_ref`/`session_number`, never by filling
-  in `support_material[].uri` on the CURRICULUM item — CURRICULUM has exactly one writer,
-  `learning-curriculum-sequencer`.
+```
+type: Student book
+audience: Student
+preferred_formats: AsciiDoc
+owning_subagent: learning-student-book-author
+trigger: One per whole course, learner-facing content only
+path_pattern: `material/student/books/`
+filename_pattern: `student-book.adoc`
+```
+
+## Material 3
+
+```
+type: engagement quiz
+audience: Student
+preferred_formats: Markdown
+owning_subagent: learning-quiz-author
+trigger: Used in the curriculum to summarize the main cocepts of the knowledge recently thaught
+path_pattern: `material/teacher/quizzes/`
+filename_pattern: `<node_ref>-engagement-quiz.md`
+```
+
+## Material 4
+
+```
+type: prereq-check quiz
+audience: Student
+preferred_formats: Markdown
+owning_subagent: learning-quiz-author
+trigger: One per couse, used once before the course to check if all students have the requires prerequisites to tackle the course and quickly teach the missing knowledge if needed.
+path_pattern: `material/teacher/quizzes/`
+filename_pattern: `prereq-check-quiz.md`
+```
+
+## Material 5
+
+```
+type: assessment quiz
+audience: Student
+preferred_formats: Markdown
+owning_subagent: learning-quiz-author
+trigger: One per couse, used once at the end of the course to evaluate and score how well students acquired the knowledge that has been thaught.
+path_pattern: `material/teacher/quizzes/`
+filename_pattern: `assessment-quiz.md`
+```
+
+`node_ref` in a filename is the item's own `node_ref`.
+
