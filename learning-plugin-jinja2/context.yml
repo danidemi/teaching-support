@@ -4,6 +4,12 @@
 # template variable (Environment uses StrictUndefined: a template that
 # references a key not defined here fails to render, instead of silently
 # producing an empty string).
+#
+# Partial convention: a file or directory under template/ whose name starts
+# with `_` (e.g. template/agents/_agent_base.md) is library-only content,
+# reachable via {% extends %}/{% include %} but never rendered to its own
+# output file — render.py skips any such path in its output walk. Nothing to
+# register here; it's a naming convention, not a list to keep in sync.
 
 # The SSOT stores, canonical list in reference/ssot_structure.md. Paths are
 # relative to the plugin's project root (what ssot_structure.md calls
@@ -27,3 +33,5 @@ stores:
   editorial_guidelines:
     name: EDITORIAL_GUIDELINES
     path: specifications/editorial_guidelines.md
+
+

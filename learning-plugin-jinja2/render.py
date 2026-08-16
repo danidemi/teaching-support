@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 """Renders learning-plugin-jinja2/template/ into ../learning-plugin/ with Jinja2.
 
-The template tree and the output tree must always have the same file list.
-This script never creates or deletes files in the output tree by itself —
-if you add or remove a file in template/, add or remove the matching file in
-learning-plugin/ by hand (git tracks it, so the diff will show the intent).
+The template tree and the output tree must always have the same file list,
+with one exception: any file or directory whose name starts with `_` (e.g.
+template/agents/_agent_base.md) is a partial — library-only content meant to
+be reached via {% extends %}/{% include %} from another template, never
+rendered to its own output file. Partials exist only under template/ and are
+intentionally absent from learning-plugin/.
+
+Other than that exception, this script never creates or deletes files in the
+output tree by itself — if you add or remove a (non-partial) file in
+template/, add or remove the matching file in learning-plugin/ by hand (git
+tracks it, so the diff will show the intent).
 
 Usage:
     python3 render.py           # render and overwrite learning-plugin/
@@ -40,6 +47,14 @@ def make_env():
     )
 
 
+def is_partial(rel_path):
+    """True if any path component starts with '_' — a library-only file/dir,
+    loadable via {% extends %}/{% include %} (FileSystemLoader's root is
+    TEMPLATE_DIR, so the whole tree is resolvable) but never rendered to its
+    own output file."""
+    return any(part.startswith("_") for part in rel_path.parts)
+
+
 def render_tree(output_dir):
     context = load_context()
     env = make_env()
@@ -48,6 +63,8 @@ def render_tree(output_dir):
         if src.is_dir():
             continue
         rel = src.relative_to(TEMPLATE_DIR)
+        if is_partial(rel):
+            continue
         dest = output_dir / rel
         dest.parent.mkdir(parents=True, exist_ok=True)
         template_name = rel.as_posix()
