@@ -1,0 +1,29 @@
+# Single source of truth for names/paths repeated across template/*.
+#
+# render.py loads this file and passes every top-level key to Jinja2 as a
+# template variable (Environment uses StrictUndefined: a template that
+# references a key not defined here fails to render, instead of silently
+# producing an empty string).
+
+# The SSOT stores, canonical list in reference/ssot_structure.md. Paths are
+# relative to the plugin's project root (what ssot_structure.md calls
+# <ROOT>), matching how they are written in the templates.
+stores:
+  logistics:
+    name: LOGISTICS
+    path: specifications/logistics.md
+  student_personas:
+    name: STUDENT_PERSONAS
+    path: specifications/student_personas.md
+  goals:
+    name: GOALS
+    path: specifications/goals.md
+  design:
+    name: DESIGN
+    path: design/knowledge_goals_graph.json
+  curriculum:
+    name: CURRICULUM
+    path: design/curriculum.json
+  editorial_guidelines:
+    name: EDITORIAL_GUIDELINES
+    path: specifications/editorial_guidelines.md
