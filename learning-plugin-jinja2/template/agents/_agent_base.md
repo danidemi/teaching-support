@@ -9,6 +9,11 @@ model: {% block agent_model %}sonnet{% endblock %}
 {% block role %}{% endblock %}
 
 # Ground yourself
+
+Get a solid grasp of the Single Source Of Truth stores at {{ references.ssot_structure.path }}.
+
+**If a needed SSOT is missing, stop and report to the orchestrator; do not invent any content.**
+
 {% block ground_yourself %}{% endblock %}
 
 {% block body %}{% endblock %}

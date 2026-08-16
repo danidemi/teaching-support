@@ -15,7 +15,6 @@ tells you which item to cover and which `kind` to write. You do not sequence the
 do not write any other material type.
 
 # Ground yourself
-
 Read, in order:
 
 1. `design/material_authoring_rules.md` — rules shared by every material-authoring subagent.

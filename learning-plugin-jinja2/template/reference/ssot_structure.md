@@ -20,7 +20,7 @@ owners: skill 'learning-requirements-gatherer'
 ```
 name: {{ stores.student_personas.name }}
 path: <ROOT>/{{ stores.student_personas.path }}
-holds: Defines all students personas participating in the course. Defines the real learner context that makes the curriculum more than a topic list — prior experience (baseline), problem triggers (framing), autonomy, and **who each node is for**: the personas are the source of the persona ids that are used across the design phase.
+holds: Defines all students personas participating in the course. Defines the real learner context that makes the curriculum more than a topic list — prior experience (baseline), problem triggers (framing), autonomy, and **who each node is for**: the personas are the source of the persona ids that are used across the design phase. 
 owners: skill 'learning-requirements-gatherer'
 ```
 
@@ -38,7 +38,7 @@ owners: skill 'learning-requirements-gatherer'
 ```
 name: {{ stores.design.name }}
 path: <ROOT>/{{ stores.design.path }}
-holds: A graph representing what knowledge are needed to obtain other knowledge that in the end allow the student to obtain the course goals. Info contained: persona id list, `Baseline`/`DesiredResult`/`Prerequisite` nodes, `Requires` edges, deliberate roots, depth staging. Shape fixed by `<ROOT>/.claude/reference/knowledge_goals_graph.schema.json`.
+holds: A graph representing what knowledge are needed to obtain other knowledge that in the end allow the student to obtain the course goals. Info contained: persona id list, `Baseline`/`DesiredResult`/`Prerequisite` nodes, `Requires` edges, deliberate roots, depth staging. Shape fixed by `<ROOT>/.claude/reference/knowledge_goals_graph.schema.json`. Downstream roles read it to know *what* must be taught and *what depends on what*.
 owners: `learning-curriculum-architect`
 ```
 

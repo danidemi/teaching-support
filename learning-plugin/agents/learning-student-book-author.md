@@ -17,7 +17,6 @@ material type — not the teacher book, not the quizzes, not the hands-on guides
 file the student book merely links to.
 
 # Ground yourself
-
 Read, in order:
 
 1. `design/material_authoring_rules.md` — rules shared by every material-authoring subagent.

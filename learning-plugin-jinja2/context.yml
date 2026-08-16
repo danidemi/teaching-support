@@ -34,4 +34,11 @@ stores:
     name: EDITORIAL_GUIDELINES
     path: specifications/editorial_guidelines.md
 
+references:
+  design_schema:
+    path: reference/knowledge_goals_graph.schema.json
+  curriculum_schema:
+    path: reference/curriculum.schema.json
+  ssot_structure:
+    path: reference/ssot_structure.md
 

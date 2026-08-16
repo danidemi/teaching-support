@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://coderit.it/piattaforma-corsi/knowledge_goals_graph.schema.json",
   "title": "Knowledge goals graph ({{ stores.design.name }} SSOT store)",
-  "description": "Schema for {{ stores.design.path }}, written solely by learning-curriculum-architect. Encodes the Baseline/Prerequisite/DesiredResult nodes and Requires edges described in .claude/agents/learning-curriculum-architect.md. `personas` is just the list of persona ids used elsewhere in this file (as audience/skippable_by/held_by/etc.) — persona definitions (name, cohort_count, ...) live in the {{ stores.student_personas.name }} SSOT ({{ stores.student_personas.path }}, currently markdown), so there is nothing to $ref here. Node/edge arrays must be sorted by id for stable, git-diffable output. Canvas/layout positions are never stored here.",
+  "description": "Schema for {{ stores.design.path }}, written solely by learning-curriculum-architect. Encodes the Baseline/Prerequisite/DesiredResult nodes and Requires edges described in .claude/agents/learning-curriculum-architect.md. `personas` is just the list of persona ids used elsewhere in this file (as audience/held_by/etc.) — persona definitions (name, cohort_count, ...) live in the {{ stores.student_personas.name }} SSOT ({{ stores.student_personas.path }}, currently markdown), so there is nothing to $ref here. Node/edge arrays must be sorted by id for stable, git-diffable output. Canvas/layout positions are never stored here.",
   "type": "object",
   "additionalProperties": false,
   "required": ["course_name", "personas", "nodes", "edges"],
@@ -13,7 +13,7 @@
     },
     "personas": {
       "type": "array",
-      "description": "List of persona ids referenced elsewhere in this graph (audience/skippable_by/held_by/persona_variant). Ids must match {{ stores.student_personas.name }} ({{ stores.student_personas.path }}); definitions (name, cohort_count, ...) are not duplicated here.",
+      "description": "List of persona ids referenced elsewhere in this graph (audience/held_by/persona_variant). Ids must match {{ stores.student_personas.name }} ({{ stores.student_personas.path }}); definitions (name, cohort_count, ...) are not duplicated here.",
       "items": { "$ref": "#/$defs/persona_ref" },
       "minItems": 1
     },
