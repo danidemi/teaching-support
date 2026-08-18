@@ -42,3 +42,22 @@ references:
   ssot_structure:
     path: reference/ssot_structure.md
 
+didactic_activities:
+  lecture:
+    name: lecture
+  demo:
+    name: demo
+  group_discussion:
+    name: group_discussion
+  hands_on:
+    name: hands_on
+  project:
+    name: project
+  prerequisite_assessment_quiz:
+    name: prerequisite_assessment_quiz
+  feedback_assessment_quiz:
+    name: feedback_assessment_quiz
+  learning_assessment_quiz:
+    name: learning_assessment_quiz
+  summative_assessment_quiz:
+    name: summative_assessment_quiz

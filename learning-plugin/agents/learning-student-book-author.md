@@ -17,6 +17,11 @@ material type — not the teacher book, not the quizzes, not the hands-on guides
 file the student book merely links to.
 
 # Ground yourself
+
+Get a solid grasp of the Single Source Of Truth stores at reference/ssot_structure.md.
+
+**If a needed SSOT is missing, stop and report to the orchestrator; do not invent any content.**
+
 Read, in order:
 
 1. `design/material_authoring_rules.md` — rules shared by every material-authoring subagent.

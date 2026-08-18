@@ -1,0 +1,823 @@
+{
+  "sessions": [
+    {
+      "session_number": 1,
+      "title": "Perché Docker: dal container al ciclo di vita",
+      "usable_minutes": 210,
+      "target_minutes": 185,
+      "total_minutes": 185,
+      "items": [
+        {
+          "sequence": "1",
+          "node_ref": "BSL-SHELL",
+          "item_type": "lesson",
+          "title": "Verifica dei prerequisiti: shell e uso del PC",
+          "style": "prerequisite_assessment_quiz",
+          "delivery_pattern": "shared",
+          "duration_minutes": 15,
+          "notes": "Quiz breve, non punitivo (es. 'hai già usato un terminale? SI/NO'). Copre anche, indirettamente, BSL-OS-BASICS. Non copre BSL-DOCKER-PRIOR/BSL-TECH-ENGLISH/BSL-TERMINAL-COMFORT (vedi design_decisions): il corso è tarato su chi non li possiede.",
+          "support_material": [
+            { "kind": "test_script", "title": "Quiz prerequisiti - foglio domande" }
+          ]
+        },
+        {
+          "sequence": "2",
+          "node_ref": "PRQ-OPENING-FRAMING",
+          "item_type": "lesson",
+          "title": "Perché serve uno strumento come Docker",
+          "style": "lecture",
+          "delivery_pattern": "shared",
+          "duration_minutes": 20,
+          "support_material": [
+            { "kind": "diagram", "title": "Schema: app + dipendenze senza e con Docker" }
+          ]
+        },
+        {
+          "sequence": "3",
+          "node_ref": "PRQ-PROCESS-BASICS",
+          "item_type": "lesson",
+          "title": "Processi del sistema operativo: stdin/stdout, terminale, pipe, segnali",
+          "style": "lecture",
+          "delivery_pattern": "shared",
+          "duration_minutes": 30,
+          "notes": "Contenuto non assunto come prerequisito (LOGISTICS [risk]): va insegnato esplicitamente e con calma, propedeutico a PRQ-CONTAINER-CONCEPT.",
+          "support_material": [
+            { "kind": "cheat_sheet", "title": "Cheat sheet: stdin/stdout/pipe/segnali" }
+          ]
+        },
+        {
+          "sequence": "4",
+          "node_ref": "PRQ-IMAGE-CONCEPT-SHALLOW",
+          "item_type": "lesson",
+          "title": "Immagine come modello/ricetta (pass 1)",
+          "style": "lecture",
+          "delivery_pattern": "shared",
+          "duration_minutes": 20,
+          "support_material": [
+            { "kind": "diagram", "title": "Analogia ricetta/immagine -> istanza/container" }
+          ]
+        },
+        {
+          "sequence": "5",
+          "node_ref": "PRQ-CONTAINER-CONCEPT",
+          "item_type": "lesson",
+          "title": "Cos'è un container (non è una macchina virtuale)",
+          "style": "lecture",
+          "delivery_pattern": "shared",
+          "duration_minutes": 30,
+          "support_material": [
+            { "kind": "diagram", "title": "Container vs macchina virtuale: confronto" }
+          ]
+        },
+        {
+          "sequence": "6",
+          "node_ref": "PRQ-CLI-DOCKER",
+          "item_type": "lesson",
+          "title": "Installazione di Docker e sintassi di base della CLI",
+          "style": "hands_on",
+          "delivery_pattern": "shared",
+          "duration_minutes": 70,
+          "notes": "Include l'installazione di Docker sui laptop (LOGISTICS richiede tempo dedicato in prima lezione); non esiste un nodo DESIGN dedicato all'installazione, quindi il tempo è assorbito qui (vedi design_decisions).",
+          "support_material": [
+            { "kind": "reading", "title": "Guida installazione Docker Desktop (Windows/Mac)" },
+            { "kind": "exercise_sheet", "title": "Primi comandi: docker --version, docker run hello-world, docker --help" }
+          ]
+        }
+      ],
+      "homework": [
+        "Completare l'installazione di Docker se non terminata in aula; leggere la guida rapida sui comandi base."
+      ]
+    },
+    {
+      "session_number": 2,
+      "title": "Ciclo di vita del container e persistenza dei dati",
+      "usable_minutes": 210,
+      "target_minutes": 200,
+      "total_minutes": 200,
+      "items": [
+        {
+          "sequence": "7",
+          "node_ref": "PRQ-CONTAINER-LIFECYCLE-CMDS",
+          "item_type": "lesson",
+          "title": "Comandi di ciclo di vita di un container (dal vivo)",
+          "style": "demo",
+          "delivery_pattern": "shared",
+          "duration_minutes": 30,
+          "support_material": [
+            { "kind": "cheat_sheet", "title": "Cheat sheet: run/start/stop/logs/exec" }
+          ]
+        },
+        {
+          "sequence": "8",
+          "node_ref": "PRQ-CONTAINER-LIFECYCLE-CMDS",
+          "item_type": "lesson",
+          "title": "Esercitazione: gestire il ciclo di vita di un container",
+          "style": "hands_on",
+          "delivery_pattern": "shared",
+          "duration_minutes": 60,
+          "support_material": [
+            { "kind": "exercise_sheet", "title": "Esercizio: avvia, ferma, leggi i log, esegui un comando in un container dato" }
+          ]
+        },
+        {
+          "sequence": "9",
+          "node_ref": "DR-LIFECYCLE",
+          "item_type": "checkpoint",
+          "title": "Checkpoint: diagnosi dello stato di un container",
+          "duration_minutes": null,
+          "embedded_in": "8",
+          "delivery_pattern": "shared",
+          "notes": "Verifica GOAL_001: il docente osserva se lo studente sa riportare stato e log di un container dato, nell'ultima parte dell'esercitazione.",
+          "support_material": [
+            { "kind": "rubric", "title": "Checklist osservativa: avvio/stop/log/exec" }
+          ]
+        },
+        {
+          "sequence": "10",
+          "node_ref": "PRQ-FILESYSTEM-ISOLATION",
+          "item_type": "lesson",
+          "title": "Il filesystem del container è isolato ed effimero",
+          "style": "lecture",
+          "delivery_pattern": "shared",
+          "duration_minutes": 20,
+          "support_material": [
+            { "kind": "worked_example", "title": "Demo mentale: dati persi dopo docker rm" }
+          ]
+        },
+        {
+          "sequence": "11",
+          "node_ref": "PRQ-BIND-MOUNT-VOLUME",
+          "item_type": "lesson",
+          "title": "Bind mount e volume Docker (dal vivo)",
+          "style": "demo",
+          "delivery_pattern": "shared",
+          "duration_minutes": 25,
+          "support_material": [
+            { "kind": "diagram", "title": "Schema: bind mount vs volume" }
+          ]
+        },
+        {
+          "sequence": "12",
+          "node_ref": "PRQ-BIND-MOUNT-VOLUME",
+          "item_type": "lesson",
+          "title": "Esercitazione: rendere persistenti i dati di un container",
+          "style": "hands_on",
+          "delivery_pattern": "shared",
+          "duration_minutes": 45,
+          "support_material": [
+            { "kind": "exercise_sheet", "title": "Esercizio: configura un volume e verifica la persistenza dopo il riavvio" }
+          ]
+        },
+        {
+          "sequence": "13",
+          "node_ref": "DR-VOLUME",
+          "item_type": "checkpoint",
+          "title": "Checkpoint: persistenza dei dati dopo un riavvio",
+          "duration_minutes": null,
+          "embedded_in": "12",
+          "delivery_pattern": "shared",
+          "notes": "Verifica GOAL_005: lo studente configura la persistenza di un servizio dato e la verifica dopo un riavvio, nell'ultima parte dell'esercitazione.",
+          "support_material": [
+            { "kind": "rubric", "title": "Checklist osservativa: persistenza dati" }
+          ]
+        },
+        {
+          "sequence": "14",
+          "node_ref": "DR-VOLUME",
+          "item_type": "lesson",
+          "title": "Quiz di feedback: ciclo di vita e persistenza",
+          "style": "feedback_assessment_quiz",
+          "delivery_pattern": "shared",
+          "duration_minutes": 20,
+          "notes": "Include opzione 'non lo so/non ho capito' per ogni domanda, per far emergere onestamente le lacune (EDITORIAL_GUIDELINES/GOALS).",
+          "support_material": [
+            { "kind": "test_script", "title": "Quiz feedback sessione 2" }
+          ]
+        }
+      ],
+      "homework": [
+        "Ripetere l'esercizio di persistenza dei dati su un servizio diverso da quello visto in aula."
+      ]
+    },
+    {
+      "session_number": 3,
+      "title": "Costruire immagini: dal Dockerfile alla build",
+      "usable_minutes": 210,
+      "target_minutes": 210,
+      "total_minutes": 210,
+      "items": [
+        {
+          "sequence": "15",
+          "node_ref": "PRQ-DOCKERFILE-SYNTAX",
+          "item_type": "lesson",
+          "title": "Sintassi di un Dockerfile (FROM, COPY, RUN, CMD)",
+          "style": "lecture",
+          "delivery_pattern": "shared",
+          "duration_minutes": 30,
+          "support_material": [
+            { "kind": "cheat_sheet", "title": "Cheat sheet: istruzioni Dockerfile principali" },
+            { "kind": "reading", "title": "Estratto (tradotto/commentato) della documentazione Dockerfile in inglese" }
+          ]
+        },
+        {
+          "sequence": "16",
+          "node_ref": "PRQ-IMAGE-CONCEPT-DEEP",
+          "item_type": "lesson",
+          "title": "Immagine come pila di layer (pass 2)",
+          "style": "lecture",
+          "delivery_pattern": "shared",
+          "duration_minutes": 20,
+          "support_material": [
+            { "kind": "diagram", "title": "Schema: layer di un'immagine e istruzioni Dockerfile" }
+          ]
+        },
+        {
+          "sequence": "17",
+          "node_ref": "PRQ-IMAGE-BUILD-PROCESS",
+          "item_type": "lesson",
+          "title": "Il processo di build (docker build) dal vivo",
+          "style": "demo",
+          "delivery_pattern": "shared",
+          "duration_minutes": 30,
+          "support_material": [
+            { "kind": "worked_example", "title": "Build passo-passo di un'immagine di esempio, con cache dei layer" }
+          ]
+        },
+        {
+          "sequence": "18",
+          "node_ref": "PRQ-IMAGE-BUILD-PROCESS",
+          "item_type": "lesson",
+          "title": "Esercitazione: scrivi e costruisci un'immagine",
+          "style": "hands_on",
+          "delivery_pattern": "shared",
+          "duration_minutes": 70,
+          "support_material": [
+            { "kind": "exercise_sheet", "title": "Esercizio: Dockerfile per un'applicazione data" },
+            { "kind": "config_template", "title": "Dockerfile di partenza (scheletro)" }
+          ]
+        },
+        {
+          "sequence": "19",
+          "node_ref": "DR-IMAGE-BUILD",
+          "item_type": "assessment",
+          "title": "Verifica pratica: build di un'immagine funzionante",
+          "assessment_kind": "practical_pass_fail",
+          "delivery_pattern": "shared",
+          "duration_minutes": 30,
+          "rubric": {
+            "criteria": [
+              "Il Dockerfile è sintatticamente corretto e la build va a buon fine senza errori",
+              "L'immagine costruita esegue correttamente l'applicazione target (GOAL_002)",
+              "Lo studente sa spiegare cosa fa ciascuna istruzione del proprio Dockerfile"
+            ],
+            "pass_threshold": "Tutti i criteri soddisfatti; build riproducibile da zero"
+          },
+          "support_material": [
+            { "kind": "rubric", "title": "Griglia di valutazione: build immagine" }
+          ]
+        },
+        {
+          "sequence": "20",
+          "node_ref": "DR-IMAGE-BUILD",
+          "item_type": "lesson",
+          "title": "Discussione: scelte di Dockerfile e cache dei layer",
+          "style": "group_discussion",
+          "delivery_pattern": "shared",
+          "duration_minutes": 30,
+          "notes": "Confronto tra le soluzioni dei diversi gruppi/studenti appena prodotte, per rinforzare il concetto di layer (Kolb: revisitare attivamente quanto appena fatto).",
+          "support_material": [
+            { "kind": "reference_doc", "title": "Domande guida per il confronto tra Dockerfile" }
+          ]
+        }
+      ],
+      "homework": [
+        "Costruire un'immagine per una piccola applicazione a scelta, documentando le istruzioni Dockerfile usate."
+      ]
+    },
+    {
+      "session_number": 4,
+      "title": "Distribuire immagini e primi passi nella rete Docker",
+      "usable_minutes": 210,
+      "target_minutes": 200,
+      "total_minutes": 200,
+      "items": [
+        {
+          "sequence": "21",
+          "node_ref": "PRQ-IMAGE-VERSIONING",
+          "item_type": "lesson",
+          "title": "Tag e versionamento di un'immagine",
+          "style": "lecture",
+          "delivery_pattern": "shared",
+          "duration_minutes": 20,
+          "support_material": [
+            { "kind": "worked_example", "title": "Esempio: stessa immagine, tag diversi" }
+          ]
+        },
+        {
+          "sequence": "22",
+          "node_ref": "PRQ-REGISTRY-CONCEPT",
+          "item_type": "lesson",
+          "title": "Cos'è un registry Docker",
+          "style": "lecture",
+          "delivery_pattern": "shared",
+          "duration_minutes": 20,
+          "support_material": [
+            { "kind": "diagram", "title": "Schema: locale -> push -> registry -> pull -> altra macchina" }
+          ]
+        },
+        {
+          "sequence": "23",
+          "node_ref": "PRQ-IMAGE-PUSH-PULL",
+          "item_type": "lesson",
+          "title": "Pubblicare e recuperare un'immagine (dal vivo)",
+          "style": "demo",
+          "delivery_pattern": "shared",
+          "duration_minutes": 25,
+          "support_material": [
+            { "kind": "reading", "title": "Guida passo-passo push/pull su registry pubblico" }
+          ]
+        },
+        {
+          "sequence": "24",
+          "node_ref": "PRQ-IMAGE-PUSH-PULL",
+          "item_type": "lesson",
+          "title": "Esercitazione: pubblica e recupera la tua immagine",
+          "style": "hands_on",
+          "delivery_pattern": "shared",
+          "duration_minutes": 45,
+          "support_material": [
+            { "kind": "exercise_sheet", "title": "Esercizio: push dell'immagine costruita in sessione 3, pull su un'altra postazione" }
+          ]
+        },
+        {
+          "sequence": "25",
+          "node_ref": "DR-IMAGE-DISTRIBUTE",
+          "item_type": "assessment",
+          "title": "Verifica pratica: pubblicazione e recupero di un'immagine",
+          "assessment_kind": "practical_pass_fail",
+          "delivery_pattern": "shared",
+          "duration_minutes": 30,
+          "rubric": {
+            "criteria": [
+              "L'immagine è pubblicata correttamente con un tag coerente (GOAL_003)",
+              "L'immagine viene recuperata ed eseguita correttamente da un'altra postazione/account",
+              "Lo studente sa spiegare la differenza tra immagine locale e immagine sul registry"
+            ],
+            "pass_threshold": "Tutti i criteri soddisfatti"
+          },
+          "support_material": [
+            { "kind": "rubric", "title": "Griglia di valutazione: distribuzione immagine" }
+          ]
+        },
+        {
+          "sequence": "26",
+          "node_ref": "PRQ-NETWORK-BASICS",
+          "item_type": "lesson",
+          "title": "Nozioni di base di rete: indirizzo IP, porta, servizio in ascolto",
+          "style": "lecture",
+          "delivery_pattern": "shared",
+          "duration_minutes": 30,
+          "notes": "Contenuto non assunto come prerequisito (LOGISTICS [risk]): punto storicamente critico per questa tipologia di studenti, va insegnato con cura e senza fretta prima di procedere.",
+          "support_material": [
+            { "kind": "diagram", "title": "Schema: indirizzo IP e porta, analogia con indirizzo civico e numero di appartamento" }
+          ]
+        },
+        {
+          "sequence": "27",
+          "node_ref": "PRQ-PORT-MAPPING-SHALLOW",
+          "item_type": "lesson",
+          "title": "Esporre una porta del container verso l'host (dal vivo)",
+          "style": "demo",
+          "delivery_pattern": "shared",
+          "duration_minutes": 30,
+          "support_material": [
+            { "kind": "worked_example", "title": "Demo: -p host:container e verifica dal browser" }
+          ]
+        }
+      ],
+      "homework": [
+        "Pubblicare l'immagine su un registry personale e recuperarla da un'altra postazione (es. laptop di un compagno)."
+      ]
+    },
+    {
+      "session_number": 5,
+      "title": "Container in rete: dalla mappatura delle porte alla comunicazione tra container",
+      "usable_minutes": 210,
+      "target_minutes": 200,
+      "total_minutes": 200,
+      "items": [
+        {
+          "sequence": "28",
+          "node_ref": "PRQ-PORT-MAPPING-SHALLOW",
+          "item_type": "lesson",
+          "title": "Esercitazione: esporre una porta e raggiungere il servizio dall'host",
+          "style": "hands_on",
+          "delivery_pattern": "shared",
+          "duration_minutes": 40,
+          "support_material": [
+            { "kind": "exercise_sheet", "title": "Esercizio: esponi la porta di un servizio dato, verificalo dal browser" }
+          ]
+        },
+        {
+          "sequence": "29",
+          "node_ref": "PRQ-DOCKER-NETWORK-CONCEPT",
+          "item_type": "lesson",
+          "title": "Cos'è una rete Docker e cosa significa isolata",
+          "style": "lecture",
+          "delivery_pattern": "shared",
+          "duration_minutes": 25,
+          "support_material": [
+            { "kind": "diagram", "title": "Schema: reti Docker isolate tra loro e rispetto all'host" }
+          ]
+        },
+        {
+          "sequence": "30",
+          "node_ref": "PRQ-PORT-MAPPING-DEEP",
+          "item_type": "lesson",
+          "title": "Comunicazione container-container su una rete Docker condivisa (dal vivo)",
+          "style": "demo",
+          "delivery_pattern": "shared",
+          "duration_minutes": 30,
+          "notes": "Risponde a EQ_2: come un container invia una richiesta (es. REST) a un altro container, usando il nome del servizio come indirizzo.",
+          "support_material": [
+            { "kind": "worked_example", "title": "Demo: due container sulla stessa rete, richiesta REST per nome di servizio" }
+          ]
+        },
+        {
+          "sequence": "31",
+          "node_ref": "PRQ-PORT-MAPPING-DEEP",
+          "item_type": "lesson",
+          "title": "Esercitazione: collega due container sulla stessa rete Docker",
+          "style": "hands_on",
+          "delivery_pattern": "shared",
+          "duration_minutes": 70,
+          "support_material": [
+            { "kind": "exercise_sheet", "title": "Esercizio: crea una rete, collega due container dati e falli comunicare" }
+          ]
+        },
+        {
+          "sequence": "32",
+          "node_ref": "DR-NETWORK",
+          "item_type": "assessment",
+          "title": "Verifica pratica: collegamento in rete di due container",
+          "assessment_kind": "practical_pass_fail",
+          "delivery_pattern": "shared",
+          "duration_minutes": 35,
+          "rubric": {
+            "criteria": [
+              "Un container raggiunge un altro container sulla stessa rete Docker per nome di servizio (GOAL_004, EQ_2)",
+              "Un servizio è raggiungibile dall'host tramite mappatura delle porte",
+              "Lo studente sa spiegare, in pratica, cosa significa che la rete Docker è isolata (EQ_3)"
+            ],
+            "pass_threshold": "Tutti i criteri soddisfatti"
+          },
+          "support_material": [
+            { "kind": "rubric", "title": "Griglia di valutazione: rete tra container" }
+          ]
+        }
+      ],
+      "homework": [
+        "Far comunicare due container su una rete Docker per un secondo scenario dato."
+      ]
+    },
+    {
+      "session_number": 6,
+      "title": "Sistemi multi-servizio con Docker Compose",
+      "usable_minutes": 210,
+      "target_minutes": 205,
+      "total_minutes": 205,
+      "items": [
+        {
+          "sequence": "33",
+          "node_ref": "PRQ-MULTISERVICE-CONCEPT",
+          "item_type": "lesson",
+          "title": "Un sistema reale è composto da più servizi che collaborano",
+          "style": "lecture",
+          "delivery_pattern": "shared",
+          "duration_minutes": 30,
+          "notes": "Framing di EU_2, si appoggia su PRQ-BIND-MOUNT-VOLUME e PRQ-PORT-MAPPING-DEEP già visti.",
+          "support_material": [
+            { "kind": "diagram", "title": "Schema: app + database, ciascuno nel proprio container, collegati in rete" }
+          ]
+        },
+        {
+          "sequence": "34",
+          "node_ref": "PRQ-COMPOSE-SYNTAX",
+          "item_type": "lesson",
+          "title": "Sintassi di docker-compose.yml (dal vivo)",
+          "style": "demo",
+          "delivery_pattern": "shared",
+          "duration_minutes": 35,
+          "support_material": [
+            { "kind": "cheat_sheet", "title": "Cheat sheet: sintassi services/networks/volumes in Compose" }
+          ]
+        },
+        {
+          "sequence": "35",
+          "node_ref": "PRQ-COMPOSE-SYNTAX",
+          "item_type": "lesson",
+          "title": "Esercitazione: scrivi un docker-compose.yml a due servizi",
+          "style": "hands_on",
+          "delivery_pattern": "shared",
+          "duration_minutes": 80,
+          "support_material": [
+            { "kind": "exercise_sheet", "title": "Esercizio: completa/scrivi un docker-compose.yml per uno scenario app+database" },
+            { "kind": "config_template", "title": "docker-compose.yml di partenza (scheletro)" }
+          ]
+        },
+        {
+          "sequence": "36",
+          "node_ref": "DR-COMPOSE",
+          "item_type": "assessment",
+          "title": "Verifica pratica: avvio di un sistema a due servizi con Compose",
+          "assessment_kind": "practical_pass_fail",
+          "delivery_pattern": "shared",
+          "duration_minutes": 35,
+          "rubric": {
+            "criteria": [
+              "Il sistema descritto in un unico docker-compose.yml si avvia correttamente con un solo comando (GOAL_006)",
+              "I due servizi comunicano correttamente tra loro secondo lo scenario dato",
+              "Lo studente sa spiegare cosa fa ciascuna sezione del proprio file Compose"
+            ],
+            "pass_threshold": "Tutti i criteri soddisfatti"
+          },
+          "support_material": [
+            { "kind": "rubric", "title": "Griglia di valutazione: sistema Compose a due servizi" }
+          ]
+        },
+        {
+          "sequence": "37",
+          "node_ref": "PRQ-MULTISERVICE-TOPOLOGY",
+          "item_type": "lesson",
+          "title": "Riprodurre una topologia data con più servizi dipendenti",
+          "style": "lecture",
+          "delivery_pattern": "shared",
+          "duration_minutes": 25,
+          "notes": "Ponte verso DR-COMPLEX-SYSTEM: introduce come una topologia disegnata su carta si traduca in configurazione Compose.",
+          "support_material": [
+            { "kind": "diagram", "title": "Esempio di topologia: app + database + servizio mock SMTP" }
+          ]
+        }
+      ],
+      "homework": [
+        "Estendere il proprio docker-compose.yml a due servizi con un terzo servizio a scelta."
+      ]
+    },
+    {
+      "session_number": 7,
+      "title": "Sistemi complessi multi-servizio",
+      "usable_minutes": 210,
+      "target_minutes": 210,
+      "total_minutes": 210,
+      "items": [
+        {
+          "sequence": "38",
+          "node_ref": "PRQ-SERVICE-REPLICAS",
+          "item_type": "lesson",
+          "title": "Repliche di un servizio con Compose (dal vivo)",
+          "style": "demo",
+          "delivery_pattern": "shared",
+          "duration_minutes": 25,
+          "notes": "Nodo aggiunto in DESIGN per coprire il gradino 4 della verifica finale, non riconducibile a un GOAL_00x esplicito: vedi design_decisions (coverage gap da confermare con l'umano).",
+          "support_material": [
+            { "kind": "worked_example", "title": "Demo: scalare un servizio a più repliche e osservare il bilanciamento" }
+          ]
+        },
+        {
+          "sequence": "39",
+          "node_ref": "DR-COMPLEX-SYSTEM",
+          "item_type": "lesson",
+          "title": "Progetto guidato: sistema complesso app + database + servizio mock",
+          "style": "project",
+          "delivery_pattern": "shared",
+          "duration_minutes": 120,
+          "notes": "Integra PRQ-MULTISERVICE-TOPOLOGY e PRQ-SERVICE-REPLICAS con tutte le competenze pratiche precedenti (build, volume, rete, Compose). Più di un percorso di soluzione valido: coerente con la definizione di 'project'. Ogni piccolo gruppo (3-4 studenti) progetta e realizza la propria topologia a 3+ servizi con repliche; il docente circola tra i gruppi come facilitatore. I gruppi sono gruppi di lavoro studente, non lane per persona (nessuna lane P-EXP definita, vedi design_decisions), quindi delivery_pattern resta 'shared'.",
+          "support_material": [
+            { "kind": "exercise_sheet", "title": "Consegna progetto: topologia richiesta (app + database + mock SMTP + repliche)" },
+            { "kind": "config_template", "title": "Scheletro di repository progetto" }
+          ]
+        },
+        {
+          "sequence": "40",
+          "node_ref": "DR-COMPLEX-SYSTEM",
+          "item_type": "checkpoint",
+          "title": "Checkpoint: verifica in itinere della topologia di gruppo",
+          "duration_minutes": null,
+          "embedded_in": "39",
+          "delivery_pattern": "shared",
+          "notes": "Il docente verifica con ogni gruppo, prima di fine sessione, che i servizi comunichino secondo la topologia richiesta (GOAL_007). Non sostituisce la verifica finale di progetto (GOALS - gradini 1-4), che avviene nel capstone. I piccoli gruppi di lavoro sono gruppi studente, non lane per persona (nessuna lane P-EXP definita, vedi design_decisions), quindi delivery_pattern resta 'shared'.",
+          "support_material": [
+            { "kind": "rubric", "title": "Checklist in itinere per gruppo" }
+          ]
+        },
+        {
+          "sequence": "41",
+          "node_ref": "PRQ-INSPECTION-TOOLS",
+          "item_type": "lesson",
+          "title": "Strumenti di ispezione Docker: log, inspect, exec (dal vivo)",
+          "style": "demo",
+          "delivery_pattern": "shared",
+          "duration_minutes": 35,
+          "support_material": [
+            { "kind": "cheat_sheet", "title": "Cheat sheet: docker logs / inspect / network inspect / exec" }
+          ]
+        },
+        {
+          "sequence": "42",
+          "node_ref": "PRQ-HYPOTHESIS-REASONING",
+          "item_type": "lesson",
+          "title": "Discussione: formulare ipotesi su un malfunzionamento",
+          "style": "group_discussion",
+          "delivery_pattern": "shared",
+          "duration_minutes": 30,
+          "notes": "A partire da uno scenario dato (due container che non si collegano), gli studenti confrontano ipotesi plausibili e quale evidenza le confermerebbe/escluderebbe.",
+          "support_material": [
+            { "kind": "reference_doc", "title": "Scenario guidato: due container che non si collegano" }
+          ]
+        }
+      ],
+      "homework": [
+        "Consolidare il progetto di gruppo iniziato in aula in vista della verifica finale."
+      ]
+    },
+    {
+      "session_number": 8,
+      "title": "Troubleshooting e verifica finale",
+      "usable_minutes": 210,
+      "target_minutes": 210,
+      "total_minutes": 210,
+      "items": [
+        {
+          "sequence": "43",
+          "node_ref": "PRQ-SECURITY-EQ4",
+          "item_type": "lesson",
+          "title": "Sicurezza di un container: cosa significa in pratica (introduzione)",
+          "style": "lecture",
+          "delivery_pattern": "shared",
+          "duration_minutes": 20,
+          "notes": "Contenuto e profondità non ancora decisi (GOALS EQ_4, nodo DESIGN root non ancora decomposto): vedi design_decisions. Trattato qui come introduzione minima, in attesa di conferma dall'instructional designer.",
+          "support_material": [
+            { "kind": "reference_doc", "title": "Placeholder: da completare con instructional designer" }
+          ]
+        },
+        {
+          "sequence": "44",
+          "node_ref": "DR-TROUBLESHOOTING",
+          "item_type": "assessment",
+          "title": "Verifica formativa: diagnosi di un malfunzionamento (scenario teorico)",
+          "assessment_kind": "practical_pass_fail",
+          "delivery_pattern": "shared",
+          "duration_minutes": 40,
+          "notes": "Verifica formativa, non punitiva, distinta dalla prova di troubleshooting obbligatoria in sede di interrogazione (GOALS), che è codificata nella rubrica del capstone (sequenza 47).",
+          "rubric": {
+            "criteria": [
+              "Lo studente formula almeno un'ipotesi plausibile sulla causa del malfunzionamento dato (GOAL_008)",
+              "Lo studente indica come verificherebbe l'ipotesi con gli strumenti di ispezione visti",
+              "Lo studente considera anche ipotesi legate alla sicurezza tra le cause possibili (EQ_4), almeno a livello di consapevolezza"
+            ],
+            "pass_threshold": "Almeno un'ipotesi plausibile con relativa verifica indicata"
+          },
+          "support_material": [
+            { "kind": "rubric", "title": "Griglia di valutazione: diagnosi malfunzionamento" },
+            { "kind": "test_script", "title": "Scenario di malfunzionamento per la verifica" }
+          ]
+        },
+        {
+          "sequence": "45",
+          "node_ref": "DR-IMAGE-BUILD",
+          "item_type": "lesson",
+          "title": "Quiz di apprendimento: ripasso a distanza (framing, container, immagini, build)",
+          "style": "learning_assessment_quiz",
+          "delivery_pattern": "shared",
+          "duration_minutes": 30,
+          "notes": "Deliberatamente riferito a unità non recenti (sessioni 1 e 3), per forzare il richiamo dalla memoria a lungo termine, non alla sessione appena conclusa (per definizione della didactic activity).",
+          "support_material": [
+            { "kind": "test_script", "title": "Quiz di apprendimento: domande aperte e contestualizzate" }
+          ]
+        },
+        {
+          "sequence": "46",
+          "item_type": "assessment",
+          "title": "Verifica finale (capstone): progetto multi-servizio, prova di manualità e prova di troubleshooting",
+          "assessment_kind": "capstone",
+          "delivery_pattern": "shared",
+          "duration_minutes": 120,
+          "covers_node_refs": [
+            "DR-LIFECYCLE",
+            "DR-IMAGE-BUILD",
+            "DR-IMAGE-DISTRIBUTE",
+            "DR-NETWORK",
+            "DR-VOLUME",
+            "DR-COMPOSE",
+            "DR-COMPLEX-SYSTEM",
+            "DR-TROUBLESHOOTING"
+          ],
+          "notes": "Struttura fedele a GOALS - Verifica: gradini 1-4 crescenti sul progetto, più due prove orali obbligatorie (manualità e troubleshooting) che condizionano il superamento indipendentemente dai gradini raggiunti. Ogni gruppo presenta alla lavagna il proprio progetto (avviato dalla sessione 7), un membro per volta, mentre il docente interroga; i gruppi sono gruppi di lavoro studente, non lane per persona, quindi delivery_pattern resta 'shared'.",
+          "rubric": {
+            "criteria": [
+              "Gradino 1: funzionamento minimo, senza persistenza dei dati",
+              "Gradino 2: funzionamento con persistenza (es. database + volume, i dati sopravvivono al riavvio)",
+              "Gradino 3: funzionamento con servizi aggiuntivi (es. mock SMTP)",
+              "Gradino 4: funzionamento con più repliche di un servizio",
+              "Prova di manualità (obbligatoria, gate pass/fail): lo studente modifica live il proprio progetto su richiesta, dimostrando comprensione reale e non copia di un tutorial",
+              "Prova di troubleshooting (obbligatoria, gate pass/fail, aggiuntiva e non sostitutiva rispetto alla manualità): lo studente formula ipotesi plausibili su un malfunzionamento teorico dato"
+            ],
+            "pass_threshold": "Superamento di entrambe le prove obbligatorie (manualità e troubleshooting) è condizione necessaria; il voto (18-30) è determinato dal gradino di progetto raggiunto combinato con l'esito delle prove orali, come da GOALS - Verifica."
+          },
+          "support_material": [
+            { "kind": "rubric", "title": "Griglia di valutazione capstone: gradini 1-4 + prove orali obbligatorie" }
+          ]
+        }
+      ],
+      "homework": [
+        "Completare e consolidare il progetto multi-servizio iniziato in sessione 7, in preparazione alla presentazione finale."
+      ]
+    }
+  ],
+  "coverage": {
+    "taught_node_refs": [
+      "PRQ-OPENING-FRAMING",
+      "PRQ-PROCESS-BASICS",
+      "PRQ-IMAGE-CONCEPT-SHALLOW",
+      "PRQ-CONTAINER-CONCEPT",
+      "PRQ-CLI-DOCKER",
+      "PRQ-CONTAINER-LIFECYCLE-CMDS",
+      "DR-LIFECYCLE",
+      "PRQ-FILESYSTEM-ISOLATION",
+      "PRQ-BIND-MOUNT-VOLUME",
+      "DR-VOLUME",
+      "PRQ-DOCKERFILE-SYNTAX",
+      "PRQ-IMAGE-CONCEPT-DEEP",
+      "PRQ-IMAGE-BUILD-PROCESS",
+      "DR-IMAGE-BUILD",
+      "PRQ-IMAGE-VERSIONING",
+      "PRQ-REGISTRY-CONCEPT",
+      "PRQ-IMAGE-PUSH-PULL",
+      "DR-IMAGE-DISTRIBUTE",
+      "PRQ-NETWORK-BASICS",
+      "PRQ-PORT-MAPPING-SHALLOW",
+      "PRQ-DOCKER-NETWORK-CONCEPT",
+      "PRQ-PORT-MAPPING-DEEP",
+      "DR-NETWORK",
+      "PRQ-MULTISERVICE-CONCEPT",
+      "PRQ-COMPOSE-SYNTAX",
+      "DR-COMPOSE",
+      "PRQ-MULTISERVICE-TOPOLOGY",
+      "PRQ-SERVICE-REPLICAS",
+      "DR-COMPLEX-SYSTEM",
+      "PRQ-INSPECTION-TOOLS",
+      "PRQ-HYPOTHESIS-REASONING",
+      "PRQ-SECURITY-EQ4",
+      "DR-TROUBLESHOOTING"
+    ],
+    "untaught_baseline_node_refs": [
+      "BSL-SHELL",
+      "BSL-OS-BASICS",
+      "BSL-DOCKER-PRIOR",
+      "BSL-TECH-ENGLISH",
+      "BSL-TERMINAL-COMFORT"
+    ]
+  },
+  "design_decisions": [
+    {
+      "category": "schema_defect",
+      "description": "reference/curriculum.schema.json (both the plain and the jinja-template copy) has a broken $defs.item: 'delivery_pattern' is listed in required but never defined in properties, while additionalProperties is false at every level; $defs.coverage is referenced from the top level but never defined; $defs.assessment_kind is defined but never referenced from $defs.item.properties. As written, no document can validate against this schema (every item both requires and forbids delivery_pattern; sessions require minItems 1). This file was written by following the task's explicit field list (delivery_pattern, support_material, rubric, covers_node_refs, assessment_kind, design_decisions, coverage, homework) rather than the literal schema text, since the schema cannot be satisfied as written. No mechanical schema validation was run (no Bash/Glob tool available in this session); this needs a human fix to the schema file before any tool-based validation is possible."
+    },
+    {
+      "category": "deferred_decision",
+      "description": "STUDENT_PERSONAS/DESIGN flag a concrete mechanism for optional deepening for the 'studente esperto' persona (P-EXP) as 'awaiting: instructional-designer'. This curriculum defaults every item's delivery_pattern to 'shared' — no item uses multi_lane or persona_led, since group work within an activity is student small-group work, not a per-persona lane. BSL-DOCKER-PRIOR, BSL-TECH-ENGLISH and BSL-TERMINAL-COMFORT (held only by P-EXP) are therefore left untaught but also without a defined enrichment path — a human instructional-design decision is still needed here."
+    },
+    {
+      "category": "modeling_note",
+      "description": "Sequence 1 (session 1) is typed item_type 'lesson' with node_ref 'BSL-SHELL' and style 'prerequisite_assessment_quiz', even though BSL-SHELL is listed in coverage.untaught_baseline_node_refs, not taught_node_refs. This is a deliberate choice, not a schema requirement (the schema's 'item' properties do not actually list node_ref as required, only its description says lesson/checkpoint items carry one): a Baseline id was used as node_ref because the item checks that Baseline, and no other item_type fits a prerequisite check. Checking a node is not the same as teaching it; coverage.taught_node_refs intentionally excludes it."
+    },
+    {
+      "category": "logistics_check",
+      "description": "Per-session 'homework' entries (sessions 1-8) total roughly 800-960 minutes across the course, comfortably under the 1200-minute (20-hour) extra-aula cap stated in LOGISTICS. Session-8 homework is empty at the module level but the session already carries the pre-capstone consolidation task."
+    },
+    {
+      "category": "deferred_decision",
+      "description": "PRQ-SECURITY-EQ4 is a root node in DESIGN with explicitly undecided depth/content (GOALS EQ_4, tag awaiting instructional-designer). This curriculum allocates a minimal 20-minute placeholder lecture (session 8, sequence 43) so the node is sequenced and DR-TROUBLESHOOTING's dependency is respected, but the actual content is not invented and needs confirmation."
+    },
+    {
+      "category": "deferred_decision",
+      "description": "PRQ-SERVICE-REPLICAS is flagged in DESIGN as a coverage gap: it exists only to support tier 4 of the final verification ('funzionamento con più repliche') and is not traceable to any GOAL_00x. Kept in the sequence (session 7, sequence 38) per the DESIGN edges, but flagged here for human confirmation before finalizing session 7 material."
+    },
+    {
+      "category": "non_quickest_path_ordering",
+      "description": "Between DR-IMAGE-DISTRIBUTE (3 new prerequisite nodes) and DR-NETWORK (4 new prerequisite nodes), image distribution was sequenced first per the 'quickest path to a DesiredResult' priority. The overall DR order chosen is LIFECYCLE -> VOLUME -> IMAGE-BUILD -> IMAGE-DISTRIBUTE -> NETWORK -> COMPOSE -> COMPLEX-SYSTEM -> TROUBLESHOOTING."
+    },
+    {
+      "category": "gap_in_design_graph",
+      "description": "LOGISTICS requires explicit in-class time for installing Docker in the first lesson, but no DESIGN node models this operational task. It is absorbed into the duration of the PRQ-CLI-DOCKER item (session 1, sequence 6, extended to 70 minutes) rather than added as a node-ref-less item, since the schema requires a node_ref for item_type 'lesson'."
+    },
+    {
+      "category": "assessment_design_note",
+      "description": "DR-TROUBLESHOOTING has both a mid-course formative practical_pass_fail check (session 8, sequence 44) and the mandatory oral troubleshooting gate embedded in the capstone rubric (sequence 46), per GOALS which states this oral test happens 'sempre in sede di interrogazione' and is mandatory to pass. The two are not redundant: the mid-course one is formative practice, the capstone one is the graded mandatory gate."
+    },
+    {
+      "category": "style_ambiguity",
+      "description": "DR-COMPLEX-SYSTEM (session 7, sequence 39) was assigned style 'project' rather than 'hands_on', since it integrates multiple already-taught skills (topology design, replicas, compose, volumes, networking) with more than one valid solution path, matching the 'project' definition more closely than a single scripted exercise. Flagged for human confirmation given the borderline nature called out in the task instructions."
+    }
+  ]
+}

@@ -15,6 +15,11 @@ tells you which item to cover and which `kind` to write. You do not sequence the
 do not write any other material type.
 
 # Ground yourself
+
+Get a solid grasp of the Single Source Of Truth stores at reference/ssot_structure.md.
+
+**If a needed SSOT is missing, stop and report to the orchestrator; do not invent any content.**
+
 Read, in order:
 
 1. `design/material_authoring_rules.md` — rules shared by every material-authoring subagent.

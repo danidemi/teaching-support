@@ -1,0 +1,403 @@
+{
+  "course_name": "Docker per sistemi multi-servizio (corso ITS, primo anno)",
+  "personas": [
+    "P-BASE",
+    "P-EXP"
+  ],
+  "nodes": [
+    {
+      "id": "BSL-DOCKER-PRIOR",
+      "type": "Baseline",
+      "provenance_tags": ["inherited_inferred"],
+      "key": "docker-prior-experience",
+      "description": "Esperienza pregressa, non garantita, di uso autonomo di Docker (comandi base, avere già eseguito almeno un container) prima dell'inizio del corso. STUDENT_PERSONAS segnala questa possibilità come ipotesi, non come fatto accertato.",
+      "knowledge_type": "procedural",
+      "held_by": ["P-EXP"]
+    },
+    {
+      "id": "BSL-OS-BASICS",
+      "type": "Baseline",
+      "provenance_tags": ["stated"],
+      "key": "os-basics",
+      "description": "Concetti di base di sistema operativo: cosa sono un file, una cartella, un programma in esecuzione, in modo informale. Per lo studente base questa conoscenza è dichiarata scarsa e traballante; per lo studente esperto è presunta più solida ma non confermata. Non include il modello dei processi (stdin/stdout/tty/pipe/segnali) né i concetti di rete (porta, indirizzo IP), che sono contenuto insegnato nel corso e non baseline.",
+      "knowledge_type": "declarative",
+      "held_by": ["P-BASE", "P-EXP"]
+    },
+    {
+      "id": "BSL-SHELL",
+      "type": "Baseline",
+      "provenance_tags": ["stated"],
+      "key": "shell-basics",
+      "description": "Uso base della riga di comando: comandi di navigazione del filesystem come `ls`, `cd` ed equivalenti. Non include gestione di processi, redirezione, pipe o rete.",
+      "knowledge_type": "procedural",
+      "held_by": ["P-BASE", "P-EXP"]
+    },
+    {
+      "id": "BSL-TECH-ENGLISH",
+      "type": "Baseline",
+      "provenance_tags": ["inherited_inferred"],
+      "key": "technical-english",
+      "description": "Dimestichezza nel leggere documentazione tecnica in lingua inglese (es. documentazione Docker), presunta maggiore per lo studente esperto rispetto allo studente base, ma non confermata in STUDENT_PERSONAS.",
+      "knowledge_type": "declarative",
+      "held_by": ["P-EXP"]
+    },
+    {
+      "id": "BSL-TERMINAL-COMFORT",
+      "type": "Baseline",
+      "provenance_tags": ["inherited_inferred"],
+      "key": "terminal-comfort",
+      "description": "Assenza di ansia da terminale: familiarità psicologica con la riga di comando come ambiente di lavoro quotidiano, presunta per lo studente esperto ma non confermata. Lo studente base è invece descritto come probabilmente a disagio con il terminale.",
+      "knowledge_type": "procedural",
+      "held_by": ["P-EXP"]
+    },
+    {
+      "id": "DR-COMPLEX-SYSTEM",
+      "type": "DesiredResult",
+      "provenance_tags": ["stated"],
+      "key": "complex-system",
+      "description": "Mettere in piedi un sistema complesso multi-servizio (es. applicazione + database + servizio mock, es. SMTP) usando Docker Compose, tale che tutti i servizi comunichino correttamente tra loro secondo la topologia richiesta. Una valutazione di questo obiettivo deve verificare che lo studente sappia dichiarare più servizi dipendenti tra loro in un unico `docker-compose.yml` e farli comunicare secondo una topologia data (GOAL_007).",
+      "knowledge_type": "procedural",
+      "audience": "all"
+    },
+    {
+      "id": "DR-COMPOSE",
+      "type": "DesiredResult",
+      "provenance_tags": ["stated"],
+      "key": "compose-multiservice",
+      "description": "Comporre ed eseguire un sistema multi-servizio (es. applicazione + database) usando Docker Compose, tale che il sistema descritto in un unico file `docker-compose.yml` si avvii correttamente con un solo comando. Una valutazione deve chiedere di scrivere/completare un `docker-compose.yml` funzionante per uno scenario a due servizi (GOAL_006).",
+      "knowledge_type": "procedural",
+      "audience": "all"
+    },
+    {
+      "id": "DR-IMAGE-BUILD",
+      "type": "DesiredResult",
+      "provenance_tags": ["stated"],
+      "key": "image-build",
+      "description": "Costruire un'immagine Docker a partire da un Dockerfile, usando le istruzioni Docker standard, tale che l'immagine costruita esegua correttamente l'applicazione target. Una valutazione deve chiedere di scrivere un Dockerfile per un'applicazione data e verificarne la build (GOAL_002).",
+      "knowledge_type": "procedural",
+      "audience": "all"
+    },
+    {
+      "id": "DR-IMAGE-DISTRIBUTE",
+      "type": "DesiredResult",
+      "provenance_tags": ["stated"],
+      "key": "image-distribute",
+      "description": "Distribuire un'immagine Docker (es. verso un registry), usando gli strumenti standard Docker, tale che l'immagine sia recuperabile ed eseguibile da un'altra macchina. Una valutazione deve chiedere di pubblicare un'immagine e di recuperarla/eseguirla da un ambiente diverso (GOAL_003).",
+      "knowledge_type": "procedural",
+      "audience": "all"
+    },
+    {
+      "id": "DR-LIFECYCLE",
+      "type": "DesiredResult",
+      "provenance_tags": ["stated"],
+      "key": "container-lifecycle",
+      "description": "Eseguire e gestire il ciclo di vita di un container (avvio, stop, log, esecuzione di comandi al suo interno) usando i comandi Docker standard da riga di comando, tale da riuscire a diagnosticare autonomamente lo stato di un container. Una valutazione deve chiedere di avviare/fermare un container dato e di riportarne stato e log (GOAL_001).",
+      "knowledge_type": "procedural",
+      "audience": "all"
+    },
+    {
+      "id": "DR-NETWORK",
+      "type": "DesiredResult",
+      "provenance_tags": ["stated"],
+      "key": "container-network",
+      "description": "Collegare in rete due o più container (reti Docker, port mapping), usando `docker network` e la mappatura delle porte, tale che un container possa raggiungere un altro container e/o essere raggiunto dall'host. Una valutazione deve chiedere di far comunicare due container dati, sia in scenario host-container che container-container (GOAL_004, EQ_2, EQ_3).",
+      "knowledge_type": "procedural",
+      "audience": "all"
+    },
+    {
+      "id": "DR-TROUBLESHOOTING",
+      "type": "DesiredResult",
+      "provenance_tags": ["stated"],
+      "key": "troubleshooting",
+      "description": "Diagnosticare un malfunzionamento in un sistema basato su container (es. due container che non riescono a collegarsi), usando gli strumenti di ispezione Docker standard (log, inspect, network, exec) e il ragionamento per ipotesi, tale da formulare almeno un'ipotesi plausibile sulla causa del malfunzionamento e indicare come verificarla. Una valutazione deve presentare uno scenario di malfunzionamento e chiedere ipotesi diagnostiche plausibili, anche solo a livello teorico (GOAL_008).",
+      "knowledge_type": "contextual",
+      "audience": "all"
+    },
+    {
+      "id": "DR-VOLUME",
+      "type": "DesiredResult",
+      "provenance_tags": ["stated"],
+      "key": "volume-persistence",
+      "description": "Rendere persistenti i dati di un container tramite volumi, usando `docker volume` o bind mount, tale che i dati sopravvivano al riavvio del container. Una valutazione deve chiedere di configurare la persistenza dei dati di un servizio dato e di verificarla dopo un riavvio (GOAL_005).",
+      "knowledge_type": "procedural",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-BIND-MOUNT-VOLUME",
+      "type": "Prerequisite",
+      "provenance_tags": ["inferred"],
+      "key": "bind-mount-volume-concept",
+      "description": "Differenza tra bind mount (collegamento di una cartella dell'host dentro al container) e volume Docker (area gestita da Docker), e come entrambi permettono ai dati di sopravvivere alla rimozione o al riavvio di un container. Risponde a EQ_1 (come leggere/scrivere un file dell'host da dentro un container).",
+      "knowledge_type": "procedural",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-CLI-DOCKER",
+      "type": "Prerequisite",
+      "provenance_tags": ["inferred"],
+      "key": "cli-docker-basics",
+      "description": "Sintassi di base della CLI di Docker (struttura di un comando `docker <sottocomando> <opzioni> <argomenti>`), come leggere l'help di un comando.",
+      "knowledge_type": "procedural",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-COMPOSE-SYNTAX",
+      "type": "Prerequisite",
+      "provenance_tags": ["inferred"],
+      "key": "compose-syntax",
+      "description": "Sintassi YAML di `docker-compose.yml`: come dichiarare più servizi, le reti e i volumi che li collegano in un unico file, e come `docker compose up` avvia l'intero sistema con un solo comando.",
+      "knowledge_type": "procedural",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-CONTAINER-CONCEPT",
+      "type": "Prerequisite",
+      "provenance_tags": ["stated"],
+      "key": "container-concept",
+      "description": "Cos'è un container: un processo isolato eseguito a partire da un'immagine, con il proprio filesystem e la propria vista del sistema, ma che condivide il kernel dell'host — non è una macchina virtuale (EU_1). Fa riferimento al concetto di processo del sistema operativo.",
+      "knowledge_type": "declarative",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-CONTAINER-LIFECYCLE-CMDS",
+      "type": "Prerequisite",
+      "provenance_tags": ["inferred"],
+      "key": "container-lifecycle-commands",
+      "description": "Comandi standard per gestire il ciclo di vita di un container: creazione/avvio, stop, visualizzazione dei log, esecuzione di un comando dentro un container già avviato (es. una shell).",
+      "knowledge_type": "procedural",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-DOCKER-NETWORK-CONCEPT",
+      "type": "Prerequisite",
+      "provenance_tags": ["stated"],
+      "key": "docker-network-isolation",
+      "description": "Cos'è una rete Docker: una rete virtuale isolata a cui i container possono essere collegati, e cosa significa in pratica che questa rete è isolata rispetto ad altre reti Docker e rispetto all'host (EQ_3).",
+      "knowledge_type": "declarative",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-DOCKERFILE-SYNTAX",
+      "type": "Prerequisite",
+      "provenance_tags": ["inferred"],
+      "key": "dockerfile-syntax",
+      "description": "Sintassi di un Dockerfile: istruzioni principali (`FROM`, `COPY`, `RUN`, `CMD`, tra le altre) e come descrivono, passo per passo, come costruire un'immagine a partire da un'immagine di base.",
+      "knowledge_type": "procedural",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-FILESYSTEM-ISOLATION",
+      "type": "Prerequisite",
+      "provenance_tags": ["inferred"],
+      "key": "filesystem-isolation",
+      "description": "Il filesystem di un container è isolato ed effimero rispetto a quello dell'host: le modifiche fatte dentro un container si perdono quando il container viene rimosso, a meno che non si intervenga esplicitamente. Base concettuale per capire perché serve un meccanismo di persistenza dei dati.",
+      "knowledge_type": "declarative",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-HYPOTHESIS-REASONING",
+      "type": "Prerequisite",
+      "provenance_tags": ["inferred"],
+      "key": "hypothesis-driven-troubleshooting",
+      "description": "Ragionamento per ipotesi applicato a un malfunzionamento di un sistema a container: a partire da uno o più sintomi (es. un container non raggiungibile), formulare ipotesi plausibili sulla causa e indicare quale evidenza (log, configurazione, stato di rete) le confermerebbe o le escluderebbe.",
+      "knowledge_type": "contextual",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-IMAGE-BUILD-PROCESS",
+      "type": "Prerequisite",
+      "provenance_tags": ["inferred"],
+      "key": "image-build-process",
+      "description": "Il processo di build di un'immagine Docker (`docker build`): come Docker esegue le istruzioni del Dockerfile in sequenza, l'idea di layer intermedi e perché una build può essere più o meno rapida in base a cosa è cambiato rispetto alla build precedente.",
+      "knowledge_type": "procedural",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-IMAGE-CONCEPT-DEEP",
+      "type": "Prerequisite",
+      "provenance_tags": ["inferred"],
+      "key": "image-concept-deep",
+      "description": "Pass 2 (deep) del concetto di immagine: un'immagine è composta da layer sovrapposti, ciascuno prodotto da un'istruzione del Dockerfile; distinzione più precisa tra immagine (artefatto statico, versionabile) e container (istanza in esecuzione di un'immagine). Approfondisce PRQ-IMAGE-CONCEPT-SHALLOW dopo che lo studente ha visto un Dockerfile.",
+      "knowledge_type": "declarative",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-IMAGE-CONCEPT-SHALLOW",
+      "type": "Prerequisite",
+      "provenance_tags": ["stated"],
+      "key": "image-concept-shallow",
+      "description": "Pass 1 (shallow) del concetto di immagine: un'immagine è il modello/template a partire dal quale viene creato un container, un po' come una \"ricetta\" da cui si ottengono più istanze in esecuzione. Introdotto insieme al concetto di container per rompere la circolarità concettuale immagine/container (EU_3).",
+      "knowledge_type": "declarative",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-IMAGE-PUSH-PULL",
+      "type": "Prerequisite",
+      "provenance_tags": ["inferred"],
+      "key": "image-push-pull",
+      "description": "Come pubblicare (`push`) un'immagine verso un registry e come recuperarla (`pull`) da un'altra macchina, tale che l'immagine costruita in locale diventi eseguibile altrove.",
+      "knowledge_type": "procedural",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-IMAGE-VERSIONING",
+      "type": "Prerequisite",
+      "provenance_tags": ["inferred"],
+      "key": "image-versioning",
+      "description": "Concetto di tag/versione di un'immagine Docker: un'immagine con lo stesso nome può avere più versioni distinte da un tag, e perché questo è importante per distribuire un'applicazione in modo riproducibile (EU_3).",
+      "knowledge_type": "declarative",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-INSPECTION-TOOLS",
+      "type": "Prerequisite",
+      "provenance_tags": ["inferred"],
+      "key": "inspection-tools",
+      "description": "Strumenti di ispezione Docker standard usati per diagnosticare un sistema: log dei container, `inspect` di un container/rete, ispezione delle reti Docker, esecuzione interattiva di comandi dentro un container per verificarne lo stato dall'interno.",
+      "knowledge_type": "procedural",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-MULTISERVICE-CONCEPT",
+      "type": "Prerequisite",
+      "provenance_tags": ["stated"],
+      "key": "multiservice-system-concept",
+      "description": "Un sistema reale è quasi sempre composto da più servizi che collaborano (es. applicazione web + database), ciascuno tipicamente eseguito in un proprio container collegato agli altri via rete e, se necessario, con dati persistenti condivisi o dedicati (EU_2).",
+      "knowledge_type": "contextual",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-MULTISERVICE-TOPOLOGY",
+      "type": "Prerequisite",
+      "provenance_tags": ["inferred"],
+      "key": "multiservice-topology-design",
+      "description": "Comprendere e riprodurre una topologia data con più servizi dipendenti tra loro (es. applicazione + database + servizio mock SMTP): quali servizi devono raggiungere quali altri, e come questo si traduce in una configurazione Compose.",
+      "knowledge_type": "contextual",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-NETWORK-BASICS",
+      "type": "Prerequisite",
+      "provenance_tags": ["stated", "risk"],
+      "key": "network-basics",
+      "description": "Nozioni di base di rete non assunte come prerequisito e quindi insegnate esplicitamente nel corso: cos'è un indirizzo IP, cos'è una porta, e cosa significa che un servizio è \"in ascolto\" su una porta. LOGISTICS segnala il rischio storico che, senza un recupero esplicito di questi concetti, il modulo su rete/porte Docker non venga compreso.",
+      "knowledge_type": "declarative",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-OPENING-FRAMING",
+      "type": "Prerequisite",
+      "provenance_tags": ["stated"],
+      "key": "opening-framing-docker",
+      "description": "Perché serve uno strumento come Docker: eseguire un'applicazione insieme alle sue dipendenze in modo isolato e riproducibile, senza dover reinstallare tutto a mano ad ogni nuova macchina; Docker non è una macchina virtuale (EU_1). Framing motivazionale di apertura del corso, derivato dal bisogno reale dichiarato dallo studente base.",
+      "knowledge_type": "contextual",
+      "audience": "all",
+      "root": true,
+      "root_rationale": "Framing di apertura del corso: motiva l'intero percorso e non richiede alcuna conoscenza pregressa su cui appoggiarsi."
+    },
+    {
+      "id": "PRQ-PORT-MAPPING-DEEP",
+      "type": "Prerequisite",
+      "provenance_tags": ["stated"],
+      "key": "port-mapping-deep",
+      "description": "Pass 2 (deep) della comunicazione in rete tra container: come un container raggiunge un altro container attraverso una rete Docker condivisa (es. tramite il nome del servizio come indirizzo), a differenza della mappatura porta host-container vista nel pass 1. Risponde a EQ_2 (come un container invia una richiesta, es. REST, a un altro container).",
+      "knowledge_type": "contextual",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-PORT-MAPPING-SHALLOW",
+      "type": "Prerequisite",
+      "provenance_tags": ["stated"],
+      "key": "port-mapping-shallow",
+      "description": "Pass 1 (shallow) della mappatura delle porte: come esporre una porta di un container verso l'host, in modo che un servizio che gira dentro un container sia raggiungibile dall'esterno del container (es. dal browser sulla macchina dello studente).",
+      "knowledge_type": "procedural",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-PROCESS-BASICS",
+      "type": "Prerequisite",
+      "provenance_tags": ["stated", "risk"],
+      "key": "process-basics",
+      "description": "Nozioni di base sui processi di sistema operativo (stdin/stdout, terminale/tty, pipe, segnali), non assunte come prerequisito e quindi insegnate esplicitamente nel corso, necessarie per capire cosa succede \"dentro\" un container quando viene eseguito ed eventualmente arrestato. GOALS segnala questo contenuto come propedeutico a più obiettivi e non come prerequisito pregresso.",
+      "knowledge_type": "declarative",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-REGISTRY-CONCEPT",
+      "type": "Prerequisite",
+      "provenance_tags": ["inferred"],
+      "key": "registry-concept",
+      "description": "Cos'è un registry Docker: un repository remoto di immagini, organizzato per nome e tag, da cui un'immagine pubblicata può essere recuperata da un'altra macchina (EU_3).",
+      "knowledge_type": "declarative",
+      "audience": "all"
+    },
+    {
+      "id": "PRQ-SECURITY-EQ4",
+      "type": "Prerequisite",
+      "provenance_tags": ["risk"],
+      "key": "container-security-eq4",
+      "description": "Cosa significa, in pratica, la sicurezza di un container: se e come un container può essere attaccato o compromesso. Il livello di approfondimento non è ancora stato deciso (GOALS segnala esplicitamente questa domanda come da sequenziare/dimensionare vista la scarsa dimestichezza pregressa con rete e porte); il contenuto puntuale del nodo resta da definire dal futuro responsabile di instructional design.",
+      "knowledge_type": "contextual",
+      "audience": "all",
+      "root": true,
+      "root_rationale": "Contenuto non ancora deciso dagli stakeholder (GOALS EQ_4, tag awaiting instructional-designer): il nodo è collocato nel grafo ma non è ancora decomponibile in prerequisiti propri."
+    },
+    {
+      "id": "PRQ-SERVICE-REPLICAS",
+      "type": "Prerequisite",
+      "provenance_tags": ["inferred", "risk"],
+      "key": "service-replicas-concept",
+      "description": "Concetto di replica di un servizio: eseguire più istanze dello stesso servizio in parallelo tramite Compose. Nodo aggiunto per coprire il gradino 4 della verifica finale (\"funzionamento con più repliche\", GOALS — Verifica), che non è riconducibile a nessun GOAL_00x esplicito: gap di copertura tra Verifica e Knowledge & Skills, da confermare con l'umano.",
+      "knowledge_type": "declarative",
+      "audience": "all"
+    }
+  ],
+  "edges": [
+    { "from": "DR-COMPLEX-SYSTEM", "to": "PRQ-MULTISERVICE-TOPOLOGY", "reason": "Mettere in piedi un sistema complesso richiede prima di saper progettare/interpretare la topologia di servizi dipendenti che lo compone." },
+    { "from": "DR-COMPLEX-SYSTEM", "to": "PRQ-SERVICE-REPLICAS", "reason": "Il gradino più alto della verifica finale richiede più repliche di un servizio, quindi il concetto di replica deve precedere il risultato." },
+    { "from": "DR-COMPOSE", "to": "PRQ-COMPOSE-SYNTAX", "reason": "Comporre ed eseguire un sistema multi-servizio richiede prima di saper scrivere la sintassi di un file Compose." },
+    { "from": "DR-IMAGE-BUILD", "to": "PRQ-IMAGE-BUILD-PROCESS", "reason": "Costruire un'immagine richiede prima di aver capito come funziona il processo di build a partire da un Dockerfile." },
+    { "from": "DR-IMAGE-DISTRIBUTE", "to": "PRQ-IMAGE-PUSH-PULL", "reason": "Distribuire un'immagine richiede prima di saper pubblicarla e recuperarla da un registry." },
+    { "from": "DR-LIFECYCLE", "to": "PRQ-CONTAINER-LIFECYCLE-CMDS", "reason": "Gestire il ciclo di vita di un container richiede prima di conoscere i comandi standard per farlo." },
+    { "from": "DR-NETWORK", "to": "PRQ-PORT-MAPPING-DEEP", "reason": "Collegare in rete due o più container richiede prima di aver capito sia la mappatura host-container che la comunicazione container-container." },
+    { "from": "DR-TROUBLESHOOTING", "to": "PRQ-HYPOTHESIS-REASONING", "reason": "Diagnosticare un malfunzionamento richiede prima di saper ragionare per ipotesi a partire da sintomi osservati." },
+    { "from": "DR-TROUBLESHOOTING", "to": "PRQ-SECURITY-EQ4", "reason": "Tra le ipotesi plausibili su un malfunzionamento rientra anche una causa legata alla sicurezza (EQ_4), da tenere in conto nel ragionamento diagnostico." },
+    { "from": "DR-VOLUME", "to": "PRQ-BIND-MOUNT-VOLUME", "reason": "Rendere persistenti i dati richiede prima di conoscere i meccanismi (bind mount, volume) che lo rendono possibile." },
+    { "from": "PRQ-BIND-MOUNT-VOLUME", "to": "PRQ-FILESYSTEM-ISOLATION", "reason": "Capire perché servono bind mount o volumi richiede prima di sapere che il filesystem di un container è isolato ed effimero." },
+    { "from": "PRQ-CLI-DOCKER", "to": "BSL-SHELL", "reason": "Usare la sintassi della CLI Docker richiede prima una minima familiarità con l'uso di una riga di comando in generale." },
+    { "from": "PRQ-COMPOSE-SYNTAX", "to": "PRQ-IMAGE-BUILD-PROCESS", "reason": "Un servizio Compose spesso richiede di costruire un'immagine (`build:`), quindi presuppone di aver capito il processo di build." },
+    { "from": "PRQ-COMPOSE-SYNTAX", "to": "PRQ-MULTISERVICE-CONCEPT", "reason": "Scrivere un file Compose richiede prima di aver capito perché un sistema reale è composto da più servizi collaboranti." },
+    { "from": "PRQ-CONTAINER-CONCEPT", "to": "PRQ-IMAGE-CONCEPT-SHALLOW", "reason": "Un container è un'istanza in esecuzione di un'immagine: il concetto di immagine (pass 1) precede quello di container." },
+    { "from": "PRQ-CONTAINER-CONCEPT", "to": "PRQ-OPENING-FRAMING", "reason": "Capire cos'è un container richiede prima di aver capito perché serve uno strumento come Docker." },
+    { "from": "PRQ-CONTAINER-CONCEPT", "to": "PRQ-PROCESS-BASICS", "reason": "Un container è descritto come un processo isolato: il concetto di processo del sistema operativo precede quindi il concetto di container." },
+    { "from": "PRQ-CONTAINER-LIFECYCLE-CMDS", "to": "PRQ-CLI-DOCKER", "reason": "Usare i comandi di ciclo di vita richiede prima di conoscere la sintassi generale della CLI Docker." },
+    { "from": "PRQ-CONTAINER-LIFECYCLE-CMDS", "to": "PRQ-CONTAINER-CONCEPT", "reason": "Gestire il ciclo di vita di un container richiede prima di sapere cos'è un container." },
+    { "from": "PRQ-CONTAINER-LIFECYCLE-CMDS", "to": "PRQ-IMAGE-CONCEPT-SHALLOW", "reason": "Avviare un container richiede prima di sapere che nasce da un'immagine." },
+    { "from": "PRQ-DOCKER-NETWORK-CONCEPT", "to": "PRQ-CONTAINER-CONCEPT", "reason": "Capire la rete Docker come rete tra container richiede prima di sapere cos'è un container." },
+    { "from": "PRQ-DOCKER-NETWORK-CONCEPT", "to": "PRQ-NETWORK-BASICS", "reason": "Capire l'isolamento della rete Docker richiede prima le nozioni di base di rete (IP, porta)." },
+    { "from": "PRQ-DOCKERFILE-SYNTAX", "to": "PRQ-IMAGE-CONCEPT-SHALLOW", "reason": "Scrivere un Dockerfile richiede prima di sapere che produce un'immagine, nel senso già introdotto al pass 1." },
+    { "from": "PRQ-FILESYSTEM-ISOLATION", "to": "PRQ-CONTAINER-CONCEPT", "reason": "Capire che il filesystem del container è isolato richiede prima di sapere cos'è un container." },
+    { "from": "PRQ-HYPOTHESIS-REASONING", "to": "PRQ-INSPECTION-TOOLS", "reason": "Formulare ipotesi verificabili su un malfunzionamento richiede prima di conoscere gli strumenti con cui raccogliere evidenza." },
+    { "from": "PRQ-IMAGE-BUILD-PROCESS", "to": "PRQ-IMAGE-CONCEPT-DEEP", "reason": "Capire il processo di build a livello di layer richiede prima la comprensione approfondita (pass 2) del concetto di immagine." },
+    { "from": "PRQ-IMAGE-CONCEPT-DEEP", "to": "PRQ-DOCKERFILE-SYNTAX", "reason": "Approfondire il concetto di immagine in termini di layer richiede di aver visto prima la sintassi del Dockerfile che li genera." },
+    { "from": "PRQ-IMAGE-CONCEPT-SHALLOW", "to": "PRQ-OPENING-FRAMING", "reason": "Introdurre il concetto di immagine richiede prima il framing motivazionale sul perché serve uno strumento come Docker." },
+    { "from": "PRQ-IMAGE-PUSH-PULL", "to": "PRQ-IMAGE-BUILD-PROCESS", "reason": "Pubblicare un'immagine richiede prima di averla costruita, quindi di conoscere il processo di build." },
+    { "from": "PRQ-IMAGE-PUSH-PULL", "to": "PRQ-REGISTRY-CONCEPT", "reason": "Pubblicare/recuperare un'immagine richiede prima di sapere cos'è un registry." },
+    { "from": "PRQ-IMAGE-VERSIONING", "to": "PRQ-IMAGE-CONCEPT-DEEP", "reason": "Capire il versionamento tramite tag richiede prima la comprensione approfondita di cosa sia un'immagine." },
+    { "from": "PRQ-INSPECTION-TOOLS", "to": "PRQ-CONTAINER-LIFECYCLE-CMDS", "reason": "Ispezionare un container (log, exec) richiede prima di conoscere i comandi base del suo ciclo di vita." },
+    { "from": "PRQ-INSPECTION-TOOLS", "to": "PRQ-PORT-MAPPING-DEEP", "reason": "Ispezionare problemi di collegamento tra container richiede prima di aver capito come i container comunicano in rete tra loro." },
+    { "from": "PRQ-MULTISERVICE-CONCEPT", "to": "PRQ-BIND-MOUNT-VOLUME", "reason": "Un sistema multi-servizio realistico richiede spesso dati persistenti per almeno uno dei servizi (es. il database), quindi presuppone il concetto di persistenza." },
+    { "from": "PRQ-MULTISERVICE-CONCEPT", "to": "PRQ-PORT-MAPPING-DEEP", "reason": "Capire che più servizi collaborano richiede prima di aver capito come due container comunicano tra loro in rete." },
+    { "from": "PRQ-MULTISERVICE-TOPOLOGY", "to": "PRQ-COMPOSE-SYNTAX", "reason": "Riprodurre una topologia data richiede prima di saper scrivere la sintassi Compose in cui quella topologia viene dichiarata." },
+    { "from": "PRQ-NETWORK-BASICS", "to": "BSL-OS-BASICS", "reason": "Introdurre indirizzo IP e porta richiede un'infarinatura minima di concetti di sistema, anche debole, su cui appoggiarsi." },
+    { "from": "PRQ-PORT-MAPPING-DEEP", "to": "PRQ-DOCKER-NETWORK-CONCEPT", "reason": "La comunicazione container-container avviene su una rete Docker: il concetto di rete Docker isolata precede questo approfondimento." },
+    { "from": "PRQ-PORT-MAPPING-DEEP", "to": "PRQ-PORT-MAPPING-SHALLOW", "reason": "Il pass 2 (comunicazione container-container) approfondisce ed estende il pass 1 (mappatura host-container), che deve essere visto per primo." },
+    { "from": "PRQ-PORT-MAPPING-SHALLOW", "to": "PRQ-CONTAINER-CONCEPT", "reason": "Esporre una porta di un container richiede prima di sapere cos'è un container." },
+    { "from": "PRQ-PORT-MAPPING-SHALLOW", "to": "PRQ-NETWORK-BASICS", "reason": "Mappare una porta richiede prima le nozioni di base di rete (cos'è una porta, cosa significa essere in ascolto)." },
+    { "from": "PRQ-PROCESS-BASICS", "to": "BSL-OS-BASICS", "reason": "Introdurre il modello dei processi richiede un'infarinatura minima di concetti di sistema, anche debole, su cui appoggiarsi." },
+    { "from": "PRQ-PROCESS-BASICS", "to": "BSL-SHELL", "reason": "Osservare stdin/stdout/pipe richiede una minima familiarità con l'uso pratico di una riga di comando." },
+    { "from": "PRQ-REGISTRY-CONCEPT", "to": "PRQ-IMAGE-VERSIONING", "reason": "Un registry organizza le immagini per nome e tag: il concetto di versionamento precede quindi il concetto di registry." },
+    { "from": "PRQ-SERVICE-REPLICAS", "to": "PRQ-COMPOSE-SYNTAX", "reason": "Eseguire più repliche di un servizio è un'estensione della sintassi Compose, che deve quindi essere già nota." },
+    { "from": "PRQ-SERVICE-REPLICAS", "to": "PRQ-PORT-MAPPING-DEEP", "reason": "Più repliche di uno stesso servizio comunicano comunque via rete Docker con gli altri servizi: presuppone la comprensione della comunicazione container-container." }
+  ]
+}

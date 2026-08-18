@@ -38,3 +38,7 @@ You read the {{ join_names(store_list) }} store{{ "s" if store_list|length > 1 e
 current version, retrieved before you use it; never from memory, a stale copy, or invention.
 **If a needed info is missing, stop and report to the orchestrator; do not invent the missing piece of info.**
 {%- endmacro %}
+
+{% macro pretty_activity_name(activity) -%}
+{{ activity.name.split("_")|map("capitalize")|join(" ") }}
+{%- endmacro %}

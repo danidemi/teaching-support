@@ -5,38 +5,8 @@
   "description": "Schema for the CURRICULUM SSOT store (design/curriculum.json), written by learning-curriculum-sequencer. Sequences the DESIGN graph's taught nodes (Baseline excluded) into sessions of ordered lessons, embedded checkpoints, and assessments, each carrying a delivery style so downstream tools can pick a material-generation strategy per item. Node ids referenced by `node_ref` must exist in design/knowledge_goals_graph.json.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["course_name", "source_design_graph", "sessions", "coverage"],
+  "required": ["sessions"],
   "properties": {
-    "course_name": {
-      "type": "string",
-      "description": "Must match the course_name in design/knowledge_goals_graph.json."
-    },
-    "source_design_graph": {
-      "type": "object",
-      "description": "Provenance of the DESIGN graph this curriculum was sequenced from.",
-      "additionalProperties": false,
-      "required": ["path", "checked"],
-      "properties": {
-        "path": {
-          "type": "string",
-          "description": "Path to the DESIGN store, e.g. design/knowledge_goals_graph.json."
-        },
-        "checked": {
-          "type": "boolean",
-          "description": "Whether `tools/graph/graph check` was run against the graph before/as part of sequencing this curriculum. False means the graph's schema and closure are unverified."
-        }
-      }
-    },
-    "sequencing_rules": {
-      "type": "array",
-      "description": "Ordered priority rules used to produce the sequence (free text, for human audit).",
-      "items": { "type": "string" }
-    },
-    "design_decisions": {
-      "type": "array",
-      "description": "Deliberate deviations, risks, or open items flagged for human review, e.g. a root Prerequisite blocked on an external deliverable, or a non-quickest-path ordering chosen for framing.",
-      "items": { "$ref": "#/$defs/design_decision" }
-    },
     "sessions": {
       "type": "array",
       "description": "Ordered delivery sessions. Order in this array is the delivery order.",
@@ -57,73 +27,17 @@
       "description": "The pedagogical shape of the item. Drives which material-generation strategy a downstream tool applies (e.g. lecture -> slide deck, hands_on_practical -> exercise sheet + starter repo, briefing -> handout only). \"lecture\": one-way conceptual presentation, no live demo, no built-in discussion stop. \"lecture_discussion\": lecture with deliberate stops for questions/opinions/comparing the group's own experience; still no one touches a system. \"lecture_demo\": instructor presents and also drives a live system in front of the group (they watch, don't type) — use when the concept must be seen running, not just described. \"group_discussion\": students talk to each other with no instructor exposition first; the discussion itself is the point. \"hands_on_practical\": students execute a scoped exercise themselves, tied to one specific node/skill, normally with one clear expected outcome. \"project_based\": open-ended activity integrating multiple already-taught nodes/skills, less scripted than hands_on_practical, may have more than one valid solution path. \"briefing\": short one-way informational announcement with no instructional depth (logistics, credentials) — not teaching a skill.",
       "enum": [
         "lecture",
-        "lecture_discussion",
-        "lecture_demo",
+        "demo",
         "group_discussion",
-        "hands_on_practical",
-        "briefing",
-        "project_based"
+        "hands_on",
+        "project",
+        "prerequisite_assessment_quiz",
+        "feedback_assessment_quiz",
+        "learning_assessment_quiz",
+        "summative_assessment_quiz"
       ]
     },
 
-    "delivery_pattern": {
-      "type": "string",
-      "description": "How the item is split across personas, independent of which/how many personas the course defines. \"shared\": everyone does the same thing together. \"multi_lane\": two or more personas work concurrently on distinct tasks (see lane_tasks for who does what). \"single_lane\": only one persona is active while the rest observe or skip. \"persona_led\": one persona leads/explains to the rest (use lane_tasks' role to name who leads). Which persona(s) are involved is never encoded in this value — always look at lane_tasks.",
-      "enum": [
-        "shared",
-        "multi_lane",
-        "single_lane",
-        "persona_led"
-      ]
-    },
-
-    "support_material_kind": {
-      "type": "string",
-      "description": "Category of a support material entry, so tooling can route it to the right generator or simply link an existing asset.",
-      "enum": [
-        "reading",
-        "video",
-        "reference_doc",
-        "diagram",
-        "cheat_sheet",
-        "config_template",
-        "exercise_sheet",
-        "test_script",
-        "rubric",
-        "worked_example",
-        "other"
-      ]
-    },
-
-    "support_material": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["kind", "description"],
-      "properties": {
-        "kind": { "$ref": "#/$defs/support_material_kind" },
-        "description": { "type": "string" },
-        "uri": {
-          "type": "string",
-          "description": "Optional link/path to the actual asset, once it exists under material/."
-        }
-      }
-    },
-
-    "lane_task": {
-      "type": "object",
-      "description": "One persona's concrete task within an item that has a two_lane (or single-lane) delivery_pattern.",
-      "additionalProperties": false,
-      "required": ["persona", "task"],
-      "properties": {
-        "persona": { "$ref": "#/$defs/persona_ref" },
-        "task": { "type": "string" },
-        "role": {
-          "type": "string",
-          "description": "This persona's part in the item's delivery_pattern. Use \"lead\" for the persona named by a persona_led item; \"skip\" for a persona sitting the item out (skippable_by in DESIGN).",
-          "enum": ["lead", "contributor", "observer", "skip"]
-        }
-      }
-    },
 
     "item_type": {
       "type": "string",
@@ -160,7 +74,6 @@
           "$ref": "#/$defs/delivery_style",
           "description": "Required for item_type lesson; a checkpoint or assessment may omit it (see assessment_kind instead) or reuse the enclosing lesson's style."
         },
-        "delivery_pattern": { "$ref": "#/$defs/delivery_pattern" },
         "duration_minutes": {
           "type": ["number", "null"],
           "description": "Minutes budgeted for this item. Null for a checkpoint embedded inside another item's time (see embedded_in)."
@@ -169,28 +82,6 @@
           "type": "string",
           "description": "Sequence key of the item whose duration already includes this checkpoint's time (e.g. a DR checkpoint reached in the last minutes of the preceding lesson). Required when duration_minutes is null."
         },
-        "lane_tasks": {
-          "type": "array",
-          "description": "Per-persona breakdown when delivery_pattern splits work by lane. Omit for fully shared items.",
-          "items": { "$ref": "#/$defs/lane_task" }
-        },
-        "assessment_kind": { "$ref": "#/$defs/assessment_kind" },
-        "rubric": {
-          "type": "string",
-          "description": "Pass/fail criteria. Expected on item_type assessment."
-        },
-        "covers_node_refs": {
-          "type": "array",
-          "description": "For a capstone/final assessment that checks multiple DRs at once, the full list of DR ids it covers.",
-          "items": {
-            "type": "string",
-            "pattern": "^DR-[A-Z0-9-]+$"
-          }
-        },
-        "support_material": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/support_material" }
-        },
         "notes": {
           "type": "string",
           "description": "Free-text asides (e.g. why this item's rubric/timing looks the way it does)."
@@ -198,46 +89,12 @@
       },
       "allOf": [
         {
-          "if": { "properties": { "item_type": { "const": "lesson" } } },
-          "then": { "required": ["node_ref", "style"] }
-        },
-        {
-          "if": { "properties": { "item_type": { "const": "checkpoint" } } },
-          "then": { "required": ["node_ref"] }
-        },
-        {
-          "if": { "properties": { "item_type": { "const": "assessment" } } },
-          "then": { "required": ["assessment_kind", "rubric"] }
-        },
-        {
           "if": {
             "properties": { "duration_minutes": { "const": null } }
           },
           "then": { "required": ["embedded_in"] }
         }
       ]
-    },
-
-    "homework_item": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["description"],
-      "properties": {
-        "description": { "type": "string" },
-        "node_ref": {
-          "type": "string",
-          "description": "DESIGN node this homework advances, if any.",
-          "pattern": "^(BSL|PRQ|DR)-[A-Z0-9-]+$"
-        },
-        "owner": {
-          "type": "string",
-          "description": "Who is responsible (a persona ref, or an external party such as the client)."
-        },
-        "due": {
-          "type": "string",
-          "description": "Deadline, e.g. \"before Session 2\"."
-        }
-      }
     },
 
     "session": {
@@ -263,53 +120,6 @@
           "type": "array",
           "items": { "$ref": "#/$defs/item" },
           "minItems": 1
-        },
-        "homework": {
-          "type": "array",
-          "description": "Work assigned for the inter-session gap after this session.",
-          "items": { "$ref": "#/$defs/homework_item" }
-        }
-      }
-    },
-
-    "design_decision": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["category", "summary"],
-      "properties": {
-        "category": {
-          "type": "string",
-          "enum": ["risk", "deviation", "deferred_decision", "homework_dependency"]
-        },
-        "summary": { "type": "string" },
-        "node_refs": {
-          "type": "array",
-          "items": {
-            "type": "string",
-            "pattern": "^(BSL|PRQ|DR)-[A-Z0-9-]+$"
-          }
-        },
-        "owner": { "type": "string" },
-        "due": { "type": "string" }
-      }
-    },
-
-    "coverage": {
-      "type": "object",
-      "description": "Cross-check that every taught node in DESIGN appears exactly once in sessions, computed at write time (a tool consuming this file should still recompute rather than trust it blindly).",
-      "additionalProperties": false,
-      "required": ["taught_node_refs", "untaught_baseline_node_refs"],
-      "properties": {
-        "taught_node_refs": {
-          "type": "array",
-          "items": { "type": "string" },
-          "uniqueItems": true
-        },
-        "untaught_baseline_node_refs": {
-          "type": "array",
-          "description": "Baseline nodes intentionally not taught (already held per DESIGN held_by).",
-          "items": { "type": "string" },
-          "uniqueItems": true
         }
       }
     }
