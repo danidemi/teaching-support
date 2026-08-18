@@ -21,7 +21,20 @@ If they exist, read them and use them to inform your curriculum design.
 
 # {{ stores.design.name }}
 
-execute the `learning-curriculum-architect` agent.
+1. Execute the `learning-curriculum-architect` agent.
+2. Execute the `learning-design-reviewer` agent against the {{ stores.design.name }} store it just
+   wrote. The reviewer only reports findings — it never edits {{ stores.design.name }} itself.
+3. If the reviewer returns blocking findings (coalescence, unfounded references), hand its report
+   back to `learning-curriculum-architect` and ask it to amend {{ stores.design.name }} — never
+   pass the report to the human at this point, and never edit the store yourself on the
+   architect's behalf. Re-run the reviewer against the amended store.
+4. Repeat steps 2–3 up to 2 rounds. If blocking findings still remain after 2 rounds, stop looping
+   and surface the unresolved findings to the human instead — do not let the two agents cycle
+   indefinitely.
+5. Once the reviewer reports no blocking findings, carry its judgment-call findings (scope drift,
+   description sufficiency, root legitimacy, persona-variant) forward to the human sign-off step
+   alongside `learning-curriculum-architect`'s own `[risk]`/`[invented_framing]`/`[inferred]`
+   summary — they are the same kind of open item, just surfaced by a different reader.
 
 # {{ stores.curriculum.name }}
 
