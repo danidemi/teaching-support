@@ -1,0 +1,476 @@
+{
+  "sessions": [
+    {
+      "session_number": 1,
+      "title": "Perché Docker, container, immagini e processi",
+      "usable_minutes": 210,
+      "total_minutes": 200,
+      "items": [
+        {
+          "sequence": "1",
+          "title": "Quiz di ingresso sui prerequisiti (shell, uso del PC, eventuale esperienza pregressa con Docker)",
+          "didactic_activity": "prerequisite_assessment_quiz",
+          "duration_minutes": 15,
+          "notes": "Copre BSL-SHELL, BSL-PC-USE, BSL-IT-BG, BSL-DOCKER-PRIOR. Non punitivo: obiettivo principale è far emergere in aula chi ha già usato Docker (BSL-DOCKER-PRIOR, tag [risk] in DESIGN) per gestire i livelli misti segnalati in LOGISTICS, non filtrare l'accesso al corso."
+        },
+        {
+          "sequence": "2",
+          "title": "Installazione di Docker sui laptop",
+          "didactic_activity": "hands_on",
+          "duration_minutes": 45,
+          "notes": "Attività logistica richiesta da LOGISTICS (Docker non preinstallato, tempo da allocare nella prima lezione). Nessun node_ref: non insegna un nodo del grafo DESIGN, prepara l'ambiente per tutte le esercitazioni successive."
+        },
+        {
+          "sequence": "3",
+          "node_ref": "PRQ-WHY-DOCKER",
+          "title": "Perché Docker: il problema della riproducibilità",
+          "didactic_activity": "lecture",
+          "duration_minutes": 15,
+          "notes": "Nodo radice (root) del grafo DESIGN. Introduce EU_1 (Docker non è una macchina virtuale)."
+        },
+        {
+          "sequence": "4",
+          "node_ref": "PRQ-ISOLATION",
+          "title": "Il concetto di isolamento di un programma in esecuzione",
+          "didactic_activity": "lecture",
+          "duration_minutes": 15
+        },
+        {
+          "sequence": "5",
+          "node_ref": "PRQ-CONTAINER",
+          "title": "Cos'è un container",
+          "didactic_activity": "lecture",
+          "duration_minutes": 20,
+          "notes": "Ribadisce EU_1: differenza concettuale tra container e macchina virtuale."
+        },
+        {
+          "sequence": "6",
+          "node_ref": "PRQ-CONTAINER",
+          "title": "Il docente avvia, elenca e ferma un container dal vivo",
+          "didactic_activity": "demo",
+          "duration_minutes": 25,
+          "notes": "Dimostrazione dal vivo (docker run / docker ps / docker stop) per rendere concreto il concetto di container appena presentato a lezione."
+        },
+        {
+          "sequence": "7",
+          "node_ref": "PRQ-IMAGE-CONCEPT",
+          "title": "Cos'è un'immagine Docker",
+          "didactic_activity": "lecture",
+          "duration_minutes": 20,
+          "notes": "Introduce EU_3: l'immagine come artefatto versionabile e distribuibile."
+        },
+        {
+          "sequence": "8",
+          "node_ref": "PRQ-FILESYSTEM",
+          "title": "Separazione tra filesystem dell'host e filesystem del container",
+          "didactic_activity": "lecture",
+          "duration_minutes": 20,
+          "notes": "Apre la domanda EQ_1 (come far leggere/scrivere a un container un file che sta sul computer host), a cui si risponderà con i volumi più avanti nel corso."
+        },
+        {
+          "sequence": "9",
+          "node_ref": "PRQ-PROCESS-MODEL",
+          "title": "Il modello dei processi: standard input/output, terminale, pipe, segnali",
+          "didactic_activity": "lecture",
+          "duration_minutes": 25,
+          "notes": "Contenuto non assunto come prerequisito (vedi LOGISTICS): richiamato esplicitamente in aula perché storicamente critico per questa tipologia di studenti, propedeutico a PRQ-CLI-BASICS, DR-NETWORK e DR-TROUBLESHOOTING."
+        }
+      ]
+    },
+    {
+      "session_number": 2,
+      "title": "Ciclo di vita del container e costruzione di un'immagine",
+      "usable_minutes": 210,
+      "total_minutes": 205,
+      "items": [
+        {
+          "sequence": "10",
+          "node_ref": "PRQ-CLI-BASICS",
+          "title": "Il docente esegue i comandi Docker standard (run, ps, stop, logs, exec) e ne legge l'esito",
+          "didactic_activity": "demo",
+          "duration_minutes": 30
+        },
+        {
+          "sequence": "11",
+          "node_ref": "PRQ-CLI-BASICS",
+          "title": "Esercitazione sui comandi Docker standard da riga di comando",
+          "didactic_activity": "hands_on",
+          "duration_minutes": 40
+        },
+        {
+          "sequence": "12",
+          "node_ref": "DR-LIFECYCLE",
+          "title": "Diagnosticare autonomamente lo stato di un container",
+          "didactic_activity": "hands_on",
+          "duration_minutes": 30,
+          "notes": "Checkpoint su GOAL_001: verifica che lo studente sappia usare run/ps/stop/logs/exec per capire lo stato di un container, non solo eseguirli meccanicamente."
+        },
+        {
+          "sequence": "13",
+          "title": "Quiz di verifica: ciclo di vita del container",
+          "didactic_activity": "feedback_assessment_quiz",
+          "duration_minutes": 15,
+          "notes": "Copre PRQ-CLI-BASICS e DR-LIFECYCLE. Includere l'opzione 'non lo so / non l'ho capito' per far emergere onestamente le lacune."
+        },
+        {
+          "sequence": "14",
+          "node_ref": "PRQ-DOCKERFILE",
+          "title": "Sintassi di un Dockerfile (FROM, COPY, RUN, CMD)",
+          "didactic_activity": "lecture",
+          "duration_minutes": 25
+        },
+        {
+          "sequence": "15",
+          "node_ref": "PRQ-DOCKERFILE",
+          "title": "Il docente scrive e costruisce un'immagine da un Dockerfile dal vivo",
+          "didactic_activity": "demo",
+          "duration_minutes": 25
+        },
+        {
+          "sequence": "16",
+          "node_ref": "DR-IMAGE-BUILD",
+          "title": "Costruire un'immagine che esegua correttamente l'applicazione target",
+          "didactic_activity": "hands_on",
+          "duration_minutes": 40,
+          "notes": "Checkpoint su GOAL_002."
+        }
+      ]
+    },
+    {
+      "session_number": 3,
+      "title": "Distribuire un'immagine e collegare i container in rete",
+      "usable_minutes": 210,
+      "total_minutes": 205,
+      "items": [
+        {
+          "sequence": "17",
+          "node_ref": "PRQ-REGISTRY",
+          "title": "Cos'è un registry Docker: nominare e taggare un'immagine",
+          "didactic_activity": "lecture",
+          "duration_minutes": 20
+        },
+        {
+          "sequence": "18",
+          "node_ref": "PRQ-REGISTRY",
+          "title": "Il docente pubblica e recupera un'immagine da un registry con push/pull",
+          "didactic_activity": "demo",
+          "duration_minutes": 25
+        },
+        {
+          "sequence": "19",
+          "node_ref": "DR-IMAGE-DISTRIBUTE",
+          "title": "Rendere un'immagine recuperabile ed eseguibile da un'altra macchina",
+          "didactic_activity": "hands_on",
+          "duration_minutes": 35,
+          "notes": "Checkpoint su GOAL_003."
+        },
+        {
+          "sequence": "20",
+          "node_ref": "PRQ-NETWORK-BASICS",
+          "title": "Concetti di rete di base: indirizzo IP e porta",
+          "didactic_activity": "lecture",
+          "duration_minutes": 25,
+          "notes": "Contenuto non assunto come prerequisito (vedi LOGISTICS): storicamente punto critico per questa tipologia di studenti, va insegnato esplicitamente e non presupposto."
+        },
+        {
+          "sequence": "21",
+          "node_ref": "PRQ-NETWORK-BASICS",
+          "title": "Discussione: cosa significa in pratica un indirizzo IP e una porta nella propria esperienza quotidiana con internet",
+          "didactic_activity": "group_discussion",
+          "duration_minutes": 20,
+          "notes": "Rielaborazione attiva subito dopo la lezione, per fissare concetti storicamente fragili prima di introdurre la rete Docker."
+        },
+        {
+          "sequence": "22",
+          "node_ref": "PRQ-DOCKER-NETWORK",
+          "title": "Il modello di rete Docker: reti isolate e risoluzione dei nomi tra container",
+          "didactic_activity": "lecture",
+          "duration_minutes": 30,
+          "notes": "Copre EQ_2 (invio di una richiesta REST tra container) ed EQ_3 (cosa significa in pratica che la rete Docker è isolata)."
+        },
+        {
+          "sequence": "23",
+          "node_ref": "PRQ-DOCKER-NETWORK",
+          "title": "Il docente crea una rete Docker e collega due container che si raggiungono per nome",
+          "didactic_activity": "demo",
+          "duration_minutes": 30
+        },
+        {
+          "sequence": "24",
+          "title": "Quiz di verifica: rete di base e rete Docker",
+          "didactic_activity": "feedback_assessment_quiz",
+          "duration_minutes": 20,
+          "notes": "Copre PRQ-NETWORK-BASICS e PRQ-DOCKER-NETWORK. Punto storicamente critico secondo LOGISTICS: verifica precoce prima di procedere alla mappatura delle porte."
+        }
+      ]
+    },
+    {
+      "session_number": 4,
+      "title": "Porte, rete tra container e persistenza dei dati",
+      "usable_minutes": 210,
+      "total_minutes": 205,
+      "items": [
+        {
+          "sequence": "25",
+          "node_ref": "PRQ-PORT-MAPPING",
+          "title": "Mappatura delle porte tra host e container",
+          "didactic_activity": "lecture",
+          "duration_minutes": 20
+        },
+        {
+          "sequence": "26",
+          "node_ref": "PRQ-PORT-MAPPING",
+          "title": "Esercitazione: rendere un container raggiungibile dall'host mappando una porta",
+          "didactic_activity": "hands_on",
+          "duration_minutes": 25
+        },
+        {
+          "sequence": "27",
+          "node_ref": "DR-NETWORK",
+          "title": "Collegare in rete due container e rendere un servizio raggiungibile dall'host",
+          "didactic_activity": "hands_on",
+          "duration_minutes": 40,
+          "notes": "Checkpoint su GOAL_004, EQ_2 ed EQ_3."
+        },
+        {
+          "sequence": "28",
+          "title": "Quiz di richiamo: dal container all'immagine, dal ciclo di vita alla rete",
+          "didactic_activity": "learning_assessment_quiz",
+          "duration_minutes": 20,
+          "notes": "Deliberatamente non sui contenuti appena completati (rete): domande aperte che costringono a ricollegare container, immagine e ciclo di vita (sessioni 1-2) al contesto attuale, per fissarli in memoria a lungo termine."
+        },
+        {
+          "sequence": "29",
+          "node_ref": "PRQ-VOLUME-MOUNT",
+          "title": "Volumi e bind mount: meccanica e sintassi",
+          "didactic_activity": "lecture",
+          "duration_minutes": 25,
+          "notes": "Risponde a EQ_1 (come far leggere/scrivere a un container un file che sta sul computer host)."
+        },
+        {
+          "sequence": "30",
+          "node_ref": "PRQ-VOLUME-MOUNT",
+          "title": "Il docente monta un volume e un bind mount e ne mostra la differenza",
+          "didactic_activity": "demo",
+          "duration_minutes": 25
+        },
+        {
+          "sequence": "31",
+          "node_ref": "DR-VOLUME",
+          "title": "Rendere persistenti i dati di un container tramite volumi",
+          "didactic_activity": "hands_on",
+          "duration_minutes": 35,
+          "notes": "Checkpoint su GOAL_005: i dati devono sopravvivere al riavvio del container."
+        },
+        {
+          "sequence": "32",
+          "title": "Quiz di verifica: porte, rete tra container e volumi",
+          "didactic_activity": "feedback_assessment_quiz",
+          "duration_minutes": 15,
+          "notes": "Copre PRQ-PORT-MAPPING, DR-NETWORK, PRQ-VOLUME-MOUNT, DR-VOLUME."
+        }
+      ]
+    },
+    {
+      "session_number": 5,
+      "title": "Diagnosi di un malfunzionamento e progettazione di un sistema multi-servizio",
+      "usable_minutes": 210,
+      "total_minutes": 200,
+      "items": [
+        {
+          "sequence": "33",
+          "node_ref": "PRQ-DIAG-TOOLS",
+          "title": "Strumenti di ispezione Docker standard: logs, inspect, network, exec",
+          "didactic_activity": "lecture",
+          "duration_minutes": 25
+        },
+        {
+          "sequence": "34",
+          "node_ref": "PRQ-DIAG-TOOLS",
+          "title": "Il docente ispeziona un sistema a container in avaria con logs, inspect, network ed exec",
+          "didactic_activity": "demo",
+          "duration_minutes": 30
+        },
+        {
+          "sequence": "35",
+          "node_ref": "PRQ-HYPOTHESIS",
+          "title": "Ragionamento per ipotesi applicato alla diagnosi di sistemi a container",
+          "didactic_activity": "lecture",
+          "duration_minutes": 20
+        },
+        {
+          "sequence": "36",
+          "node_ref": "PRQ-HYPOTHESIS",
+          "title": "Discussione: quali ipotesi plausibili si possono formulare a partire da un'evidenza raccolta",
+          "didactic_activity": "group_discussion",
+          "duration_minutes": 25
+        },
+        {
+          "sequence": "37",
+          "node_ref": "DR-TROUBLESHOOTING",
+          "title": "Diagnosi guidata di un malfunzionamento (due container che non si collegano)",
+          "didactic_activity": "hands_on",
+          "duration_minutes": 35,
+          "notes": "Checkpoint su GOAL_008: formulare almeno un'ipotesi plausibile e indicare come verificarla. Verrà ripreso in sessione 7 su un sistema multi-servizio più realistico."
+        },
+        {
+          "sequence": "38",
+          "node_ref": "PRQ-MULTI-SERVICE",
+          "title": "Un sistema reale è composto da più servizi che collaborano",
+          "didactic_activity": "lecture",
+          "duration_minutes": 20,
+          "notes": "Introduce EU_2."
+        },
+        {
+          "sequence": "39",
+          "node_ref": "PRQ-TOPOLOGY",
+          "title": "Progettare la topologia di un sistema multi-servizio prima di scriverne il codice",
+          "didactic_activity": "lecture",
+          "duration_minutes": 20
+        },
+        {
+          "sequence": "40",
+          "node_ref": "PRQ-TOPOLOGY",
+          "title": "Discussione a gruppi: progettare la topologia di applicazione + database + servizio mock SMTP",
+          "didactic_activity": "group_discussion",
+          "duration_minutes": 25,
+          "notes": "Prepara concettualmente la topologia a 3+ servizi richiesta da DR-COMPLEX-SYSTEM, prima di introdurre la sintassi Compose avanzata."
+        }
+      ]
+    },
+    {
+      "session_number": 6,
+      "title": "Comporre ed eseguire un sistema multi-servizio con Docker Compose",
+      "usable_minutes": 210,
+      "total_minutes": 200,
+      "items": [
+        {
+          "sequence": "41",
+          "node_ref": "PRQ-COMPOSE-SHALLOW",
+          "title": "Sintassi di base di docker-compose.yml per due servizi",
+          "didactic_activity": "lecture",
+          "duration_minutes": 25
+        },
+        {
+          "sequence": "42",
+          "node_ref": "PRQ-COMPOSE-SHALLOW",
+          "title": "Il docente scrive e avvia con un solo comando un docker-compose.yml a due servizi",
+          "didactic_activity": "demo",
+          "duration_minutes": 30
+        },
+        {
+          "sequence": "43",
+          "node_ref": "DR-COMPOSE",
+          "title": "Comporre ed eseguire un sistema applicazione + database con un solo comando",
+          "didactic_activity": "hands_on",
+          "duration_minutes": 50,
+          "notes": "Checkpoint su GOAL_006."
+        },
+        {
+          "sequence": "44",
+          "title": "Quiz di richiamo: rete e volumi applicati dentro Compose",
+          "didactic_activity": "learning_assessment_quiz",
+          "duration_minutes": 20,
+          "notes": "Costringe a ricollegare PRQ-DOCKER-NETWORK e PRQ-VOLUME-MOUNT (sessioni 3-4) al nuovo contesto Compose appena introdotto."
+        },
+        {
+          "sequence": "45",
+          "node_ref": "PRQ-COMPOSE-DEEP",
+          "title": "Sintassi Compose avanzata per topologie a 3 o più servizi",
+          "didactic_activity": "lecture",
+          "duration_minutes": 25
+        },
+        {
+          "sequence": "46",
+          "node_ref": "PRQ-COMPOSE-DEEP",
+          "title": "Il docente scrive e avvia un docker-compose.yml a 3 o più servizi",
+          "didactic_activity": "demo",
+          "duration_minutes": 30
+        },
+        {
+          "sequence": "47",
+          "title": "Quiz di verifica: Docker Compose, dalla sintassi di base alle topologie complesse",
+          "didactic_activity": "feedback_assessment_quiz",
+          "duration_minutes": 20,
+          "notes": "Copre PRQ-COMPOSE-SHALLOW, DR-COMPOSE, PRQ-COMPOSE-DEEP."
+        }
+      ]
+    },
+    {
+      "session_number": 7,
+      "title": "Repliche e avvio del progetto finale",
+      "usable_minutes": 210,
+      "total_minutes": 210,
+      "items": [
+        {
+          "sequence": "48",
+          "node_ref": "PRQ-COMPOSE-REPLICAS",
+          "title": "Eseguire più repliche di uno stesso servizio con Compose",
+          "didactic_activity": "lecture",
+          "duration_minutes": 20
+        },
+        {
+          "sequence": "49",
+          "node_ref": "PRQ-COMPOSE-REPLICAS",
+          "title": "Il docente scala un servizio a più repliche con Compose",
+          "didactic_activity": "demo",
+          "duration_minutes": 20
+        },
+        {
+          "sequence": "50",
+          "node_ref": "DR-COMPLEX-SYSTEM",
+          "title": "Laboratorio guidato: sistema applicazione + database + servizio mock con più repliche",
+          "didactic_activity": "hands_on",
+          "duration_minutes": 45,
+          "notes": "Checkpoint intermedio su GOAL_007, ancora guidato passo passo, prima del progetto aperto."
+        },
+        {
+          "sequence": "51",
+          "node_ref": "DR-TROUBLESHOOTING",
+          "title": "Scenario diagnostico su un sistema multi-servizio realistico",
+          "didactic_activity": "hands_on",
+          "duration_minutes": 30,
+          "notes": "Rinforzo di GOAL_008 nel contesto più realistico del sistema multi-servizio, dopo la prima diagnosi guidata in sessione 5, come preparazione alla prova di troubleshooting dell'esame finale (vedi GOALS, sezione Verifica)."
+        },
+        {
+          "sequence": "52",
+          "node_ref": "DR-COMPLEX-SYSTEM",
+          "title": "Avvio del progetto finale di gruppo",
+          "didactic_activity": "project",
+          "duration_minutes": 70,
+          "notes": "Attività aperta, volta a integrare tutti i nodi acquisiti (GOAL_001-GOAL_007), corrispondente ai gradini 1-4 della scala di verifica in GOALS. Prosegue in sessione 8. Il tempo di completamento oltre le ore in aula rientra nel monte ore extra-aula previsto da LOGISTICS (fino a 20 ore per l'intero corso), non in duration_minutes."
+        },
+        {
+          "sequence": "53",
+          "title": "Quiz di richiamo finale su tutto il corso",
+          "didactic_activity": "learning_assessment_quiz",
+          "duration_minutes": 25,
+          "notes": "Ripasso deliberatamente trasversale a unità didattiche non recenti, per fissare in memoria a lungo termine l'intero percorso prima dell'esame. Spostato in sessione 7 (anziché 8) per lasciare più tempo in sessione 8 all'esame orale, che con 15 studenti e due prove individuali obbligatorie (manualità e troubleshooting) richiede un tempo di aula considerevole."
+        }
+      ]
+    },
+    {
+      "session_number": 8,
+      "title": "Completamento del progetto finale ed esame",
+      "usable_minutes": 210,
+      "total_minutes": 205,
+      "items": [
+        {
+          "sequence": "54",
+          "node_ref": "DR-COMPLEX-SYSTEM",
+          "title": "Completamento e messa a punto del progetto finale di gruppo",
+          "didactic_activity": "project",
+          "duration_minutes": 45,
+          "notes": "Ultime rifiniture in aula prima dell'esame; il grosso del completamento è previsto come lavoro extra-aula, entro il monte ore di 20h previsto da LOGISTICS per l'intero corso."
+        },
+        {
+          "sequence": "55",
+          "title": "Esame orale finale: presentazione del progetto, prova di manualità e prova di troubleshooting",
+          "didactic_activity": "summative_assessment_quiz",
+          "duration_minutes": 160,
+          "notes": "Capstone su tutti i nodi del corso (GOAL_001-GOAL_008). GOALS descrive questa verifica come un esame orale/demo alla lavagna, non come un quiz scritto: usa questo tipo di attività per funzione (valutazione sommativa su tutti i nodi, gate di superamento) pur essendo un formato orale/live. Include due componenti dichiarate obbligatorie in GOALS (senza le quali non si supera l'esame): la prova di manualità (modifica live del progetto, per verificare comprensione reale e non copia di un tutorial) e la prova di troubleshooting (diagnosi di una situazione teorica di malfunzionamento, GOAL_008), entrambe individuali per ciascuno dei 15 studenti. Il voto (18-30) è determinato dai gradini del progetto (1-4, vedi item 52 e 54) e da queste due prove orali, condizionato al superamento della prova di manualità. Stima: 15 studenti x ~8 min per le due prove individuali (~120 min) + presentazioni di gruppo (~40 min) = ~160 min, un limite stretto; se l'esecuzione reale richiede più tempo, l'esame potrebbe eccedere le ore in aula previste da LOGISTICS (32h totali) e richiedere una sessione aggiuntiva non prevista dalla logistica attuale — decisione che spetta all'orchestratore/umano, non a questo store."
+        }
+      ]
+    }
+  ]
+}

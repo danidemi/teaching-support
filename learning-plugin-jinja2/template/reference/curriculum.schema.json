@@ -22,7 +22,7 @@
       "pattern": "^(P-[A-Z0-9]+|shared)$"
     },
 
-    "delivery_style": {
+    "didactic_activity": {
       "type": "string",
       "description": "The pedagogical shape of the item. Drives which material-generation strategy a downstream tool applies (e.g. lecture -> slide deck, hands_on_practical -> exercise sheet + starter repo, briefing -> handout only). \"lecture\": one-way conceptual presentation, no live demo, no built-in discussion stop. \"lecture_discussion\": lecture with deliberate stops for questions/opinions/comparing the group's own experience; still no one touches a system. \"lecture_demo\": instructor presents and also drives a live system in front of the group (they watch, don't type) — use when the concept must be seen running, not just described. \"group_discussion\": students talk to each other with no instructor exposition first; the discussion itself is the point. \"hands_on_practical\": students execute a scoped exercise themselves, tied to one specific node/skill, normally with one clear expected outcome. \"project_based\": open-ended activity integrating multiple already-taught nodes/skills, less scripted than hands_on_practical, may have more than one valid solution path. \"briefing\": short one-way informational announcement with no instructional depth (logistics, credentials) — not teaching a skill.",
       "enum": [
@@ -32,23 +32,11 @@
       ]
     },
 
-
-    "item_type": {
-      "type": "string",
-      "enum": ["lesson", "checkpoint", "assessment"]
-    },
-
-    "assessment_kind": {
-      "type": "string",
-      "description": "Only meaningful when item_type is \"assessment\".",
-      "enum": ["practical_pass_fail", "capstone"]
-    },
-
     "item": {
       "type": "object",
       "description": "One row of the sequence table: a taught node, an embedded DR checkpoint, or an assessment.",
       "additionalProperties": false,
-      "required": ["sequence", "item_type", "title", "delivery_pattern", "duration_minutes"],
+      "required": ["sequence", "title", "didactic_activity", "duration_minutes"],
       "properties": {
         "sequence": {
           "type": "string",
@@ -59,36 +47,23 @@
           "description": "Id of the {{ stores.design.name }} node this item teaches or checks (e.g. PRQ-SCG-BASICS, DR-DEPLOY-GATEWAY). Required for item_type lesson and checkpoint; omitted for a pure cross-DR assessment such as the final capstone.",
           "pattern": "^(BSL|PRQ|DR)-[A-Z0-9-]+$"
         },
-        "item_type": { "$ref": "#/$defs/item_type" },
         "title": {
           "type": "string",
           "description": "Human-readable topic/label for this item."
         },
-        "style": {
-          "$ref": "#/$defs/delivery_style",
+        "didactic_activity": {
+          "$ref": "#/$defs/didactic_activity",
           "description": "Required for item_type lesson; a checkpoint or assessment may omit it (see assessment_kind instead) or reuse the enclosing lesson's style."
         },
         "duration_minutes": {
           "type": ["number", "null"],
           "description": "Minutes budgeted for this item. Null for a checkpoint embedded inside another item's time (see embedded_in)."
         },
-        "embedded_in": {
-          "type": "string",
-          "description": "Sequence key of the item whose duration already includes this checkpoint's time (e.g. a DR checkpoint reached in the last minutes of the preceding lesson). Required when duration_minutes is null."
-        },
         "notes": {
           "type": "string",
           "description": "Free-text asides (e.g. why this item's rubric/timing looks the way it does)."
         }
-      },
-      "allOf": [
-        {
-          "if": {
-            "properties": { "duration_minutes": { "const": null } }
-          },
-          "then": { "required": ["embedded_in"] }
-        }
-      ]
+      }
     },
 
     "session": {
