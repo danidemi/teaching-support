@@ -30,7 +30,11 @@ Hybrid model — heavy *design-decision* roles are subagents (delegate via the A
 **Interactive prerequisites (run in the main loop, NOT subagents):**
 - `learning-requirements-gatherer` — a **skill** that interviews the human to collect logistics, course goals, at least one participant persona, and editorial guidelines. Sole writer of the LOGISTICS, GOALS, STUDENT_PERSONAS, and EDITORIAL_GUIDELINES stores. Because an interview needs turn-by-turn conversation with the human, it cannot be delegated to a subagent (a subagent gets one prompt and returns one final message, with no way to ask the human anything). So you **cannot run it yourself** — instead, verify its stores exist and are signed off; if they are missing, stop and ask the human to run the `learning-requirements-gatherer` skill (`/learning-requirements-gatherer`) in the main conversation first, then resume.
 - `learning-material-author` — a **skill** that fans out the 8 phase-4 authoring subagents (see below) per CURRICULUM item, collects their drafts, and runs the human sign-off loop that flips each file's `status` to `approved`. Same constraint as the requirements gatherer: sign-off needs conversation, and a subagent has no way to show a draft and wait. So you **cannot run it yourself** — verify the CURRICULUM store is signed off, then ask the human to run `/learning-material-author` in the main conversation.
-- The slide pipeline (`tools/slides/`) turns approved CURRICULUM items into per-session slide decks, but no main-loop skill currently drives it — the deck under `material/slides/` was produced some other way. Do not delegate to a `learning-slide-author` skill; it does not exist. Point the human at `tools/slides/` directly if slides are needed.
+- `learning-author-slide` writes the deck model (`material/slides/session-NN.yml`) for one
+  CURRICULUM session — see `reference/deck_model_spec.md`. It is one of the
+  phase-4 authoring subagents, normally invoked by the `learning-material-author` skill, not
+  directly by you. It writes the reviewable model only; turning an approved model into a `.pptx`/
+  `.pdf` is a separate step, run by a human via `tools/slides/render_deck.py`, never by this agent.
 
 **Specialist subagents (decisions):**
 - `learning-curriculum-architect` — builds the prerequisite graph: the goals decomposed backward into teachable prerequisites down to each persona's real baseline, with per-persona applicability and depth staging. Sole owner of the DESIGN store. It does **not** chunk the course into sessions and does **not** write the CURRICULUM store.
@@ -58,7 +62,7 @@ Hybrid model — heavy *design-decision* roles are subagents (delegate via the A
   | EDITORIAL_GUIDELINES — tone, terminology, idiom policy, accessibility notes (`specifications/editorial_guidelines.md`) | learning-requirements-gatherer (skill, main loop) |
   | DESIGN — prerequisite graph: nodes, `Requires` edges, deliberate roots, per-persona applicability, depth staging (`design/knowledge_goals_graph.json`) | learning-curriculum-architect |
   | CURRICULUM — the course organization built on top of the graph (`design/curriculum.json`) | learning-curriculum-sequencer |
-  | MATERIAL — slides: one deck model per session (`material/slides/session-NN.yml`) | no main-loop skill currently drives this; see `tools/slides/` |
+  | MATERIAL — slides: one deck model per session (`material/slides/session-NN.yml`) | learning-author-slide, fanned out by learning-material-author (skill, main loop) |
   | MATERIAL — teacher/student books, quizzes, demo scripts, hands-on guides, project work, rubrics, reading guides | the 8 phase-4 authoring subagents, fanned out by learning-material-author (skill, main loop); registry in `.claude/reference/material_catalog.md` |
 
   Require every agent to read the *current* version of a store it depends on before proceeding — retrieval before generation, never memory or invention.

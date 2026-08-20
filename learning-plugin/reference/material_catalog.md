@@ -1,7 +1,7 @@
 # Material catalog
 
 Registry of every kind of didactic material can be produced. 
-Every authoring subagent `learning-<TYPE>-author` and the
+Every authoring subagent — see each row's `owning_subagent` for its exact name — and the
 `learning-material-author` orchestrating skill read this file instead of re-deriving the
 mapping. 
 
@@ -15,11 +15,11 @@ Trigger values (`delivery_style`, `item_type`, `support_material_kind`) are the 
 ```
 type: slides
 audience: Students and Trainer
-preferred_formats: PowerPoint and PDF
-owning_subagent: learning-author-slides
+preferred_formats: YAML deck model (`reference/deck_model_spec.md`); a human renders an approved model to PowerPoint/PDF separately, via `tools/slides/render_deck.py`
+owning_subagent: learning-author-slide
 trigger: One per session, learner-facing content only, used by trainer
-path_pattern: `material/student/slides/`
-filename_pattern: `slides-<ACTIVITY-ID>.pptx` or `slides.<ACTIVITY-ID>.pdf`
+path_pattern: `material/slides/`
+filename_pattern: `session-NN.yml`
 ```
 
 ## Material 2

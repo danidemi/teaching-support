@@ -1,0 +1,150 @@
+deck: 1
+status: draft
+language: it
+course: "Spring Cloud Gateway per team ibridi"
+session: 1
+title: "Instradare le richieste con Spring Cloud Gateway"
+subtitle: "Sessione 1"
+
+sources:
+  curriculum: design/curriculum.json
+  design: design/knowledge_goals_graph.json
+  goals: specifications/goals.md
+  logistics: specifications/logistics.md
+  read_at: 2026-08-27
+
+budget:
+  session_minutes: 240
+  slide_budget: [12, 24]
+
+instructional_decisions:
+  - decision: "Il concetto di path predicate viene introdotto prima del routing verso servizi legacy."
+    rationale: "Il predicate è prerequisito diretto del routing legacy, per DESIGN."
+    confidence: stated
+    awaiting: instructional-designer
+
+segments:
+  - covers:
+      - sequence: "1"
+        node_ref: PRQ-GATEWAY-BASICS
+    title: "Cos'è un API Gateway"
+    minutes: 30
+    slides:
+      - id: S1-01
+        role: vocab
+        goals: [G1]
+        provenance: stated
+        headline: "Un API Gateway è il punto unico di ingresso per tutte le richieste ai microservizi."
+        body:
+          kind: list
+          ordered: false
+          justification: "Elenco di responsabilità distinte, nessun ordine implicito, nessuna frase completa necessaria."
+          items: ["Routing", "Autenticazione", "Rate limiting", "Osservabilità"]
+        notes:
+          talk: |
+            Collegare al problema del session precedente: troppi endpoint diversi da conoscere lato client.
+          why_here: |
+            Prerequisito diretto per il routing legacy che segue in questa sessione.
+          links: |
+            Nessun prerequisito da sessioni precedenti — questa è la prima sessione del corso.
+            Verrà ripreso nella sessione 2 quando si introduce il rate limiting per lane ops.
+          watch_for: |
+            Confusione tra Gateway e semplice reverse proxy: il Gateway aggiunge logica applicativa.
+          timing_min: 8
+
+  - covers:
+      - sequence: "2"
+        node_ref: PRQ-PATH-PREDICATE
+    title: "Instradare per path"
+    minutes: 45
+    slides:
+      - id: S1-02
+        role: problem
+        goals: [G1]
+        provenance: stated
+        headline: "Il team deve instradare /legacy al vecchio sistema senza modificarne il codice."
+        body:
+          kind: none
+        notes:
+          talk: |
+            Porre la domanda al gruppo prima di mostrare la soluzione: come instraderesti tu?
+          why_here: |
+            Apre la sessione con un compito riconoscibile, non con la teoria (andragogia).
+          links: |
+            Si basa sul concetto di Gateway visto nel segmento precedente in questa stessa sessione.
+          watch_for: |
+            Il gruppo potrebbe proporre di modificare il codice legacy: da escludere esplicitamente.
+          timing_min: 4
+
+      - id: S1-03
+        role: concept
+        goals: [G1, G2]
+        provenance: stated
+        headline: "Il path predicate manda /legacy al vecchio sistema senza toccarne il codice."
+        body:
+          kind: diagram
+          caption: "Percorso di una richiesta verso /legacy"
+          mermaid: |
+            flowchart LR
+              C[Client] --> G[Gateway]
+              G -->|/legacy/**| L[Sistema legacy]
+              G -->|/api/**| S[Nuovo servizio]
+        links:
+          - label: "Documentazione predicati Spring Cloud Gateway"
+            url: "https://docs.spring.io/spring-cloud-gateway/reference/"
+        notes:
+          talk: |
+            Il predicate valuta il path prima di qualunque filtro; nessuna riscrittura è necessaria qui.
+          why_here: |
+            Risponde direttamente al problema appena posto.
+          links: |
+            Estende il concetto di Gateway del segmento precedente. Verrà ripreso nella sessione 3
+            per il routing basato su header.
+          watch_for: |
+            Confusione tra predicate e filter: il predicate decide SE instradare, il filter COSA fare dopo.
+          timing_min: 10
+
+      - id: S1-04
+        role: concept
+        goals: [G2]
+        provenance: inferred
+        headline: "La configurazione YAML del predicate richiede solo tre righe."
+        body:
+          kind: code
+          lang: yaml
+          caption: "Configurazione minima del predicate"
+          text: |
+            routes:
+              - id: legacy-route
+                uri: http://legacy:8080
+                predicates:
+                  - Path=/legacy/**
+        notes:
+          talk: |
+            Mostrare che non serve codice Java: è puro instradamento dichiarativo.
+          why_here: |
+            Rende concreto il concetto astratto appena introdotto.
+          links: |
+            Nessun collegamento a sessioni future per questo dettaglio implementativo.
+          watch_for: |
+            Dimenticare l'indentazione YAML sotto 'predicates' è l'errore più comune.
+          timing_min: 6
+
+      - id: S1-05
+        role: recap
+        goals: [G1, G2]
+        provenance: invented framing
+        headline: "Un buon architetto sceglie il predicate più semplice che risolve il problema."
+        body:
+          kind: callout
+          text: "Non serve il predicate più potente, serve il più chiaro."
+        notes:
+          talk: |
+            Chiudere il segmento collegando la scelta del predicate ai criteri di leggibilità del team.
+          why_here: |
+            Consolidamento prima di passare al prossimo nodo DESIGN.
+          links: |
+            Prepara, senza spiegarlo, il tema dei predicate compositi che tornerà nella sessione 2.
+          watch_for: |
+            Nessuna misconcezione nuova attesa qui: è un momento di sintesi.
+          timing_min: 3

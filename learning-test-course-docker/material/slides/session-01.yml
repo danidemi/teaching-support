@@ -1,0 +1,530 @@
+deck: 1
+status: approved
+language: it
+course: "Docker: dai container ai sistemi multi-servizio (corso ITS, primo anno)"
+session: 1
+title: "Perché Docker: container, immagini e processi"
+subtitle: "Dal problema della riproducibilità al modello dei processi"
+
+sources:
+  curriculum: design/curriculum.json
+  design: design/knowledge_goals_graph.json
+  goals: specifications/goals.md
+  logistics: specifications/logistics.md
+  editorial_guidelines: specifications/editorial_guidelines.md
+  read_at: 2026-08-20
+
+budget:
+  session_minutes: 240   # [stated] LOGISTICS: 8 lezioni da 4 ore. CURRICULUM per la sessione 1 dichiara
+                          # usable_minutes: 210 / total_minutes: 200 (item 1 e 2 non hanno slide proprie,
+                          # vedi instructional_decisions) — le due cifre non coincidono per costruzione,
+                          # non per errore: qui si segue LOGISTICS come richiesto dalla spec del deck.
+  slide_budget: [12, 24]
+
+instructional_decisions:
+  - decision: "Le sequence 1 (quiz di ingresso) e 2 (installazione Docker) non ricevono nessun segmento/slide in questo deck."
+    rationale: "Sequence 1 non ha node_ref: è una valutazione diagnostica non punitiva, non insegna un nodo DESIGN. Metterla su schermo condiviso violerebbe inoltre la regola di controllo-accesso: il vero scopo dichiarato in CURRICULUM ('far emergere chi ha già usato Docker' per gestire i livelli misti, BSL-DOCKER-PRIOR [risk]) è una calibrazione ad uso del docente, non un'informazione da mostrare in aula. Sequence 2 non ha node_ref ed è dichiarata esplicitamente in CURRICULUM come attività logistica ('non insegna un nodo del grafo DESIGN')."
+    confidence: stated
+    awaiting: instructional-designer
+  - decision: "Sequence 5 (lezione) e sequence 6 (demo dal vivo) sono state accorpate in un unico segmento (Seg C), invece di creare due segmenti separati."
+    rationale: "Entrambe condividono lo stesso node_ref (PRQ-CONTAINER) e formano un unico arco concettuale: la lezione introduce il concetto di container, la demo lo rende concreto. La demo non è un item hands_on_practical/project_based (è didactic_activity: demo), quindi non rientra nella regola che vieta di restage-are pratica already schedulata altrove; la sequenza di comandi che il docente digita dal vivo (run/ps/stop) è quindi presentata come slide di supporto (S1-06), non come esercizio."
+    confidence: inferred
+    awaiting: instructional-designer
+  - decision: "Il segmento C dichiara minutes: 45 (somma di sequence 5 e 6) ma la somma dei timing_min delle sue slide è molto inferiore, perché gran parte del tempo (in particolare i 25 minuti della demo) è dimostrazione dal vivo al terminale, non tempo di proiezione slide."
+    rationale: "Evitare di gonfiare artificialmente i timing_min delle slide solo per far quadrare la somma con minutes: la discrepanza è reale e va segnalata a chi revisiona, non nascosta."
+    confidence: stated
+    awaiting: instructional-designer
+  - decision: "Nessuna slide di approfondimento opzionale per lo Studente esperto (P-EXP) è stata aggiunta in questa sessione."
+    rationale: "LOGISTICS e STUDENT_PERSONAS chiedono margini di approfondimento opzionale per chi è più avanti, ma dichiarano esplicitamente che il meccanismo concreto non è ancora deciso (awaiting: instructional-designer in entrambi gli store). Inventare un meccanismo qui significherebbe decidere al posto della fase 3; il rischio di disallineamento/noia del P-EXP (BSL-DOCKER-PRIOR [risk]) resta quindi affidato al presidio del docente in aula, non al deck."
+    confidence: stated
+    awaiting: instructional-designer
+  - decision: "Sulla slide S1-10 (domanda aperta EQ_1) il rimando in avanti nomina solo il titolo della sessione 4 ('persistenza dei dati'), non il meccanismo (volumi/bind mount) che la risolverà."
+    rationale: "La regola sui rimandi in avanti vieta di anticipare il contenuto di una sessione successiva, non di nominarne il titolo; nominare 'volumi' o 'bind mount' qui avrebbe insegnato in anticipo un contenuto di competenza di chi scriverà la sessione 4."
+    confidence: stated
+    awaiting: instructional-designer
+
+segments:
+  - covers:
+      - sequence: "3"
+        node_ref: PRQ-WHY-DOCKER
+    title: "Il problema della riproducibilità"
+    minutes: 15
+    slides:
+      - id: S1-01
+        role: problem
+        goals: [EU_1]
+        provenance: stated
+        headline: "Un'applicazione che gira sul tuo laptop può non girare su un altro computer."
+        body:
+          kind: callout
+          text: "\"Funziona sul mio computer\" — e sull'altro?"
+        notes:
+          talk: |
+            Apri chiedendo in aula: quante volte un programma installato secondo le istruzioni non
+            ha funzionato al primo colpo su una macchina diversa da quella di chi lo ha scritto?
+            [invented framing] Il caso concreto lo scegli tu in aula: dipendenze mancanti, versione
+            sbagliata di un linguaggio, una libreria di sistema assente.
+          why_here: |
+            Prima slide del corso: PRQ-WHY-DOCKER è il nodo radice (root) del grafo DESIGN — non
+            richiede nulla a monte, ed è ciò che rende rilevante tutto il resto del corso [stated].
+          links: |
+            Non c'è nulla prima in CURRICULUM da richiamare (a parte il quiz di ingresso, sequence 1,
+            che non insegna questo nodo). Prepara la sequence 4 (isolamento) e la sequence 5
+            (concetto di container), che introducono la soluzione al problema posto qui.
+          watch_for: |
+            Lo Studente base (P-EXP escluso) potrebbe non avere mai installato/distribuito un
+            programma su una macchina diversa dalla propria: rendi l'esempio concreto e vicino
+            alla loro esperienza quotidiana (es. "il tuo amico non riesce ad aprire un file che tu
+            apri senza problemi"), non solo un esempio da sviluppatore professionista. [inferred,
+            da STUDENT_PERSONAS]
+          timing_min: 6
+      - id: S1-02
+        role: concept
+        goals: [EU_1]
+        provenance: stated
+        headline: "Docker esegue un'applicazione insieme alle sue dipendenze in modo isolato e riproducibile, e non è una macchina virtuale."
+        body:
+          kind: diagram
+          caption: "Stesso pacchetto, macchine diverse"
+          mermaid: |
+            flowchart LR
+              I[Immagine Docker] --> M1[Macchina 1]
+              I --> M2[Macchina 2]
+              I --> M3[Macchina 3]
+        notes:
+          talk: |
+            Non spiegare ancora come funziona un'immagine (arriva a sequence 7): qui basta
+            l'affermazione "stesso pacchetto, stesso risultato ovunque". Sottolinea subito la
+            precisazione "non è una macchina virtuale" [stated, EU_1 da GOALS] — la spieghi meglio
+            dopo il concetto di isolamento (sequence 4) e di container (sequence 5).
+          why_here: |
+            Chiude l'arco aperto da S1-01: pone Docker come risposta al problema di riproducibilità,
+            senza ancora entrare nel meccanismo. È la enduring understanding EU_1 dichiarata in
+            GOALS. [stated]
+          links: |
+            Prepara la sequence 4 (PRQ-ISOLATION) e la sequence 5 (PRQ-CONTAINER, che "ribadisce
+            EU_1" secondo CURRICULUM) — lì la differenza rispetto alla macchina virtuale viene
+            ripresa con la meccanica concreta.
+          watch_for: |
+            Molti studenti arrivano con l'idea (da sentito dire) che un container SIA una macchina
+            virtuale leggera: a questo punto della lezione limitati a negarlo esplicitamente, senza
+            ancora argomentare il perché — l'argomento arriva con l'isolamento e il container.
+            [inferred]
+          timing_min: 9
+
+  - covers:
+      - sequence: "4"
+        node_ref: PRQ-ISOLATION
+    title: "Il concetto di isolamento"
+    minutes: 15
+    slides:
+      - id: S1-03
+        role: concept
+        goals: [EU_1]
+        provenance: inferred
+        headline: "Un programma isolato gira per conto suo, senza interferire con gli altri programmi della stessa macchina."
+        body:
+          kind: diagram
+          caption: "Programmi sulla stessa macchina, isolati tra loro"
+          mermaid: |
+            flowchart LR
+              subgraph PC[Computer]
+                P1[Programma A]
+                P2[Programma B]
+              end
+              P1 -.non interferisce.-> P2
+        notes:
+          talk: |
+            Concetto generico, non ancora Docker: un programma che scrive un file, occupa memoria o
+            usa la rete "per conto suo" senza sapere né interessarsi che un altro programma sta
+            facendo lo stesso sulla stessa macchina.
+          why_here: |
+            DESIGN registra questo nodo come [inferred]: propedeutico, non specifico di Docker,
+            introdotto per preparare il concetto di container (edge PRQ-CONTAINER → PRQ-ISOLATION).
+            Serve indirettamente EU_1, come base concettuale del container che arriva nella prossima
+            sequence. [inferred]
+          links: |
+            Si appoggia sull'uso di base del PC già presunto come baseline (concetto informale di
+            programma in esecuzione — BSL-PC-USE). Prepara direttamente sequence 5 (cos'è un
+            container), dove l'isolamento diventa il tratto che definisce un container.
+          watch_for: |
+            Il termine "isolamento" può suonare astratto senza un esempio fisico: usa l'esempio di
+            due programmi che scrivono file con lo stesso nome in due posti diversi, senza
+            accorgersene a vicenda. [inferred]
+          timing_min: 12
+
+  - covers:
+      - sequence: "5"
+        node_ref: PRQ-CONTAINER
+      - sequence: "6"
+        node_ref: PRQ-CONTAINER
+    title: "Cos'è un container, e come lo si vede in azione"
+    minutes: 45
+    note: "Copre sia la lezione (sequence 5) sia la demo dal vivo (sequence 6, docker run/ps/stop); vedi instructional_decisions per l'accorpamento e per lo scarto tra minutes e timing_min."
+    slides:
+      - id: S1-04
+        role: concept
+        goals: [EU_1]
+        provenance: stated
+        headline: "Un container è un processo isolato, con il proprio filesystem, creato a partire da un'immagine."
+        body:
+          kind: diagram
+          caption: "Un container sull'host"
+          mermaid: |
+            flowchart TB
+              subgraph Host[Computer host]
+                K[Kernel del sistema operativo]
+                subgraph C[Container]
+                  Pr[Processo]
+                  FS[Filesystem del container]
+                end
+              end
+              K --> C
+        notes:
+          talk: |
+            Metti insieme i due pezzi già visti: isolamento (sequence 4) applicato a un processo, più
+            un filesystem tutto suo. Non introdurre ancora il termine "immagine" nel dettaglio (arriva
+            a sequence 7): basta dire che il container "nasce da" un'immagine.
+          why_here: |
+            Nodo dichiarato [stated] in DESIGN. CURRICULUM annota che questa lezione "ribadisce EU_1":
+            qui la differenza container/macchina virtuale si spiega in concreto, perché un container
+            condivide il kernel dell'host invece di virtualizzarne uno proprio.
+          links: |
+            Costruisce direttamente su PRQ-ISOLATION (sequence 4) e sul problema posto in PRQ-WHY-DOCKER
+            (sequence 3). Prepara sequence 7 (immagine) e sequence 8 (separazione dei filesystem).
+          watch_for: |
+            Il punto debole tipico è "condivide il kernel" contro "ha il suo filesystem": chiarisci che
+            isolamento non vuol dire "computer separato", ma "spazio proprio all'interno dello stesso
+            sistema operativo". [inferred]
+          timing_min: 8
+      - id: S1-05
+        role: concept
+        goals: [EU_1]
+        provenance: stated
+        headline: "Un container non è una macchina virtuale: non virtualizza un intero sistema operativo, condivide il kernel dell'host."
+        body:
+          kind: diagram
+          caption: "Due modelli a confronto"
+          mermaid: |
+            flowchart TB
+              subgraph VM[Macchina virtuale]
+                K1[Kernel proprio] --> A1[Applicazione]
+              end
+              subgraph CT[Container]
+                K2[Kernel condiviso con l'host] --> A2[Applicazione]
+              end
+        notes:
+          talk: |
+            Questa è la slide dove l'affermazione "Docker non è una macchina virtuale" (EU_1) prende
+            finalmente un argomento tecnico concreto, dopo essere stata solo dichiarata in S1-02.
+          why_here: |
+            Chiude l'arco concettuale aperto in S1-02: la differenza dichiarata lì viene ora spiegata,
+            non solo affermata. [stated, EU_1 da GOALS]
+          links: |
+            Richiama esplicitamente S1-02 (stessa affermazione, qui argomentata) e S1-04 (kernel
+            condiviso già introdotto lì). Non introduce ancora nulla di rete o di immagine.
+          watch_for: |
+            Evita di scendere nei dettagli tecnici di virtualizzazione hardware (hypervisor, ecc.): non
+            è nel grafo DESIGN di questo corso e rischia di aprire una digressione fuori target per
+            questa cohort. [inferred, da STUDENT_PERSONAS - livello base]
+          timing_min: 8
+      - id: S1-06
+        role: concept
+        goals: [EU_1]
+        provenance: stated
+        headline: "Tre comandi bastano per avviare, elencare e fermare un container."
+        body:
+          kind: code
+          lang: shell
+          caption: "Sequenza mostrata dal docente dal vivo"
+          text: |
+            docker run ...
+            docker ps
+            docker stop ...
+        notes:
+          talk: |
+            Questa slide introduce la demo dal vivo (sequence 6): il docente esegue davvero questi tre
+            comandi al terminale, commentando cosa restituisce ciascuno. Non spiegare qui la sintassi
+            completa dei comandi (arriva come PRQ-CLI-BASICS, sessione 2): l'obiettivo è rendere
+            concreto il concetto di container appena visto, non insegnare la CLI in dettaglio.
+          why_here: |
+            Corrisponde a sequence 6, dichiarata in CURRICULUM come dimostrazione dal vivo per "rendere
+            concreto il concetto di container appena presentato a lezione". [stated]
+          links: |
+            Anticipa senza spiegare la sintassi completa: PRQ-CLI-BASICS (sessione 2, sequence 10-11) è
+            dove questi stessi comandi vengono insegnati ed esercitati in dettaglio.
+          watch_for: |
+            Non lasciare che la demo scivoli in una spiegazione di flag e opzioni: qui il container deve
+            restare protagonista, non il comando. Anche l'ansia da terminale di P-BASE è più bassa in
+            modalità demo (guarda il docente) che in modalità hands-on: usala per costruire fiducia
+            prima dell'esercitazione della sessione 2. [inferred, da STUDENT_PERSONAS] Chi ha già usato
+            Docker (BSL-DOCKER-PRIOR [risk]) rischia di disimpegnarsi proprio in questa sessione di
+            sole basi: coinvolgilo chiedendogli di commentare cosa si aspetta prima di eseguire ogni
+            comando, invece di lasciarlo solo spettatore. [inferred, da STUDENT_PERSONAS]
+          timing_min: 5
+
+  - covers:
+      - sequence: "7"
+        node_ref: PRQ-IMAGE-CONCEPT
+    title: "Cos'è un'immagine Docker"
+    minutes: 20
+    slides:
+      - id: S1-07
+        role: concept
+        goals: [EU_3]
+        provenance: stated
+        headline: "Un'immagine Docker è un artefatto che si crea, si versiona e si distribuisce."
+        body:
+          kind: diagram
+          caption: "Dal sorgente a un'altra macchina"
+          mermaid: |
+            flowchart LR
+              S[Sorgente] --> Im[Immagine v1]
+              Im --> Ar[Archivio condiviso]
+              Ar --> M[Altra macchina]
+        notes:
+          talk: |
+            Collega ogni passaggio a qualcosa già visto: "si crea" richiama il problema di
+            riproducibilità (S1-01), "si distribuisce" è ciò che risolve quel problema su macchine
+            diverse (S1-02). Il nodo "Archivio condiviso" non va ancora chiamato registry: quel
+            termine e la sua meccanica sono contenuto della sessione 3.
+          why_here: |
+            Introduce EU_3, enduring understanding dichiarata in GOALS. [stated] CURRICULUM annota
+            esplicitamente che questa lezione "introduce EU_3".
+          links: |
+            Richiama S1-02 (stesso pacchetto, macchine diverse) dando finalmente un nome
+            ("immagine") a quel pacchetto. Prepara le sessioni 2 e 3, dove si costruirà (Dockerfile)
+            e distribuirà (registry) un'immagine per davvero — senza anticiparne la sintassi qui.
+          watch_for: |
+            Non introdurre ancora la sintassi del Dockerfile né i comandi di build/push: qui
+            l'immagine è solo un concetto, la meccanica è contenuto della sessione 2. [stated,
+            da CURRICULUM]
+          timing_min: 10
+      - id: S1-08
+        role: concept
+        goals: [EU_3]
+        provenance: stated
+        headline: "Un'immagine è il modello da cui nascono uno o più container."
+        body:
+          kind: diagram
+          caption: "Da un'immagine a più container"
+          mermaid: |
+            flowchart LR
+              Im[Immagine] --> C1[Container 1]
+              Im --> C2[Container 2]
+        notes:
+          talk: |
+            Torna sulla slide S1-04 ("un container è creato a partire da un'immagine") e ora la
+            completa: la stessa immagine può dare vita a più container, distinti tra loro.
+          why_here: |
+            Relazione dichiarata esplicitamente nella descrizione del nodo PRQ-IMAGE-CONCEPT in
+            DESIGN: "l'immagine è il modello da cui si avviano uno o più container". [stated]
+          links: |
+            Chiude l'arco aperto da S1-04. Non introduce ancora la differenza tra due container
+            avviati dalla stessa immagine che scrivono su filesystem distinti: quel dettaglio
+            appartiene alla prossima sequence (separazione dei filesystem).
+          watch_for: |
+            Un errore comune è pensare che due container dalla stessa immagine condividano lo stesso
+            filesystem in scrittura: la prossima sequence chiarisce che non è così. [inferred]
+          timing_min: 10
+
+  - covers:
+      - sequence: "8"
+        node_ref: PRQ-FILESYSTEM
+    title: "Filesystem dell'host e filesystem del container"
+    minutes: 20
+    slides:
+      - id: S1-09
+        role: concept
+        goals: [EQ_1]
+        provenance: stated
+        headline: "Il filesystem del container è separato da quello dell'host: i file dell'uno non sono visibili nell'altro."
+        body:
+          kind: diagram
+          caption: "Due filesystem separati"
+          mermaid: |
+            flowchart LR
+              subgraph Host[Filesystem host]
+                F1[File dell'host]
+              end
+              subgraph Cont[Filesystem container]
+                F2[File del container]
+              end
+        notes:
+          talk: |
+            Riprendi l'esempio di S1-08: se due container nati dalla stessa immagine scrivono un
+            file, lo scrivono ciascuno nel proprio filesystem, non in uno condiviso.
+          why_here: |
+            Conseguenza diretta dell'isolamento del container (edge PRQ-FILESYSTEM → PRQ-CONTAINER
+            in DESIGN): un container isolato ha, per definizione, un filesystem che non è quello
+            dell'host. [stated]
+          links: |
+            Si appoggia sul concetto informale di file e cartella già presunto come baseline
+            (BSL-PC-USE). Prepara la domanda posta nella slide successiva.
+          watch_for: |
+            Studenti con poca dimestichezza con il concetto di file/cartella (BSL-PC-USE è
+            dichiarata "scarsa e traballante" per P-BASE) potrebbero faticare anche solo con l'idea
+            di "due filesystem": usa un esempio molto concreto, es. due cartelle sul desktop con lo
+            stesso nome ma contenuto diverso. [stated, da DESIGN/STUDENT_PERSONAS]
+          timing_min: 10
+      - id: S1-10
+        role: problem
+        goals: [EQ_1]
+        provenance: stated
+        headline: "Come si fa a far leggere o scrivere a un container un file che sta sul computer host?"
+        body:
+          kind: callout
+          text: "Domanda aperta: non risolta in questa sessione."
+        notes:
+          talk: |
+            Non dare la risposta: lascia la domanda esplicitamente aperta. È corretto che gli
+            studenti restino con questa curiosità fino a quando il corso non introduce lo strumento
+            che la risolve.
+          why_here: |
+            È l'Essential Question EQ_1 dichiarata in GOALS, e CURRICULUM annota esplicitamente che
+            questa lezione "apre la domanda EQ_1... a cui si risponderà più avanti nel corso".
+            [stated]
+          links: |
+            Rimando in avanti: la domanda viene ripresa in una sessione successiva dedicata alla
+            persistenza dei dati (vedi instructional_decisions per la scelta di non nominare qui il
+            meccanismo che la risolve).
+          watch_for: |
+            Alcuni studenti proveranno a indovinare la risposta (es. "si copia il file dentro"): è
+            positivo, accoglila come ipotesi da verificare più avanti, senza confermarla o smentirla
+            ora. [inferred]
+          timing_min: 5
+
+  - covers:
+      - sequence: "9"
+        node_ref: PRQ-PROCESS-MODEL
+    title: "Il modello dei processi"
+    minutes: 25
+    slides:
+      - id: S1-11
+        role: concept
+        goals: [GOAL_001_LIFECYCLE, GOAL_004_NETWORK]
+        provenance: stated
+        headline: "Un processo comunica con l'esterno tramite tre canali standard: input, output ed errore."
+        body:
+          kind: diagram
+          caption: "I tre canali standard di un processo"
+          mermaid: |
+            flowchart LR
+              Tastiera --> StdIn[stdin - standard input]
+              StdIn --> Processo
+              Processo --> StdOut[stdout - standard output]
+              Processo --> StdErr[stderr - standard error]
+              StdOut --> Terminale
+              StdErr --> Terminale
+        notes:
+          talk: |
+            Prima occorrenza degli acronimi in questo documento: stdin (standard input, "canale di
+            ingresso standard"), stdout (standard output, "canale di uscita standard"), stderr
+            (standard error, "canale di errore standard"). Da qui in poi puoi usarli liberamente.
+          why_here: |
+            LOGISTICS dichiara questo contenuto non assunto come prerequisito e da insegnare
+            esplicitamente, propedeutico a GOAL_004 (edge DR-NETWORK → PRQ-PROCESS-MODEL in DESIGN:
+            la comunicazione tra container si appoggia sull'idea di processo in ascolto su un
+            canale di I/O standard). [stated] Il collegamento aggiuntivo a GOAL_001 (ciclo di vita
+            del container, interpretare `docker logs`/`exec`) è un giudizio ulteriore
+            dell'architetto del grafo DESIGN, non dichiarato esplicitamente in GOALS. [inferred, da
+            DESIGN - nota sul nodo PRQ-PROCESS-MODEL]
+          links: |
+            Si appoggia sull'uso di base del PC (BSL-PC-USE) e sulla shell (BSL-SHELL) già presunti
+            come baseline. Prepara direttamente PRQ-CLI-BASICS (sessione 2): capire `docker logs`
+            richiede di sapere cos'è lo standard output.
+          watch_for: |
+            LOGISTICS segnala questo come storicamente un punto critico per questa tipologia di
+            studenti [risk]: non dare per scontato che "input" e "output" siano concetti già
+            interiorizzati, anche se il termine suona familiare.
+          timing_min: 8
+      - id: S1-12
+        role: concept
+        goals: [GOAL_001_LIFECYCLE]
+        provenance: stated
+        headline: "Il terminale (tty) permette di dare input a un processo e leggerne l'output in tempo reale."
+        body:
+          kind: diagram
+          caption: "Il terminale come ciclo interattivo"
+          mermaid: |
+            flowchart LR
+              Terminale -- stdin --> Processo
+              Processo -- stdout --> Terminale
+        notes:
+          talk: |
+            Prima occorrenza dell'acronimo tty in questo documento: tty sta per "teletypewriter",
+            un termine storico che qui si può tradurre come "terminale". Collega il termine
+            all'esperienza già fatta dagli studenti (la finestra di terminale usata per la shell,
+            BSL-SHELL).
+          why_here: |
+            Completa il quadro dei tre canali standard (S1-11) collegandoli al terminale come
+            interfaccia con cui lo studente interagisce concretamente. [stated, da DESIGN]
+          links: |
+            Si appoggia su BSL-SHELL (comandi di base già usati dagli studenti). Prepara PRQ-CLI-BASICS
+            (sessione 2), dove il terminale è lo strumento con cui si eseguono i comandi Docker.
+          watch_for: |
+            Non confondere "terminale" (l'interfaccia) con "shell" (il programma che la interpreta):
+            la distinzione non è centrale per questo corso, ma un accenno evita confusione quando si
+            userà la shell nella sessione 2. [inferred]
+          timing_min: 5
+      - id: S1-13
+        role: concept
+        goals: [GOAL_004_NETWORK]
+        provenance: inferred
+        headline: "Una pipe collega l'output di un processo all'input di un altro, componendo comandi in sequenza."
+        body:
+          kind: diagram
+          caption: "Composizione di due comandi con una pipe"
+          mermaid: |
+            flowchart LR
+              A[Processo A] -- pipe --> B[Processo B]
+        notes:
+          talk: |
+            Se il tempo lo consente, un solo esempio di comando con pipe basta (es. filtrare l'output
+            di un comando con un altro): l'obiettivo non è insegnare a padroneggiare le pipe, ma far
+            riconoscere il concetto quando riappare più avanti.
+          why_here: |
+            Parte del modello dei processi dichiarato da LOGISTICS come da insegnare esplicitamente.
+            [stated] Il collegamento a GOAL_004 (rete tra container) qui è un'estensione della
+            stessa forma concettuale vista in S1-11 (output di un processo che diventa input di un
+            altro): è la stessa idea, applicata più avanti a due container invece che a due comandi
+            nella stessa shell. Collegamento giudicato dall'autore di questo deck, non dichiarato
+            esplicitamente in DESIGN per la pipe in sé. [inferred]
+          links: |
+            Prepara concettualmente sequenze future su rete (sessione 3) e porte (sessione 4), senza
+            anticiparne il contenuto: qui resta un concetto generico di sistema operativo.
+          watch_for: |
+            Evita di introdurre qui la sintassi esatta del carattere pipe o esempi di comandi Linux
+            complessi: rischia di distogliere dal collegamento concettuale che questa slide deve
+            preparare (processo che comunica con un altro processo). [inferred]
+          timing_min: 6
+      - id: S1-14
+        role: concept
+        goals: [GOAL_008_TROUBLESHOOTING]
+        provenance: stated
+        headline: "Un segnale è un messaggio che il sistema operativo invia a un processo per chiedergli di fermarsi o reagire a un evento."
+        body:
+          kind: diagram
+          caption: "Un segnale inviato a un processo"
+          mermaid: |
+            flowchart LR
+              SO[Sistema operativo] -- segnale --> P[Processo in esecuzione]
+              P --> T[Processo terminato]
+        notes:
+          talk: |
+            Collega esplicitamente questo concetto al comando `docker stop` mostrato nella demo di
+            questa stessa sessione (S1-06): fermare un container vuol dire inviare un segnale al suo
+            processo principale, non "spegnere una macchina virtuale".
+          why_here: |
+            Ultimo tassello del modello dei processi, dichiarato da LOGISTICS come da insegnare
+            esplicitamente per questa cohort. [stated] CURRICULUM annota questo contenuto come
+            "propedeutico a PRQ-CLI-BASICS, DR-NETWORK e DR-TROUBLESHOOTING".
+          links: |
+            Richiama S1-06 (`docker stop` mostrato nella demo). Prepara PRQ-CLI-BASICS (sessione 2,
+            dove si eseguirà davvero `docker stop`) e, più avanti, la sessione dedicata alla diagnosi
+            dei malfunzionamenti — senza anticiparne il contenuto.
+          watch_for: |
+            Non serve insegnare la lista dei segnali POSIX: un solo esempio (il segnale che ferma un
+            processo) basta per questa sessione, il dettaglio non è nel grafo DESIGN di questo corso.
+            [inferred]
+          timing_min: 6

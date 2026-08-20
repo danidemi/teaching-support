@@ -41,6 +41,8 @@ references:
     path: reference/curriculum.schema.json
   ssot_structure:
     path: reference/ssot_structure.md
+  didactic_material_catalog:
+    path: reference/material_catalog.md
 
 didactic_activities:
   lecture:
@@ -65,11 +67,11 @@ didactic_activities:
 didactic_material:
   - type: slides
     audience: Students and Trainer
-    preferred_formats: PowerPoint and PDF
-    owning_subagent: learning-author-slides
+    preferred_formats: "YAML deck model (`reference/deck_model_spec.md`); a human renders an approved model to PowerPoint/PDF separately, via `tools/slides/render_deck.py`"
+    owning_subagent: learning-author-slide
     trigger: One per session, learner-facing content only, used by trainer
-    path_pattern: "`material/student/slides/`"
-    filename_pattern: "`slides-<ACTIVITY-ID>.pptx` or `slides.<ACTIVITY-ID>.pdf`"
+    path_pattern: "`material/slides/`"
+    filename_pattern: "`session-NN.yml`"
   - type: student book
     audience: Student
     preferred_formats: AsciiDoc, PDF

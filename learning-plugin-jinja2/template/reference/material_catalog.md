@@ -1,7 +1,7 @@
 # Material catalog
 
 Registry of every kind of didactic material can be produced. 
-Every authoring subagent `learning-<TYPE>-author` and the
+Every authoring subagent — see each row's `owning_subagent` for its exact name — and the
 `learning-material-author` orchestrating skill read this file instead of re-deriving the
 mapping. 
 

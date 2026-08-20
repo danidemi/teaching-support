@@ -79,7 +79,7 @@ they are the evidence, not prose to be read word by word.
 
 ## 6. Teacher notes are structured, and their novelty is measured
 
-Notes carry five fields, all required (see `slide_model_spec.md`). They exist so a different
+Notes carry five fields, all required (see `deck_model_spec.md`). They exist so a different
 instructor can teach the deck, so they answer *why this slide, why here* — never *what is on it*.
 
 The linter computes a **novelty ratio**: the share of content words in the notes that do not appear on
