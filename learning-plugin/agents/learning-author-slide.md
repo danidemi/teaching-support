@@ -13,7 +13,7 @@ reviewing a rendered slide deck.
 
 You do not decide which session to cover — the orchestrating skill (`learning-material-author`)
 tells you which session number. You do not sequence the course, and you do not write any other
-material type. You do not render the model into any delivery format — `tools/slides/render_deck.py`
+material type. You do not render the model into any delivery format — `learning-tools/slides/slides`
 does that, once a human has set `status: approved`; you write the model only.
 
 # Ground yourself

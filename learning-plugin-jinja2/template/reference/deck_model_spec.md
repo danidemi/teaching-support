@@ -2,8 +2,8 @@
 
 The **model** is the reviewable, version-controlled source of a deck. A human reviews and edits
 this file, not a rendered `.pptx`/`.pdf` — turning the model into a delivery format is a separate,
-later step, done by `tools/slides/render_deck.py` (see `tools/slides/README.md`), never by hand and
-never by the authoring subagent itself.
+later step, done by `learning-tools/slides/slides` (see `learning-tools/slides/README.md`), never by
+hand and never by the authoring subagent itself.
 
 One YAML file per {{ stores.curriculum.name }} **session**, at `material/slides/session-NN.yml`.
 `session` in the header matches that session's `session_number` in {{ stores.curriculum.path }}.
@@ -205,16 +205,18 @@ exists, that list is the handover.
 
 ## Not tool-checked yet
 
-`tools/slides/render_deck.py` turns an approved model into a `.pptx`/`.pdf` — see "Status" below
-for the draft/approved gate it enforces. It does not lint. Word budgets, the list-item exception,
-and note-novelty are still real quality bars — `.claude/reference/slide_design_rules.md` states the
-reasoning — but nothing currently checks them mechanically. An author applies them by judgment and
-a human reviews the result; do not claim a check ran that did not.
+`learning-tools/slides/slides` turns an approved model into a `.pptx`/`.pdf` (a Docker-wrapped
+renderer — see `learning-tools/slides/README.md`) — see "Status" below for the draft/approved gate
+it enforces. It does not lint. Word budgets, the list-item exception, and note-novelty are still
+real quality bars — `.claude/reference/slide_design_rules.md` states the reasoning — but nothing
+currently checks them mechanically. An author applies them by judgment and a human reviews the
+result; do not claim a check ran that did not.
 
-Two further, deliberate limits of the renderer, so a reviewer isn't surprised by the output: a
-`diagram` slide's Mermaid source is placed on the slide as text, not drawn as a graphic; a
+One further, deliberate limit of the renderer, so a reviewer isn't surprised by the output: a
 `source_url` image is never downloaded, only rendered as a labelled placeholder with its url,
-licence, attribution and alt text — only a local `asset` file is actually embedded.
+licence, attribution and alt text — only a local `asset` file is actually embedded. A `diagram`
+slide's Mermaid source is rendered to a real graphic via mermaid-cli, which the toolchain's Docker
+image carries.
 
 ## Status
 
@@ -222,5 +224,5 @@ licence, attribution and alt text — only a local `asset` file is actually embe
 never sets `status: approved` itself — a model that can flip its own approval flag has no gate at
 all, the same rule every other material type in this project follows.
 
-`tools/slides/render_deck.py preview` renders regardless of `status`, stamping `[DRAFT]` on every
-slide. `tools/slides/render_deck.py render` refuses when `status` is not `approved`.
+`learning-tools/slides/slides preview` renders regardless of `status`, stamping `[DRAFT]` on every
+slide. `learning-tools/slides/slides render` refuses when `status` is not `approved`.

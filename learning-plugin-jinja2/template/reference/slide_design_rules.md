@@ -9,7 +9,7 @@ you which way to bend.
 This is **not** a byte-copy of the source (unlike the other `.claude/reference/` theory docs); it is a
 rewrite. When the source changes, re-derive this file rather than diffing it.
 
-Numeric thresholds live in `tools/slides/slide_rules.yml`, not here — one place, machine-readable.
+Numeric thresholds live in `learning-tools/slides/slide_rules.yml`, not here — one place, machine-readable.
 
 ---
 

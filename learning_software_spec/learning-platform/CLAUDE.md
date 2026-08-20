@@ -13,6 +13,9 @@ contains stories that yet need to be developed
 contains reference files:
 * `vision.md`: as "the vision" of the resulting product and other references that stay constant during the development.
 * `tech_references.md`: contains tech references as the folder where the source lives and so on.
+* `do_and_donts.md`: running log of process decisions made during sprint retrospectives (activity
+  5). Read it during backlog grooming and before development, and obey what is in there. Append to
+  it, don't rewrite past entries, whenever a retrospective produces a new decision.
 
 # active_sprint/
 
@@ -63,4 +66,4 @@ add to `sprint_<YY_MM_DD>/` a `review.md` stating what have been done, decuded a
 ## 5. Sprint Retrospective
 
 remember what has been done in the sprint and think about what you think it worked good, what should be changed. Ask human feedback too.
-select the one good think it there is, the one bad thing and write a related doc in reference, in order to apply it next time.
+select the one good think it there is, the one bad thing and append them to `reference/do_and_donts.md`, in order to apply it next time.

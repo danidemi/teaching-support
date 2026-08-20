@@ -2,18 +2,20 @@
 """Render a deck model (material/slides/session-NN.yml, see
 learning-plugin/reference/deck_model_spec.md) into a .pptx, and optionally a .pdf.
 
-This is a lightweight, dependency-minimal renderer: pure Python (python-pptx + PyYAML), no
-Docker, no pandoc, no mermaid-cli. Consequences of that choice, stated up front rather than
-discovered later:
+Run this through `learning-tools/slides/slides`, the Docker wrapper — it builds and uses the
+`learning-tool-slide` image, which carries every dependency this script needs (mermaid-cli,
+LibreOffice, python-pptx, PyYAML), so the host needs nothing but Docker. Consequences of that
+design, stated up front rather than discovered later:
 
-- A `diagram` body is NOT drawn as a graphic. Its Mermaid source is placed on the slide as text,
-  clearly labelled, so nothing is silently lost — draw the actual diagram by hand from that source
-  until a graphical Mermaid renderer is wired in.
+- A `diagram` body is rendered to a PNG via mermaid-cli (`mmdc`) and embedded as a picture. If
+  `mmdc` is not on PATH — i.e. this script is run outside the Docker image — the Mermaid source is
+  placed on the slide as text instead, clearly labelled, so nothing is silently lost.
 - A fetched (`source_url`) image is NEVER downloaded by this script. Only a local `asset` file is
   embedded. A `source_url` image is rendered as a labelled placeholder carrying its url, licence,
   attribution and alt text, so a human can fetch and review it deliberately.
-- PDF export is best-effort via a locally installed LibreOffice (`soffice`/`libreoffice` on PATH).
-  If neither is found, the script still produces the .pptx and says plainly that no PDF was made.
+- PDF export is via LibreOffice (`soffice`/`libreoffice`), present in the Docker image. Run
+  directly on a host without LibreOffice, the script still produces the .pptx and says plainly
+  that no PDF was made.
 
 Usage:
     python3 render_deck.py preview <deck.yml> [--pdf]   # always renders, stamps [DRAFT]
@@ -26,6 +28,7 @@ import argparse
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import yaml
@@ -89,6 +92,22 @@ def _set_run(paragraph, text, *, size=18, bold=False, italic=False, color=INK, f
     run.font.italic = italic
     run.font.color.rgb = color
     run.font.name = font
+
+
+def _add_picture_fit(slide, path, left, top, max_width, max_height):
+    """Add a picture scaled to fit inside (max_width, max_height), preserving its aspect ratio,
+    and centered in that box. Adding a picture with only `height` set (the previous approach)
+    left `width` to the image's native aspect ratio uncapped — a wide diagram (e.g. a left-to-right
+    flowchart) could then overflow past the slide's right edge. Capping both dimensions and
+    centering avoids that regardless of the source image's proportions."""
+    # Add at native size first so python-pptx tells us the real aspect ratio (EMU).
+    picture = slide.shapes.add_picture(str(path), left, top)
+    scale = min(max_width / picture.width, max_height / picture.height, 1)
+    picture.width = int(picture.width * scale)
+    picture.height = int(picture.height * scale)
+    picture.left = int(left + (max_width - picture.width) / 2)
+    picture.top = int(top + (max_height - picture.height) / 2)
+    return picture
 
 
 def _draft_stamp(slide):
@@ -165,7 +184,7 @@ def _render_body(tf, body: dict):
         caption = body.get("caption")
         _set_run(
             p,
-            f"[DIAGRAM SOURCE — draw by hand, not rendered by this script]"
+            "[DIAGRAM SOURCE — mermaid-cli not available, run via the Docker image to render it]"
             + (f"  {caption}" if caption else ""),
             size=14,
             italic=True,
@@ -211,7 +230,30 @@ def _render_body(tf, body: dict):
     raise DeckError(f"unknown body kind: {kind!r}")
 
 
-def add_content_slide(prs: Presentation, slide_model: dict, draft: bool):
+def render_mermaid_to_png(source: str, out_path: Path) -> bool:
+    """Render Mermaid source to a PNG via mermaid-cli (`mmdc`). Returns False, leaving out_path
+    untouched, whenever mmdc is missing or fails — the caller falls back to showing the source."""
+    binary = shutil.which("mmdc")
+    if not binary or not source.strip():
+        return False
+
+    config_path = Path(__file__).with_name("mermaid_puppeteer_config.json")
+    with tempfile.NamedTemporaryFile("w", suffix=".mmd", delete=False, encoding="utf-8") as fh:
+        fh.write(source)
+        mmd_path = Path(fh.name)
+    try:
+        cmd = [binary, "-i", str(mmd_path), "-o", str(out_path), "-b", "white", "-s", "2"]
+        if config_path.is_file():
+            cmd += ["-p", str(config_path)]
+        subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except (subprocess.CalledProcessError, OSError):
+        return False
+    finally:
+        mmd_path.unlink(missing_ok=True)
+    return out_path.is_file()
+
+
+def add_content_slide(prs: Presentation, slide_model: dict, draft: bool, tmp_dir: Path):
     slide = _blank_slide(prs)
 
     head_tf = _textbox(slide, MARGIN, Inches(0.35), SLIDE_W - 2 * MARGIN, Inches(1.1))
@@ -225,11 +267,23 @@ def add_content_slide(prs: Presentation, slide_model: dict, draft: bool):
     if body.get("kind") == "image" and body.get("asset"):
         asset_path = Path(body["asset"])
         if asset_path.is_file():
-            slide.shapes.add_picture(str(asset_path), MARGIN, body_top, height=Inches(4.2))
+            _add_picture_fit(slide, asset_path, MARGIN, body_top, SLIDE_W - 2 * MARGIN, Inches(4.2))
         else:
             _set_run(body_tf.paragraphs[0], f"MISSING ASSET FILE: {asset_path}", size=18, bold=True, color=DRAFT_RED)
 
-    _render_body(body_tf, body)
+    diagram_png = None
+    if body.get("kind") == "diagram":
+        candidate = tmp_dir / f"{(slide_model.get('id') or 'slide').replace('/', '_')}.png"
+        if render_mermaid_to_png(body.get("mermaid") or "", candidate):
+            diagram_png = candidate
+
+    if diagram_png is not None:
+        _add_picture_fit(slide, diagram_png, MARGIN, body_top, SLIDE_W - 2 * MARGIN, Inches(4.2))
+        if body.get("caption"):
+            cap_tf = _textbox(slide, MARGIN, body_top + Inches(4.3), SLIDE_W - 2 * MARGIN, Inches(0.4))
+            _set_run(cap_tf.paragraphs[0], body["caption"], size=14, italic=True, color=MUTED)
+    else:
+        _render_body(body_tf, body)
 
     if slide_model.get("links"):
         link_tf = _textbox(slide, MARGIN, SLIDE_H - Inches(0.5), SLIDE_W - 2 * MARGIN, Inches(0.4))
@@ -250,7 +304,7 @@ def add_content_slide(prs: Presentation, slide_model: dict, draft: bool):
     return slide
 
 
-def build_pptx(deck: dict, draft: bool) -> Presentation:
+def build_pptx(deck: dict, draft: bool, tmp_dir: Path) -> Presentation:
     prs = Presentation()
     prs.slide_width = SLIDE_W
     prs.slide_height = SLIDE_H
@@ -259,7 +313,7 @@ def build_pptx(deck: dict, draft: bool) -> Presentation:
     for segment in deck["segments"]:
         add_section_slide(prs, segment, draft)
         for slide_model in segment.get("slides") or []:
-            add_content_slide(prs, slide_model, draft)
+            add_content_slide(prs, slide_model, draft, tmp_dir)
     return prs
 
 
@@ -267,12 +321,26 @@ def convert_to_pdf(pptx_path: Path) -> Path | None:
     binary = shutil.which("soffice") or shutil.which("libreoffice")
     if not binary:
         return None
-    subprocess.run(
-        [binary, "--headless", "--convert-to", "pdf", "--outdir", str(pptx_path.parent), str(pptx_path)],
-        check=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
+    # LibreOffice needs a writable profile directory. Point it at a fresh one under a temp dir
+    # instead of the default $HOME/.config — running as a non-root, home-less container user
+    # (as the Docker wrapper does) leaves the default profile path unwritable, and LibreOffice
+    # fails outright rather than falling back.
+    with tempfile.TemporaryDirectory(prefix="soffice-profile-") as profile_dir:
+        subprocess.run(
+            [
+                binary,
+                f"-env:UserInstallation=file://{profile_dir}",
+                "--headless",
+                "--convert-to",
+                "pdf",
+                "--outdir",
+                str(pptx_path.parent),
+                str(pptx_path),
+            ],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
     pdf_path = pptx_path.with_suffix(".pdf")
     return pdf_path if pdf_path.is_file() else None
 
@@ -304,8 +372,9 @@ def main(argv=None):
     out_dir.mkdir(parents=True, exist_ok=True)
     pptx_path = out_dir / (args.deck.stem + ".pptx")
 
-    prs = build_pptx(deck, draft=is_draft)
-    prs.save(pptx_path)
+    with tempfile.TemporaryDirectory(prefix="slides-diagrams-") as tmp:
+        prs = build_pptx(deck, draft=is_draft, tmp_dir=Path(tmp))
+        prs.save(pptx_path)
     print(f"wrote {pptx_path}")
 
     if args.pdf:

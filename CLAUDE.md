@@ -66,7 +66,7 @@ is canonical for paths:
 | EDITORIAL_GUIDELINES | `specifications/editorial_guidelines.md` | learning-requirements-gatherer (skill) |
 | DESIGN (knowledge graph) | `design/knowledge_goals_graph.json` | learning-curriculum-architect |
 | CURRICULUM | `design/curriculum.json` | learning-curriculum-sequencer |
-| MATERIAL — slides | `material/slides/session-NN.yml` | no main-loop skill currently drives this; see `tools/slides/` |
+| MATERIAL — slides | `material/slides/session-NN.yml` | no main-loop skill currently drives this; see `learning-tools/slides/` |
 | MATERIAL — everything else | `material/teacher/`, `material/student/` | the 8 phase-4 authoring subagents, fanned out by `/learning-material-author`; see `.claude/reference/material_catalog.md` |
 
 Stores hold **hypotheses as well as facts** — the prerequisite graph and the personas are informed
@@ -74,34 +74,34 @@ guesses. Every entry carries a confidence/provenance tag (`[stated]`, `[inferred
 `[invented framing]`, `[risk]`); low-confidence entries route to human review, and downstream work on a
 still-provisional store is blocked pending sign-off.
 
-## The slide pipeline (`tools/slides/`)
+## The slide pipeline (`learning-tools/slides/`)
 
 One of the repo's two toolchains (the other is `tools/graph/`, below), and it is fully
-containerised — the host needs Docker and nothing else. First `slides build` takes a few minutes
-and ~1.6 GB of disk.
+containerised — the host needs Docker and nothing else. The `slides` wrapper builds the
+`learning-tool-slide` image (LibreOffice, mermaid-cli, python-pptx) on first use; that first build
+takes a few minutes.
 
 ```bash
-tools/slides/slides check   material/slides/session-01.yml   # lint + coverage
-tools/slides/slides preview material/slides/session-01.yml   # DRAFT-stamped render
-tools/slides/slides render  material/slides/session-01.yml   # requires status: approved
+learning-tools/slides/slides preview material/slides/session-01.yml           # DRAFT-stamped render
+learning-tools/slides/slides render  material/slides/session-01.yml           # requires status: approved
+learning-tools/slides/slides render  material/slides/session-01.yml --pdf     # also produce a .pdf
 ```
 
 - **The model is the source; `.pptx`/`.pdf` are build products** under `material/slides/out/`,
-  git-ignored, never hand-edited. Model format: `.claude/reference/slide_model_spec.md`. Design rules:
+  git-ignored, never hand-edited. Model format: `.claude/reference/deck_model_spec.md`. Design rules:
   `.claude/reference/slide_design_rules.md` (distilled from `doc/writing_effective_slides.md` — a
   rewrite, not a mirror copy, so re-derive it rather than diffing).
-- **Thresholds live in `tools/slides/slide_rules.yml`**, never hard-coded in the scripts. Only
-  mechanical defects are errors; every judgement call is a warning, so the linter never blocks a render
-  on a false positive.
-- **Nothing hand-computes what a script computes.** `slidelint.py` does the counts, required fields,
-  licence metadata, Kolb/lane completeness, timing sums and the notes-novelty KPI; `coverage.py` checks
-  objectives and units in both directions. Do not report a KPI you did not run.
+- **A `diagram` slide's Mermaid source is rendered to a real graphic** inside the container, via
+  mermaid-cli. A `source_url` image is still never downloaded — only a local `asset` file is
+  embedded; a `source_url` image renders as a labelled placeholder for a human to fetch
+  deliberately.
 - **`status: approved` is set by a human only.** `render` refuses a draft; `preview` stamps `[DRAFT]`.
-- **`reference.pptx` is generated, not authored** — `make_reference.py` patches pandoc's default
-  template, whose title placeholder holds only two lines at 33pt and clips the three-line sentence
-  headlines the Assertion-Evidence model produces. Re-run it inside the container if pandoc changes.
-- `tools/slides/example/fixture.yml` is the pipeline self-test — check it first to tell a bad deck
-  apart from a bad toolchain.
+- **No lint or coverage check exists yet.** `render_deck.py` validates only the handful of
+  top-level keys it needs to avoid crashing; word budgets, the list-item exception, and
+  note-novelty from `.claude/reference/slide_design_rules.md` are applied by author judgment and
+  human review, not mechanically checked. Do not report a KPI no script actually ran.
+- `learning-tools/slides/example/fixture.yml` is the pipeline self-test — check it first to tell a
+  bad deck apart from a bad toolchain.
 
 ## The knowledge graph editor (`tools/graph/`)
 

@@ -34,7 +34,7 @@ Hybrid model — heavy *design-decision* roles are subagents (delegate via the A
   {{ stores.curriculum.name }} session — see `reference/deck_model_spec.md`. It is one of the
   phase-4 authoring subagents, normally invoked by the `learning-material-author` skill, not
   directly by you. It writes the reviewable model only; turning an approved model into a `.pptx`/
-  `.pdf` is a separate step, run by a human via `tools/slides/render_deck.py`, never by this agent.
+  `.pdf` is a separate step, run by a human via `learning-tools/slides/slides`, never by this agent.
 
 **Specialist subagents (decisions):**
 - `learning-curriculum-architect` — builds the prerequisite graph: the goals decomposed backward into teachable prerequisites down to each persona's real baseline, with per-persona applicability and depth staging. Sole owner of the {{ stores.design.name }} store. It does **not** chunk the course into sessions and does **not** write the {{ stores.curriculum.name }} store.

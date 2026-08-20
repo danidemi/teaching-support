@@ -1,39 +1,51 @@
 # Slide renderer
 
 Turns a deck model (`material/slides/session-NN.yml`, shape defined in
-`learning-plugin/reference/deck_model_spec.md`) into a `.pptx`, and optionally a `.pdf`.
+`learning-plugin/reference/deck_model_spec.md`) into a `.pptx`, and optionally a `.pdf`, with
+Mermaid diagrams rendered as real graphics.
 
-This is a deliberately lightweight renderer: pure Python (`python-pptx` + `PyYAML`), no Docker, no
-pandoc, no mermaid-cli. That trade-off has two concrete consequences — read `render_deck.py`'s
-module docstring for the details:
-
-- A `diagram` slide shows its Mermaid *source*, not a rendered graphic.
-- A `source_url` image is never downloaded; only a local `asset` file is embedded.
-
-## Setup
-
-```bash
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-```
+The renderer itself is pure Python (`python-pptx` + `PyYAML`), but diagram rendering needs
+mermaid-cli and PDF export needs LibreOffice, so this toolchain runs inside Docker: the
+`learning-tool-slide` image carries both, plus every Python dependency, and the `slides` wrapper
+script builds it (on first use) and runs the renderer inside a container. The host needs only
+Docker — nothing else to install.
 
 ## Usage
 
 ```bash
 # Always renders, stamps [DRAFT] on every slide when status isn't approved.
-.venv/bin/python3 render_deck.py preview material/slides/session-01.yml
+./slides preview material/slides/session-01.yml
 
 # Refuses when status: draft — only a human sets status: approved.
-.venv/bin/python3 render_deck.py render material/slides/session-01.yml
+./slides render material/slides/session-01.yml
 
-# Also attempt a .pdf, via a local LibreOffice install (soffice/libreoffice on PATH).
-# If neither is found, the script says so and still leaves you the .pptx.
-.venv/bin/python3 render_deck.py render material/slides/session-01.yml --pdf
+# Also produce a .pdf.
+./slides render material/slides/session-01.yml --pdf
+```
+
+`slides` builds the `learning-tool-slide` image automatically the first time it is needed; later
+calls reuse it. Rebuild by hand after changing `Dockerfile`, `render_deck.py`, or
+`requirements.txt`:
+
+```bash
+docker build -t learning-tool-slide .
 ```
 
 Output goes to `<deck's directory>/out/<deck-name>.pptx` (and `.pdf`) — e.g.
 `material/slides/out/session-01.pptx`. That `out/` directory is a build product: never commit it,
 never hand-edit it, never treat it as a source. Fix the `.yml` model instead and re-render.
+
+## Running `render_deck.py` directly, without Docker
+
+For quick local iteration only. `mmdc` (mermaid-cli) and LibreOffice will not be present, so
+diagrams fall back to their Mermaid source shown as text, and `--pdf` is skipped with a message —
+both are stated up front by `render_deck.py`'s own docstring, not silently degraded.
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+.venv/bin/python3 render_deck.py preview material/slides/session-01.yml
+```
 
 ## Self-test
 
@@ -42,7 +54,7 @@ local `asset` and a bare `source_url`, `callout`, `placeholder`, `none`) plus th
 gate. Render it and skim the result before trusting a real deck's output:
 
 ```bash
-.venv/bin/python3 render_deck.py preview example/fixture.yml
+./slides preview example/fixture.yml
 ```
 
 ## Known gaps, stated rather than hidden
@@ -52,6 +64,8 @@ gate. Render it and skim the result before trusting a real deck's output:
   by judgment, a human reviews the rendered deck.
 - No schema validation beyond the handful of required top-level keys `render_deck.py` checks to
   avoid crashing. A malformed slide can still produce a malformed slide, not a clean error.
-- PDF export depends on whatever LibreOffice happens to be installed locally; output fidelity is
-  whatever LibreOffice's PPTX-to-PDF conversion happens to produce, not something this script
-  controls.
+- A `source_url` image is still never downloaded, Docker or not — only a local `asset` file is
+  embedded; a `source_url` image renders as a labelled placeholder for a human to fetch
+  deliberately.
+- PDF fidelity is whatever the image's pinned LibreOffice version produces, not something this
+  script controls.

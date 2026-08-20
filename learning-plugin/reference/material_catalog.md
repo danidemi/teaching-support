@@ -15,7 +15,7 @@ Trigger values (`delivery_style`, `item_type`, `support_material_kind`) are the 
 ```
 type: slides
 audience: Students and Trainer
-preferred_formats: YAML deck model (`reference/deck_model_spec.md`); a human renders an approved model to PowerPoint/PDF separately, via `tools/slides/render_deck.py`
+preferred_formats: YAML deck model (`reference/deck_model_spec.md`); a human renders an approved model to PowerPoint/PDF separately, via `learning-tools/slides/slides`
 owning_subagent: learning-author-slide
 trigger: One per session, learner-facing content only, used by trainer
 path_pattern: `material/slides/`

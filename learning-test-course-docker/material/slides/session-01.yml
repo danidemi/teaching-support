@@ -1,5 +1,5 @@
 deck: 1
-status: approved
+status: draft
 language: it
 course: "Docker: dai container ai sistemi multi-servizio (corso ITS, primo anno)"
 session: 1
@@ -41,6 +41,10 @@ instructional_decisions:
   - decision: "Sulla slide S1-10 (domanda aperta EQ_1) il rimando in avanti nomina solo il titolo della sessione 4 ('persistenza dei dati'), non il meccanismo (volumi/bind mount) che la risolverà."
     rationale: "La regola sui rimandi in avanti vieta di anticipare il contenuto di una sessione successiva, non di nominarne il titolo; nominare 'volumi' o 'bind mount' qui avrebbe insegnato in anticipo un contenuto di competenza di chi scriverà la sessione 4."
     confidence: stated
+    awaiting: instructional-designer
+  - decision: "Cinque dei sei segmenti di questa sessione aprono con una slide role: concept (non con role: problem); solo il segmento A apre con problem, e nel segmento E la slide problem (S1-10) è l'ultima, non la prima."
+    rationale: "La sessione presa nel suo complesso apre sul problema (S1-01, sequence 3, nodo radice del grafo DESIGN) prima di introdurre qualunque meccanismo — coerente con l'idea che l'inquadramento motivazionale vada anteposto alla teoria. All'interno dei singoli segmenti successivi, però, i nodi DESIGN coperti (isolamento, container, immagine, filesystem, modello dei processi) sono per lo più prerequisiti dichiarativi che estendono un problema già posto, non problemi nuovi autonomi: riaprire un problem slide per ciascuno avrebbe frammentato artificialmente un arco già unitario. Questa è comunque una scelta di instructional design, non un fatto dichiarato in alcuno store, e va segnalata a chi presidia la fase 3 invece di restare implicita nella sola sequenza delle slide."
+    confidence: inferred
     awaiting: instructional-designer
 
 segments:
@@ -238,14 +242,17 @@ segments:
           lang: shell
           caption: "Sequenza mostrata dal docente dal vivo"
           text: |
-            docker run ...
+            docker run -d --name web nginx
             docker ps
-            docker stop ...
+            docker stop web
         notes:
           talk: |
             Questa slide introduce la demo dal vivo (sequence 6): il docente esegue davvero questi tre
-            comandi al terminale, commentando cosa restituisce ciascuno. Non spiegare qui la sintassi
-            completa dei comandi (arriva come PRQ-CLI-BASICS, sessione 2): l'obiettivo è rendere
+            comandi al terminale, commentando cosa restituisce ciascuno. `nginx` è un esempio scelto
+            dall'autore di questo deck per avere un'immagine piccola e nota [invented framing]:
+            qualunque immagine leggera va bene, nessuno store ne prescrive una specifica. Non
+            spiegare qui la sintassi completa dei comandi (arriva come PRQ-CLI-BASICS, sessione 2,
+            CLI = command-line interface, interfaccia a riga di comando): l'obiettivo è rendere
             concreto il concetto di container appena visto, non insegnare la CLI in dettaglio.
           why_here: |
             Corrisponde a sequence 6, dichiarata in CURRICULUM come dimostrazione dal vivo per "rendere
@@ -385,9 +392,9 @@ segments:
             questa lezione "apre la domanda EQ_1... a cui si risponderà più avanti nel corso".
             [stated]
           links: |
-            Rimando in avanti: la domanda viene ripresa in una sessione successiva dedicata alla
-            persistenza dei dati (vedi instructional_decisions per la scelta di non nominare qui il
-            meccanismo che la risolve).
+            Rimando in avanti: la domanda viene ripresa nella sessione 4, dedicata alla persistenza
+            dei dati (vedi instructional_decisions per la scelta di non nominare qui il meccanismo
+            che la risolve).
           watch_for: |
             Alcuni studenti proveranno a indovinare la risposta (es. "si copia il file dentro"): è
             positivo, accoglila come ipotesi da verificare più avanti, senza confermarla o smentirla
@@ -410,17 +417,18 @@ segments:
           caption: "I tre canali standard di un processo"
           mermaid: |
             flowchart LR
-              Tastiera --> StdIn[stdin - standard input]
+              Tastiera --> StdIn["stdin — standard input, canale di ingresso"]
               StdIn --> Processo
-              Processo --> StdOut[stdout - standard output]
-              Processo --> StdErr[stderr - standard error]
+              Processo --> StdOut["stdout — standard output, canale di uscita"]
+              Processo --> StdErr["stderr — standard error, canale di errore"]
               StdOut --> Terminale
               StdErr --> Terminale
         notes:
           talk: |
-            Prima occorrenza degli acronimi in questo documento: stdin (standard input, "canale di
-            ingresso standard"), stdout (standard output, "canale di uscita standard"), stderr
-            (standard error, "canale di errore standard"). Da qui in poi puoi usarli liberamente.
+            Prima occorrenza degli acronimi in questo documento, già glossati sullo schermo: stdin
+            (standard input, canale di ingresso standard), stdout (standard output, canale di uscita
+            standard), stderr (standard error, canale di errore standard). Da qui in poi puoi usarli
+            liberamente, sia tu che gli studenti.
           why_here: |
             LOGISTICS dichiara questo contenuto non assunto come prerequisito e da insegnare
             esplicitamente, propedeutico a GOAL_004 (edge DR-NETWORK → PRQ-PROCESS-MODEL in DESIGN:
@@ -442,7 +450,7 @@ segments:
         role: concept
         goals: [GOAL_001_LIFECYCLE]
         provenance: stated
-        headline: "Il terminale (tty) permette di dare input a un processo e leggerne l'output in tempo reale."
+        headline: "Il terminale (tty, dall'inglese «teletypewriter») permette di dare input a un processo e leggerne l'output in tempo reale."
         body:
           kind: diagram
           caption: "Il terminale come ciclo interattivo"
@@ -452,10 +460,9 @@ segments:
               Processo -- stdout --> Terminale
         notes:
           talk: |
-            Prima occorrenza dell'acronimo tty in questo documento: tty sta per "teletypewriter",
-            un termine storico che qui si può tradurre come "terminale". Collega il termine
-            all'esperienza già fatta dagli studenti (la finestra di terminale usata per la shell,
-            BSL-SHELL).
+            Collega il termine tty all'esperienza già fatta dagli studenti: la finestra di terminale
+            usata per la shell (BSL-SHELL) è, tecnicamente, l'erede moderno di quello che un tempo
+            era un dispositivo fisico (il teletypewriter da cui viene il nome).
           why_here: |
             Completa il quadro dei tre canali standard (S1-11) collegandoli al terminale come
             interfaccia con cui lo studente interagisce concretamente. [stated, da DESIGN]

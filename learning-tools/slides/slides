@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# Docker wrapper for the slide-rendering toolchain. Builds the `learning-tool-slide`
+# image (LibreOffice + mermaid-cli + python-pptx + PyYAML) on first use, then runs
+# render_deck.py inside a container so every dependency is self-contained — the
+# host needs only Docker.
+#
+# Usage:
+#   slides preview <deck.yml> [--pdf]   # always renders, stamps [DRAFT]
+#   slides render  <deck.yml> [--pdf]   # refuses unless status: approved
+set -euo pipefail
+
+IMAGE=learning-tool-slide
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+if [ "$#" -lt 2 ]; then
+    echo "usage: slides <preview|render> <deck.yml> [--pdf]" >&2
+    exit 1
+fi
+
+mode="$1"
+deck="$2"
+shift 2
+
+case "$mode" in
+    preview|render) ;;
+    *)
+        echo "error: unknown mode '$mode' (expected 'preview' or 'render')" >&2
+        exit 1
+        ;;
+esac
+
+if [ ! -f "$deck" ]; then
+    echo "error: deck file not found: $deck" >&2
+    exit 1
+fi
+
+deck_abs="$(cd "$(dirname "$deck")" && pwd)/$(basename "$deck")"
+
+# Find the repo root (top of the git worktree) so the whole repo can be mounted:
+# a deck's `asset` fields are relative to its own directory and may reach any
+# path under the repo, not just the deck's own folder.
+repo_root="$(cd "$SCRIPT_DIR" && git rev-parse --show-toplevel 2>/dev/null || true)"
+if [ -z "$repo_root" ]; then
+    repo_root="$(cd "$SCRIPT_DIR/../.." && pwd)"
+fi
+
+if [ -z "$(docker images -q "$IMAGE" 2>/dev/null)" ]; then
+    echo "building $IMAGE image (first run only)..." >&2
+    docker build -t "$IMAGE" "$SCRIPT_DIR" >&2
+fi
+
+docker run --rm \
+    --user "$(id -u):$(id -g)" \
+    -e HOME=/tmp \
+    -v "$repo_root:$repo_root" \
+    -w "$repo_root" \
+    "$IMAGE" \
+    "$mode" "$deck_abs" "$@"
