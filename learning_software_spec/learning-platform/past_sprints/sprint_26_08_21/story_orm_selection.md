@@ -1,6 +1,6 @@
 ID: ORM-SELECTION-001
 
-Status: READY
+Status: DONE
 
 Priority: High
 
@@ -43,3 +43,15 @@ Notes:
 
 Open questions:
 * none — local Postgres run method decided during grooming (2026-08-21): Docker Compose
+
+Development (2026-08-21):
+* choice made and recorded: `adr/ADR-0003-orm-selection.md` (Drizzle + `pg`, over Prisma)
+* `server/docker-compose.yml` added (postgres:16-alpine), `server/.env.example` documents
+  `DATABASE_URL`, `.env` added to `.gitignore`
+* spike: `server/src/db/schema.ts` (one throwaway table, `spike_items`), `server/src/db/client.ts`,
+  `server/scripts/db-spike.ts` — run via `npm run db:spike`; inserted and read back one row
+  against the Docker Compose Postgres
+* verified: `npm test` green in both `client/` and `server/` with the Postgres container
+  stopped, and `npm run build` clean in `server/`
+* all four Definition of Done items met — ready for sprint review; status left at `READY`
+  per `references/do_and_donts.md` (READY = groomed/built, DONE = accepted at review)

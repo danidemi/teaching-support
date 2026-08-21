@@ -1,6 +1,6 @@
 ID: DB-MIGRATIONS-001
 
-Status: READY
+Status: DONE
 
 Priority: High
 
@@ -41,3 +41,30 @@ Notes:
 * moved to READY during grooming (2026-08-21): selected for the next sprint together with
   ORM-SELECTION-001; within the sprint, do ORM-SELECTION-001 first since this story's
   migration tool follows from that choice
+
+Development (2026-08-21):
+* migration tool: `drizzle-kit` (`generate` + `migrate`, not `push` — see ADR-0003), already a
+  devDependency of `server/` from ORM-SELECTION-001
+* `server/scripts/db-migrate.ts` applies `drizzle/*.sql` against `DATABASE_URL`, run via
+  `npm run db:migrate`; generating a new migration from `src/db/schema.ts` is `npm run db:generate`
+* first migration: `server/drizzle/0000_loving_chamber.sql` — creates `tenants` (id, name
+  unique, created_at) and `users` (id, email unique, current_tenant_id → tenants.id nullable,
+  created_at). Columns are the minimal shape ADR-0002 and TENANT-001's current draft text
+  support (single `current_tenant`, not yet a many-to-many membership) — TENANT-001 is still
+  `DRAFT` and may need a follow-up migration once it's groomed to READY; flagged here so it
+  isn't missed
+* verified against a clean Postgres (`docker compose down -v` then `up`): first `npm run
+  db:migrate` created all 3 tables (including ORM-SELECTION-001's `spike_items`) and one row in
+  `drizzle.__drizzle_migrations`; a second `npm run db:migrate` produced the same log with no
+  new tables and no new tracking row — confirmed idempotent by inspecting `\dt` and the tracking
+  table directly, not just by the log
+* verified: `npm test` in `server/` and `npm run build` both green with the Postgres container
+  stopped
+* all five Definition of Done items met — ready for sprint review; status left at `READY`
+  per `references/do_and_donts.md` (READY = groomed/built, DONE = accepted at review)
+* extended (2026-08-21), on request: migrations now also apply automatically on server
+  startup (`server/src/index.ts`, Flyway-in-Quarkus style), not only via `npm run db:migrate`
+  — see `adr/ADR-0003-orm-selection.md`'s addendum. Verified both paths: fresh DB → server
+  starts, migrates, serves `/healthz`; DB unreachable → server exits 1 with a clear
+  `ECONNREFUSED`, no listener bound. `npm test`/`npm run build` unaffected (`app.test.ts` uses
+  `createApp()`, not `index.ts`)

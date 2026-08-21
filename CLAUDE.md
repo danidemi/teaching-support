@@ -92,9 +92,15 @@ learning-tools/slides/slides render  material/slides/session-01.yml --pdf     # 
   `.claude/reference/slide_design_rules.md` (distilled from `doc/writing_effective_slides.md` — a
   rewrite, not a mirror copy, so re-derive it rather than diffing).
 - **A `diagram` slide's Mermaid source is rendered to a real graphic** inside the container, via
-  mermaid-cli. A `source_url` image is still never downloaded — only a local `asset` file is
-  embedded; a `source_url` image renders as a labelled placeholder for a human to fetch
-  deliberately.
+  mermaid-cli. `render_deck.py` itself never fetches anything from the internet — an `image` body
+  with no local `asset` renders as a labelled placeholder. The `learning-author-slide` agent does
+  fetch images (via WebFetch to find a direct URL plus its licence, then Bash/`curl` to download
+  and validate the file, then `Read` to actually view it before proposing the slide) and sets
+  `asset` to its own downloaded copy, keeping `source_url` for provenance. That combination
+  (`asset` + `source_url`) still needs a **human to look at the image and set `reviewed: true`**
+  before it can go into a non-draft deck — `render` refuses it otherwise; `preview` shows it with a
+  visible unreviewed warning. See `.claude/reference/deck_model_spec.md` for the exact shape and
+  `learning-tools/slides/render_deck.py`'s module docstring for the enforcement.
 - **`status: approved` is set by a human only.** `render` refuses a draft; `preview` stamps `[DRAFT]`.
 - **No lint or coverage check exists yet.** `render_deck.py` validates only the handful of
   top-level keys it needs to avoid crashing; word budgets, the list-item exception, and

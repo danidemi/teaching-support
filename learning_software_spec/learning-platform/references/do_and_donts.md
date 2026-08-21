@@ -33,3 +33,18 @@ Newest entries at the bottom.
   dashboard, selection) all used the same ID (`COURSE-MANAGEMENT`) because they were, in fact,
   one screen — merging them into one story (`story_course_dashboard.md`) fixed both the
   duplication and the artificial three-way split at once.
+
+## sprint_26_08_21
+
+* **DO** verify a "works from scratch" or "is a no-op on repeat" Definition of Done claim
+  against a genuinely *reset* state, not an already-set-up one. DB-MIGRATIONS-001's
+  idempotency check only meant something because the Postgres container/volume was torn down
+  and brought back up clean first, then inspected directly (`\dt`, the migrations tracking
+  table) rather than trusting a log line.
+* **DON'T** verify startup/build behavior through a dev-mode shortcut (e.g. `tsx
+  src/index.ts`) when the story's Definition of Done is about the built/started app. A
+  `tsconfig.json` edit silently changed `tsc -b`'s output layout (dropped `rootDir`, widened
+  `include`); the stale pre-change `dist/index.js` was never overwritten, and `tsx` bypassed
+  `dist/` entirely so this went unnoticed. Always run the actual documented command (`npm run
+  build && npm start`) at least once before calling that behavior verified — this bug was only
+  caught because the human ran that exact command.

@@ -131,7 +131,31 @@ body:
     readinessProbe:
       httpGet: { path: /actuator/health/readiness }
 
-# Third-party image. license/attribution/alt are required — a legal artefact, not just an asset.
+# Third-party image, fetched by the authoring agent. license/attribution/alt are required — a
+# legal artefact, not just an asset. asset path is relative to the repo root (the git worktree
+# top), not to this file — `slides` mounts and runs from there.
+body:
+  kind: image
+  source_url: "https://commons.wikimedia.org/wiki/File:…"   # the page the agent found it on,
+                                                              # kept for provenance even after
+                                                              # fetching
+  asset: <course-dir>/material/slides/assets/…png           # the agent's local, downloaded copy
+  license: "CC BY-SA 4.0"      # copy verbatim from the source page. Never invent a plausible
+                                # value — if the page does not state one, write
+                                # "UNKNOWN — human must verify"
+  attribution: "Autore — Wikimedia Commons"
+  alt: "Descrizione per chi non vede l'immagine"   # grounded in what the agent actually saw
+                                                     # after downloading, not guessed from the URL
+  caption: "…"              # optional
+  reviewed: false            # a HUMAN still sets true, after actually looking at it. The
+                              # authoring agent downloads the file and can view it (so it judges
+                              # relevance itself before proposing the slide) — but it does not own
+                              # the license/rights check or the final visual sign-off; `render`
+                              # (not `preview`) refuses any image body with an unset/false
+                              # `reviewed` once both `asset` and `source_url` are present
+
+# Image never fetched — rights unclear, fetch failed, or the agent chose not to. Renders as a
+# labelled placeholder for a human to fetch deliberately.
 body:
   kind: image
   source_url: "https://upload.wikimedia.org/…"
@@ -139,13 +163,13 @@ body:
   attribution: "Autore — Wikimedia Commons"
   alt: "Descrizione per chi non vede l'immagine"
   caption: "…"              # optional
-  reviewed: false            # a HUMAN sets true after actually looking at it — the authoring
-                              # agent cannot see images; anything it proposes is a guess from a
-                              # URL and a caption
+  reviewed: false
 
+# Pre-existing local asset (e.g. a client screenshot) — not fetched from the internet, no
+# source_url, no licence lookup needed.
 body:
   kind: image
-  asset: material/slides/assets/console-gke.png   # local file, no licence lookup needed
+  asset: material/slides/assets/console-gke.png
   license: "Screenshot cliente — uso interno"
   attribution: "Interno"
   alt: "…"

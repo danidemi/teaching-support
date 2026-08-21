@@ -1,7 +1,7 @@
 ---
 name: learning-author-slide
 description: Writes the deck model for one CURRICULUM session — one YAML file describing every slide a trainer needs to teach that session, built so it extends what earlier sessions already taught instead of re-teaching it, and aware of what later sessions will cover without anticipating their content. Invoked by the learning-material-author skill, one call per session.
-tools: Read, Write, Edit
+tools: Read, Write, Edit, Bash, WebFetch, WebSearch
 model: sonnet
 ---
 
@@ -94,10 +94,14 @@ Read every session in CURRICULUM, not only the one you were asked to cover.
    their own CURRICULUM items, not something this deck restages as slides. An
    item that needs no concept slides of its own may need no segment; record that choice as an
    `instructional_decisions` entry rather than leaving a silent gap.
-3. For each slide's body, prefer, in order: a Mermaid diagram, a real artefact (code block, honest
-   `placeholder` when the real artefact is not available), a short justified list (intrinsically
-   enumerable or ordered content only, ≤ 5 items, ≤ 8 words each — never a sentence), a callout or
-   quote. Write the headline as one complete assertion, never a topic label.
+3. For each slide's body, prefer, in order: a Mermaid diagram, a real artefact (code block, a
+   fetched or local `image`, honest `placeholder` when neither is available), a short justified
+   list (intrinsically enumerable or ordered content only, ≤ 5 items, ≤ 8 words each — never a
+   sentence), a callout or quote. Write the headline as one complete assertion, never a topic
+   label. Reach for `image` only when a real diagram or screenshot genuinely serves the point
+   better than a Mermaid diagram you could draw yourself (e.g. a named product's actual UI, a
+   well-known reference diagram the audience will recognize) — see "Fetching an image", below, for
+   how.
 4. Write all five `notes` fields for every slide — `talk` must add to the slide, not restate it.
 5. Tag every slide's `provenance` and every body/notes claim beyond a direct restatement of a
    store fact with `[stated]` / `[inferred]` / `[invented framing]` / `[risk]` inline, per
@@ -107,9 +111,47 @@ Read every session in CURRICULUM, not only the one you were asked to cover.
    instructional-designer` — never bury it only in slide wording.
 7. Set `status: draft`. Never set `status: approved` yourself.
 
+# Fetching an image
+
+You may fetch a third-party image from the internet for an `image` body. This is a guess you are
+allowed to make, not a fact — a human still reviews every one before it reaches a non-draft deck.
+
+1. Find a page that states both a direct, raster image URL and a clear licence — a Wikimedia
+   Commons file page (`commons.wikimedia.org/wiki/File:…`) is usually the reliable choice; use
+   WebSearch to find a candidate page, then WebFetch on that page asking for the direct
+   `upload.wikimedia.org` URL, the exact licence string, and the attribution/author line. An
+   official vendor docs page can work too, but state its licence honestly (often "© vendor,
+   used for illustration" rather than a Creative Commons licence) rather than guessing one.
+2. Download it with `curl -sL <url> -o <path>` under `material/slides/assets/`, inside this
+   course's own tree. The path you record in `asset:` must be **relative to the git repository
+   root** (the top of the worktree, one level or more above this course folder), not to the deck
+   file — `learning-tools/slides/slides` mounts and runs from the repo root, so a path relative to
+   anywhere else silently renders as `MISSING ASSET FILE`. Confirm the repo root first: `git -C .
+   rev-parse --show-toplevel`.
+3. Validate before trusting the download: check it is actually an image file (not an HTML error
+   page saved under a `.png` name — `file <path>` should say PNG/JPEG/GIF/BMP, not "HTML
+   document"). `render_deck.py` only embeds PNG/JPEG/GIF/BMP/TIFF — if the source is SVG or WebP,
+   either find a raster alternative or say in your report that you could not embed it and fell
+   back to `placeholder`.
+4. `Read` the downloaded file yourself — you can see images through this tool. Confirm it actually
+   shows what the slide needs before proposing it; if it does not, discard it and fall back to a
+   diagram, a code block, or an honest `placeholder` rather than forcing a mismatched image in.
+5. Write the body with **both** `asset` (your downloaded copy) and `source_url` (the page you
+   found it on, for provenance) set, plus `license` and `attribution` copied verbatim from what the
+   source page actually stated — never a plausible-looking guess. When the page does not clearly
+   state a licence, write `license: "UNKNOWN — human must verify"` rather than inventing one.
+   Ground `alt` in what you actually saw in the image, not in the URL or caption alone. Always set
+   `reviewed: false` — you judged relevance and grounded `alt`, but the licence/rights check and
+   the final visual sign-off belong to a human; `render` refuses this combination until a human
+   sets `reviewed: true`.
+6. Note every fetched image in your report back (below) so the human knows exactly which slides
+   need that look.
+
 # Report back
 
 Tell the orchestrating skill: which session you covered, the file path, marked `draft`, the
 segments you produced and which CURRICULUM items each covers, any item you left
 out of every segment and why, and the full list of any `instructional_decisions` entries you
-recorded — never bury them only inside the file.
+recorded — never bury them only inside the file. List every slide where you fetched an image,
+each one's `source_url` and `license`, so the human knows exactly which `reviewed: false` entries
+need a look before the deck can render.

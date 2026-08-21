@@ -64,8 +64,9 @@ gate. Render it and skim the result before trusting a real deck's output:
   by judgment, a human reviews the rendered deck.
 - No schema validation beyond the handful of required top-level keys `render_deck.py` checks to
   avoid crashing. A malformed slide can still produce a malformed slide, not a clean error.
-- A `source_url` image is still never downloaded, Docker or not — only a local `asset` file is
-  embedded; a `source_url` image renders as a labelled placeholder for a human to fetch
-  deliberately.
+- `render_deck.py` itself never fetches anything — an `image` body with no `asset` renders as a
+  labelled placeholder. The `learning-author-slide` agent does fetch (via WebFetch/Bash, outside
+  this script) and set `asset` for slides where an internet image is appropriate; `render` (not
+  `preview`) then refuses any such image unless a human has set `reviewed: true` on it.
 - PDF fidelity is whatever the image's pinned LibreOffice version produces, not something this
   script controls.

@@ -10,9 +10,13 @@ design, stated up front rather than discovered later:
 - A `diagram` body is rendered to a PNG via mermaid-cli (`mmdc`) and embedded as a picture. If
   `mmdc` is not on PATH — i.e. this script is run outside the Docker image — the Mermaid source is
   placed on the slide as text instead, clearly labelled, so nothing is silently lost.
-- A fetched (`source_url`) image is NEVER downloaded by this script. Only a local `asset` file is
-  embedded. A `source_url` image is rendered as a labelled placeholder carrying its url, licence,
-  attribution and alt text, so a human can fetch and review it deliberately.
+- This script never fetches anything itself — an `image` body with no local `asset` is rendered as
+  a labelled placeholder carrying its url, licence, attribution and alt text, so a human (or the
+  authoring agent, which does fetch) can supply the file deliberately. Once `asset` is set it is
+  embedded, whether or not `source_url` is also present. `render` (not `preview`) additionally
+  refuses any image body that carries both `asset` and `source_url` unless `reviewed: true` — that
+  combination means the authoring agent downloaded the file itself, and a human has to look at it
+  before it goes out.
 - PDF export is via LibreOffice (`soffice`/`libreoffice`), present in the Docker image. Run
   directly on a host without LibreOffice, the script still produces the .pptx and says plainly
   that no PDF was made.
@@ -215,10 +219,13 @@ def _render_body(tf, body: dict):
         p = tf.paragraphs[0]
         if asset:
             # The picture is added directly on the slide by the caller (needs slide, not just
-            # tf); here we only add the caption/licence line under it.
-            pass
+            # tf); here we only add the caption/licence/review-status line under it.
+            if body.get("source_url") and body.get("reviewed") is not True:
+                _set_run(p, "UNREVIEWED FETCHED IMAGE — a human must look at this before render", size=14, bold=True, color=DRAFT_RED)
+            else:
+                p.text = ""
         else:
-            _set_run(p, "IMAGE NOT EMBEDDED (fetched image — not downloaded by this script)", size=16, bold=True, color=DRAFT_RED)
+            _set_run(p, "IMAGE NOT EMBEDDED (no local file — set `asset` to embed it)", size=16, bold=True, color=DRAFT_RED)
             for label, key in (("url", "source_url"), ("license", "license"), ("attribution", "attribution"), ("alt", "alt"), ("reviewed", "reviewed")):
                 para = tf.add_paragraph()
                 _set_run(para, f"{label}: {body.get(key, '')}", size=14, color=MUTED)
@@ -367,6 +374,24 @@ def main(argv=None):
             file=sys.stderr,
         )
         return 1
+
+    if args.mode == "render":
+        unreviewed = [
+            slide_label(segment, slide, index)
+            for segment, slide, index in iter_slides(deck)
+            if (slide.get("body") or {}).get("kind") == "image"
+            and (slide.get("body") or {}).get("asset")
+            and (slide.get("body") or {}).get("source_url")
+            and (slide.get("body") or {}).get("reviewed") is not True
+        ]
+        if unreviewed:
+            print(
+                f"error: {args.deck} has fetched image(s) not yet reviewed by a human: "
+                f"{', '.join(unreviewed)}. Set body.reviewed: true after looking at each one, or "
+                "use 'preview' instead.",
+                file=sys.stderr,
+            )
+            return 1
 
     out_dir = args.out_dir or (args.deck.parent / "out")
     out_dir.mkdir(parents=True, exist_ok=True)
