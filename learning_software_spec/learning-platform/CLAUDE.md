@@ -85,5 +85,7 @@ add to `sprint_<YY_MM_DD>/` a `review.md` stating what have been done, decuded a
 
 ## 5. Sprint Retrospective
 
-remember what has been done in the sprint and think about what you think it worked good, what should be changed. Ask human feedback too.
-select the one good think it there is, the one bad thing and append them to `reference/do_and_donts.md`, in order to apply it next time.
+Remember what has been done in the sprint and think about what you think it worked good, what should be changed. Ask human feedback too.
+Select one good thing, one bad thing and extract the good practice that should be replicated in the next sprint, the bad practice that must not be repeated and append them to `reference/do_and_donts.md`, in order to apply it next time.
+Keep the `reference/do_and_donts.md` short, actionable, brief, meaningful.
+Don't let the file to grow too much, compact it if it's too big keeping the more meaningful DOs and DONTs.
