@@ -163,13 +163,15 @@ body:
   attribution: "Autore — Wikimedia Commons"
   alt: "Descrizione per chi non vede l'immagine"
   caption: "…"              # optional
-  reviewed: false
+  reviewed: false            # a HUMAN sets true after actually looking at it — the authoring
+                              # agent cannot see images; anything it proposes is a guess from a
+                              # URL and a caption
 
 # Pre-existing local asset (e.g. a client screenshot) — not fetched from the internet, no
 # source_url, no licence lookup needed.
 body:
   kind: image
-  asset: material/slides/assets/console-gke.png
+  asset: material/slides/assets/console-gke.png   # local file, no licence lookup needed
   license: "Screenshot cliente — uso interno"
   attribution: "Interno"
   alt: "…"
