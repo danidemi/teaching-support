@@ -1,0 +1,604 @@
+= Demo guide — Il docente scrive e costruisce un'immagine da un Dockerfile dal vivo
+:status: draft
+:session: 02
+:node_ref: PRQ-DOCKERFILE
+:curriculum_sequence: 15
+:target_minutes: 25
+:language: it
+
+[NOTE]
+====
+Rehearse this guide once, end to end, exactly as written, before teaching it live. Every command
+and expected output below is a grounded guess from the course design, not a tested fact — flag
+anything that does not match what you see, and update this file once corrected.
+====
+
+Copre: CURRICULUM sessione 2, `sequence` "15" ("Il docente scrive e costruisce un'immagine da un
+Dockerfile dal vivo", `didactic_activity: demo`, `duration_minutes: 25`). Nodo DESIGN insegnato:
+`PRQ-DOCKERFILE` — "Sintassi e istruzioni standard di un Dockerfile (`FROM`, `COPY`, `RUN`, `CMD`,
+ecc.) necessarie per costruire un'immagine che esegua correttamente l'applicazione target."
+[stated] Prerequisiti dichiarati in DESIGN che questa demo può assumere senza re-insegnarli:
+`BSL-SHELL` (comandi di base da riga di comando) e `PRQ-IMAGE-CONCEPT` (cos'è un'immagine e la sua
+relazione con il container). [stated]
+
+[NOTE.instructional-decision]
+====
+Decision: L'applicazione target usata in questa demo è un unico file Node.js che stampa una riga
+di testo (`console.log`), non un'applicazione reale del corso.
+Rationale: Nessuno store (CURRICULUM, DESIGN) specifica un'applicazione target per questa sessione
+o per questa demo — CURRICULUM parla solo genericamente di "un'immagine da un Dockerfile". Questa
+guida è redatta in autonomia editoriale rispetto a ogni altro materiale della sessione, quindi la
+scelta è fatta qui in proprio, senza fare riferimento ad altro materiale della sessione. Un
+esempio a un solo file, senza gestore di pacchetti, riduce al minimo il rischio di rete durante una
+demo dal vivo (vedi decisione successiva) e resta comunque coerente con l'istruzione COPY vista
+nella lezione precedente (sequence 14).
+Confidence: invented
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: L'istruzione `RUN` della demo esegue un comando di shell locale (`mkdir -p
+/app/logs`), non un'installazione di pacchetti (es. `npm install`, `apt-get install`).
+Rationale: CURRICULUM (sequence 14) e DESIGN (`PRQ-DOCKERFILE`) richiedono che la demo mostri
+`FROM`, `COPY`, `RUN`, `CMD`, ma non impongono che `RUN` contatti un registro di pacchetti. Un
+`RUN` che dipende dalla rete dell'aula (Wi-Fi condiviso, proxy, velocità variabile) è il punto di
+maggior rischio di un fallimento dal vivo non recuperabile entro i 25 minuti assegnati: un comando
+locale insegna la stessa sintassi (`RUN` esegue un comando durante la build) senza quel rischio.
+Confidence: invented
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: la demo include un passo di fallimento deliberato (Step 10): un percorso `COPY` errato
+che produce un errore di build, seguito dalla correzione.
+Rationale: nessuno store richiede esplicitamente un errore dimostrativo per questo item; è una
+scelta didattica di questa guida. Un errore di `COPY` è economico da produrre e da riparare (una
+riga), realistico (è l'errore più comune per chi scrive un primo Dockerfile) e coerente con
+l'obiettivo del checkpoint immediatamente successivo (sequence 16, DR-IMAGE-BUILD), che richiede
+già allo studente di interpretare autonomamente un errore di build.
+Confidence: invented
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: le 4 istruzioni del Dockerfile sono scritte in un solo passo editor (Step 2), seguito da
+4 passi di narrazione separati (Step 3-6), uno per istruzione, invece di 4 passi editor separati o
+di un unico passo che le spiega tutte insieme.
+Rationale: scrivere il file riga per riga in passi editor separati avrebbe richiesto salvare e
+mostrare il file 4 volte per un contenuto che nella pratica un docente scrive in una sola sessione
+di editing continua; spiegarle tutte in un solo passo avrebbe reso il passo troppo grande da
+recuperare in caso di interruzione a metà spiegazione. Un passo editor + passi di narrazione
+distinti bilancia i due vincoli della spec (una tripla Do/Expect/Verify chiara per passo; passi
+piccoli per isolare dove interviene un problema).
+Confidence: inferred
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: tutti gli 11 passi sono marcati `Trainer-only:: yes`, nessuno `no`.
+Rationale: CURRICULUM (sequence 15) descrive questo item come "il docente scrive e costruisce",
+un `didactic_activity: demo`; la pratica dello studente sullo stesso contenuto è un item
+CURRICULUM distinto (sequence 16, `DR-IMAGE-BUILD`, hands_on, 40 min). Nessuno store descrive
+questa demo come "segui insieme al docente sul tuo laptop": marcare un passo `no` avrebbe imposto
+di elencare nelle Preconditions anche lo stato di partenza sullo schermo di ogni studente, non
+dichiarato in alcuno store.
+Confidence: stated
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: la somma dei `Timing::` dei passi (20 min) è inferiore ai 25 min dichiarati da
+CURRICULUM per sequence 15; la differenza (4-5 min) è attribuita ad apertura/chiusura narrativa
+non scomposta in passi propri.
+Rationale: CURRICULUM non scompone il tempo di una demo in sotto-fasi; l'apertura/chiusura
+narrativa non è un "passo" nel senso della spec (nessuna azione di sistema, nessun Verify
+concreto) ma occupa comunque tempo reale in aula. La cifra stimata è compatibile con il budget
+dichiarato entro l'incertezza di una stima, non un errore di somma da correggere silenziosamente.
+Confidence: inferred
+Awaiting: instructional-designer
+====
+
+== Preconditions
+
+- Docker è già installato sui laptop e sulla macchina del docente, attività logistica coperta da
+  CURRICULUM sessione 1, sequence 2 ("Installazione di Docker sui laptop"). [stated]
+- La demo di sequence 10 (comandi Docker standard) e la lezione di sequence 14 (sintassi
+  FROM/COPY/RUN/CMD) sono già state svolte nella stessa sessione, immediatamente prima di questa
+  demo: la sintassi delle 4 istruzioni non va reinsegnata da zero qui, solo applicata dal vivo.
+  [stated, da CURRICULUM]
+- *[risk]* Versione esatta del client/motore Docker (Docker Engine, CLI — Command Line Interface,
+  in italiano "interfaccia a riga di comando") sulla macchina di presentazione non è dichiarata in
+  alcuno store. Questa guida è stata verificata a livello di
+  sintassi contro `docker --version` = 29.4.0 e `docker build --help` presenti in questo sandbox
+  di redazione — non nell'ambiente di aula reale. Il docente deve controllare `docker --version`
+  sulla propria macchina prima della lezione e adattare eventuali differenze di output.
+- *[risk]* L'immagine di base `node:20-slim` non è dichiarata in nessuno store (è una scelta di
+  questa guida, vedi instructional_decisions). Il docente deve eseguire `docker pull node:20-slim`
+  **prima** della lezione, con la macchina collegata a una rete affidabile, così che il comando
+  `docker build` della demo non debba scaricare l'immagine di base davanti alla classe: uno
+  scaricamento di centinaia di MB su Wi-Fi condiviso può da solo esaurire i 25 minuti assegnati.
+- *[risk]* Cartella di lavoro pulita richiesta prima di iniziare: una directory vuota dedicata a
+  questa demo (es. `~/demo-dockerfile/`), senza un `Dockerfile` o un'immagine con lo stesso nome
+  già presenti da una sessione precedente. Nessuno store definisce questo stato: il docente deve
+  prepararlo a mano prima della lezione.
+- *[risk]* Un file `index.js` con il seguente contenuto deve già esistere in quella cartella,
+  creato dal docente prima della lezione (non dal vivo, per restare nel tempo assegnato):
++
+[source,javascript]
+----
+console.log("Ciao dal container!");
+----
+- *[risk]* Editor di testo per scrivere il Dockerfile dal vivo, a scelta del docente (`nano`,
+  `vim`, editor grafico con terminale integrato) — nessuno store lo specifica. Questa guida
+  descrive l'azione come "editor" generico, non un editor specifico.
+- Terminale del docente proiettato/condiviso con l'aula, con font sufficientemente grande da
+  essere leggibile da chi è seduto in fondo — logistica generale d'aula, non specifica di questo
+  item.
+- Nessuna credenziale o accesso a un registry è richiesto per questa demo (solo build ed
+  esecuzione locale; la pubblicazione su registry è contenuto di sessione 3, PRQ-REGISTRY, non
+  anticipato qui).
+
+== Steps
+
+=== Step 1 — Verificare lo stato di partenza
+
+Trainer-only:: yes
+Timing:: 1 min
+
+Do::
+[inferred: sintassi verificata contro `docker images --help` in questo sandbox, non nell'ambiente
+reale di aula]
++
+[source,bash]
+----
+cd <DEMO_DIR>
+ls -la
+docker images node:20-slim
+----
+`<DEMO_DIR>` è la cartella di lavoro pulita indicata nelle Preconditions (es.
+`~/demo-dockerfile/`, nome scelto da questa guida [invented framing]).
+
+Expect::
+`ls -la` mostra solo il file `index.js` (nessun `Dockerfile` residuo). `docker images
+node:20-slim` mostra una riga con quell'immagine già presente localmente, perché è stata scaricata
+prima della lezione (vedi Preconditions). [inferred: il formato esatto della tabella dipende dalla
+versione del client Docker installato]
+
+Verify::
+La colonna `REPOSITORY` dell'output di `docker images` contiene esattamente `node`, la colonna
+`TAG` contiene esattamente `20-slim` [inferred: nomi colonna verificati contro `docker images
+--help` in questo sandbox], e la cartella non contiene alcun file chiamato `Dockerfile`.
+
+Why::
+Mechanical: se l'immagine di base non è già locale, il primo `docker build` della demo tenta di
+scaricarla dal vivo, introducendo il rischio di rete segnalato nelle Preconditions.
+Teaches: nessuno — passo di verifica ambientale, non di contenuto DESIGN.
+
+If it goes wrong::
+Se `docker images node:20-slim` non restituisce nessuna riga, l'immagine non è stata pre-scaricata:
+eseguire `docker pull node:20-slim` subito, prima di procedere, e valutare se il tempo residuo
+della demo giustifica farlo davanti alla classe (probabilmente no, vedi Live-failure fallback) o
+rimandare la demo di qualche minuto mentre il download è in corso fuori schermo.
+
+=== Step 2 — Scrivere il Dockerfile
+
+Trainer-only:: yes
+Timing:: 3 min
+
+Do::
+Azione UI/editor (non un comando da terminale): apri l'editor di testo scelto (vedi Preconditions)
+sul file `Dockerfile` nella cartella `<DEMO_DIR>` e scrivi il seguente contenuto, senza commento
+riga per riga a questo punto — il commento di ciascuna riga è nei passi 3-6 che seguono, per non
+duplicare la stessa spiegazione due volte:
++
+[source,dockerfile]
+----
+FROM node:20-slim
+COPY index.js /app/index.js
+RUN mkdir -p /app/logs
+CMD ["node", "/app/index.js"]
+----
+Salva il file. [invented framing: nomi di file e comandi scelti da questa guida, vedi
+`instructional_decisions`]
+
+Expect::
+L'editor mostra le 4 righe salvate nel file `Dockerfile`, nella cartella `<DEMO_DIR>`, senza errori
+di sintassi evidenziati dall'editor (se l'editor ha evidenziazione sintattica per Dockerfile).
+
+Verify::
+`cat Dockerfile` da terminale restituisce esattamente le 4 righe sopra, nello stesso ordine.
+
+Why::
+Mechanical: nessuna build è possibile senza un file `Dockerfile` valido nella cartella di
+contesto.
+Teaches: `PRQ-DOCKERFILE` — le 4 istruzioni standard dichiarate in CURRICULUM sequence 14
+(`FROM`, `COPY`, `RUN`, `CMD`). [stated]
+
+If it goes wrong::
+Un errore di battitura nel nome dell'istruzione (es. `FORM` invece di `FROM`) non genera un errore
+a questo punto, solo al momento della build (Step 7): se la build fallisce con un messaggio che
+cita una riga del Dockerfile, torna a questo file con `cat Dockerfile` e confronta riga per riga
+con il blocco sopra.
+
+=== Step 3 — Narrazione: FROM
+
+Trainer-only:: yes
+Timing:: 1 min
+
+Do::
+Narrazione, nessuna interazione col sistema: indica sullo schermo la riga `FROM node:20-slim` già
+scritta al passo precedente e spiega che ogni immagine parte da un'altra immagine già esistente
+come base, richiamando il concetto di immagine visto in sessione 1 (`PRQ-IMAGE-CONCEPT`).
+
+Expect::
+Nessun cambiamento visibile sullo schermo: il file resta quello scritto al Step 2.
+
+Verify::
+La riga indicata a voce corrisponde esattamente alla prima riga del file mostrato a schermo.
+
+Why::
+Mechanical: nessuna — passo puramente esplicativo.
+Teaches: `PRQ-DOCKERFILE` (istruzione `FROM`) appoggiandosi su `PRQ-IMAGE-CONCEPT`, edge
+dichiarato in DESIGN ("un Dockerfile è la ricetta per produrre un'immagine, quindi presuppone di
+sapere cos'è un'immagine"). [stated]
+
+If it goes wrong::
+Non applicabile: nessuna azione di sistema in questo passo.
+
+=== Step 4 — Narrazione: COPY
+
+Trainer-only:: yes
+Timing:: 1 min
+
+Do::
+Narrazione: indica la riga `COPY index.js /app/index.js` [invented framing: nome file scelto da
+questa guida] e spiega che questa istruzione porta un file dal filesystem del docente (l'host)
+dentro il filesystem che avrà il container, richiamando la separazione tra i due filesystem vista
+in sessione 1 (`PRQ-FILESYSTEM`) [stated, edge DESIGN `PRQ-DOCKERFILE → PRQ-IMAGE-CONCEPT` e
+descrizione di `PRQ-FILESYSTEM`], senza risolvere qui la domanda aperta su come far
+leggere/scrivere all'host un file del container (EQ_1, contenuto dei volumi, non ancora
+affrontato) [stated, da DESIGN].
+
+Expect::
+Nessun cambiamento visibile sullo schermo.
+
+Verify::
+La riga indicata a voce corrisponde esattamente alla seconda riga del file mostrato a schermo.
+
+Why::
+Mechanical: nessuna — passo puramente esplicativo.
+Teaches: `PRQ-DOCKERFILE` (istruzione `COPY`).
+
+If it goes wrong::
+Non applicabile: nessuna azione di sistema in questo passo.
+
+=== Step 5 — Narrazione: RUN
+
+Trainer-only:: yes
+Timing:: 1 min
+
+Do::
+Narrazione: indica la riga `RUN mkdir -p /app/logs` [invented framing: comando scelto da questa
+guida, vedi `instructional_decisions`] e spiega che `RUN` esegue un comando *durante* la
+costruzione dell'immagine, non quando il container parte — a differenza di `CMD` (Step 6) [stated,
+da CURRICULUM sequence 14 e da DESIGN `PRQ-DOCKERFILE`]. Nomina esplicitamente che in altri
+contesti `RUN` installa spesso pacchetti software, ma questa demo usa un comando locale per non
+dipendere dalla rete dell'aula (vedi `instructional_decisions`) [invented].
+
+Expect::
+Nessun cambiamento visibile sullo schermo.
+
+Verify::
+La riga indicata a voce corrisponde esattamente alla terza riga del file mostrato a schermo.
+
+Why::
+Mechanical: nessuna — passo puramente esplicativo.
+Teaches: `PRQ-DOCKERFILE` (istruzione `RUN`).
+
+If it goes wrong::
+Non applicabile: nessuna azione di sistema in questo passo.
+
+=== Step 6 — Narrazione: CMD
+
+Trainer-only:: yes
+Timing:: 1 min
+
+Do::
+Narrazione: indica la riga `CMD ["node", "/app/index.js"]` [invented framing: comando applicativo
+scelto da questa guida] e spiega che questa è l'istruzione che parte quando un container viene
+creato da questa immagine (`docker run`), non durante la build [stated, da CURRICULUM sequence 14
+e DESIGN `PRQ-DOCKERFILE`] — riprendi il confronto con `RUN` appena fatto al passo precedente.
+
+Expect::
+Nessun cambiamento visibile sullo schermo.
+
+Verify::
+La riga indicata a voce corrisponde esattamente alla quarta riga del file mostrato a schermo.
+
+Why::
+Mechanical: nessuna — passo puramente esplicativo.
+Teaches: `PRQ-DOCKERFILE` (istruzione `CMD`).
+
+If it goes wrong::
+Non applicabile: nessuna azione di sistema in questo passo.
+
+=== Step 7 — Costruire l'immagine
+
+Trainer-only:: yes
+Timing:: 3 min
+
+Do::
+[invented framing: nome immagine `demo-dockerfile` scelto da questa guida; sintassi `-t`/`.`
+verificata contro `docker build --help` in questo sandbox]
++
+[source,bash]
+----
+docker build -t demo-dockerfile .
+----
+
+Expect::
+Il terminale mostra il progresso della build a più passi (uno per ogni istruzione del Dockerfile),
+seguito da un messaggio finale di successo. [inferred: sui client Docker recenti basati su
+BuildKit l'output ha un formato "step-by-step" con indicatori di avanzamento e non necessariamente
+la dicitura letterale "Successfully built" delle versioni precedenti — marca ogni riga di output
+citata qui come illustrativa, non come testo che ricorre identico]
++
+[source]
+----
+[+] Building 0.4s (9/9) FINISHED
+ => [1/3] FROM docker.io/library/node:20-slim
+ => [2/3] COPY index.js /app/index.js
+ => [3/3] RUN mkdir -p /app/logs
+ => exporting to image
+ => => naming to docker.io/library/demo-dockerfile
+----
+Il tempo (`0.4s`), il numero di passi tra parentesi e l'hash dell'immagine sono illustrativi e
+variano a ogni esecuzione.
+
+Verify::
+Il comando termina con codice di uscita 0 (verificabile con `echo $?` subito dopo, se serve
+mostrarlo alla classe) e nessuna riga contiene la parola `ERROR`.
+
+Why::
+Mechanical: produce l'immagine `demo-dockerfile:latest` da cui il passo successivo avvierà un
+container.
+Teaches: `PRQ-DOCKERFILE` nel suo complesso — applicare dal vivo le 4 istruzioni appena scritte
+per costruire un'immagine, come richiesto testualmente da CURRICULUM sequence 15. [stated]
+
+If it goes wrong::
+- Se l'errore riguarda `node:20-slim` non trovato/non scaricabile: l'immagine di base non era
+  pre-scaricata (vedi Step 1) — non tentare il pull dal vivo, passa al Live-failure fallback.
+- Se l'errore riguarda `COPY index.js`: il file `index.js` non è nella cartella `<DEMO_DIR>` o ha
+  un nome diverso — verificare con `ls` prima di rilanciare la build.
+- *[risk]* Se il builder attivo (`docker buildx ls`, colonna `DRIVER`) non è il driver `docker`
+  predefinito ma un driver container-based, l'immagine costruita potrebbe non comparire in
+  `docker images` senza aggiungere `--load` al comando di build. Questa guida assume il driver
+  predefinito (`docker`), coerente con l'ambiente di redazione, ma il docente deve verificarlo
+  nella propria macchina con `docker buildx ls` prima della lezione.
+
+=== Step 8 — Verificare che l'immagine esista
+
+Trainer-only:: yes
+Timing:: 1 min
+
+Do::
+[invented framing: nome immagine ripreso dallo Step 7]
++
+[source,bash]
+----
+docker images demo-dockerfile
+----
+
+Expect::
+Una riga con `REPOSITORY` uguale a `demo-dockerfile` e `TAG` uguale a `latest` [inferred: `latest`
+è il tag predefinito quando `docker build -t` non specifica un tag esplicito, verificato contro
+`docker build --help` in questo sandbox].
+
+Verify::
+La colonna `REPOSITORY` dell'output contiene esattamente `demo-dockerfile`.
+
+Why::
+Mechanical: confirma che la build dello Step 7 ha effettivamente prodotto un'immagine con quel
+nome, prima di tentare di eseguirla.
+Teaches: `PRQ-IMAGE-CONCEPT` (richiamato) — un'immagine costruita è un artefatto elencabile e
+riutilizzabile, non un effetto temporaneo della build. [stated, edge DESIGN
+`PRQ-DOCKERFILE → PRQ-IMAGE-CONCEPT`]
+
+If it goes wrong::
+Se non compare nessuna riga, la build dello Step 7 non è realmente terminata con successo (anche
+se il terminale non mostrava `ERROR` in modo evidente): torna allo Step 7 e rileggi l'intero
+output della build dall'inizio.
+
+=== Step 9 — Eseguire un container dall'immagine
+
+Trainer-only:: yes
+Timing:: 2 min
+
+Do::
+[invented framing: nome immagine ripreso dallo Step 7; `--rm` scelto da questa guida per non
+lasciare container fermati residui dopo la demo, sintassi verificata contro `docker run --help`
+in questo sandbox]
++
+[source,bash]
+----
+docker run --rm demo-dockerfile
+----
+
+Expect::
+Il terminale stampa una sola riga di testo e poi il container termina da solo, tornando al prompt
+[inferred: conseguenza del fatto che `index.js` termina immediatamente dopo il `console.log`].
+
+Verify::
+L'output stampato è esattamente `Ciao dal container!` [invented framing: stringa scelta da questa
+guida], la stessa stringa scritta in `index.js` nelle Preconditions.
+
+Why::
+Mechanical: dimostra che l'istruzione `CMD` scritta nel Dockerfile è effettivamente ciò che parte
+alla creazione del container.
+Teaches: `PRQ-DOCKERFILE` (istruzione `CMD` messa in pratica) e collegamento a `PRQ-CONTAINER`
+(un container è un processo che nasce da un'immagine ed esegue quel comando).
+
+If it goes wrong::
+Se non stampa nulla o stampa un errore Node.js, verificare con `docker run --rm -it
+demo-dockerfile /bin/sh` (shell interattiva dentro un container basato sulla stessa immagine) che
+il file `/app/index.js` esista davvero nel punto atteso; se manca, l'errore è nel percorso della
+riga `COPY` del Dockerfile.
+
+=== Step 10 — Rompere deliberatamente COPY
+
+Trainer-only:: yes
+Deliberate failure:: yes — mostra alla classe un errore di build realistico (percorso `COPY`
+inesistente) e come si legge il messaggio che il builder restituisce, prima del checkpoint di
+sequence 16 che richiederà di farlo in autonomia.
+Timing:: 3 min
+
+Do::
+Azione editor: modifica la seconda riga del `Dockerfile` da
++
+[source,dockerfile]
+----
+COPY index.js /app/index.js
+----
+a
++
+[source,dockerfile]
+----
+COPY app.js /app/index.js
+----
+(un nome file che non esiste nella cartella `<DEMO_DIR>`). Salva il file, poi:
++
+[source,bash]
+----
+docker build -t demo-dockerfile .
+----
+
+Expect::
+La build si interrompe con un errore riferito al passo `COPY`, che cita il nome del file non
+trovato. [inferred: il testo esatto del messaggio dipende dalla versione del builder; è marcato
+come illustrativo]
++
+[source]
+----
+=> ERROR [2/3] COPY app.js /app/index.js
+------
+ > [2/3] COPY app.js /app/index.js:
+------
+failed to compute cache key: failed to calculate checksum of ref ...: "/app.js": not found
+----
+
+Verify::
+Il comando termina con codice di uscita diverso da 0 (`echo $?` restituisce un valore diverso da
+`0`) e l'output contiene il nome del file inesistente (`app.js`).
+
+Why::
+Mechanical: nessuna build può copiare un file che non esiste nel contesto di build.
+Teaches: `PRQ-DOCKERFILE` (istruzione `COPY`) e prepara `DR-IMAGE-BUILD` (sequence 16): il
+checkpoint seguente richiede esplicitamente di interpretare un errore di build, non solo di
+produrne uno che compila.
+
+If it goes wrong::
+Se l'errore non compare (es. perché esiste per caso un file `app.js` nella cartella), verificare
+con `ls` che non ci sia un file con quel nome esatto prima di questo passo; se compare, rinominare
+temporaneamente o scegliere un altro nome di file inesistente per lo stesso effetto.
+
+=== Step 11 — Correggere e ricostruire
+
+Trainer-only:: yes
+Timing:: 3 min
+
+Do::
+Azione editor: ripristina la seconda riga del `Dockerfile` al valore originale [invented framing:
+stesso nome file dello Step 2]:
++
+[source,dockerfile]
+----
+COPY index.js /app/index.js
+----
+Salva il file, poi (stessi comandi e tag di provenienza già indicati agli Step 7 e 9):
++
+[source,bash]
+----
+docker build -t demo-dockerfile .
+docker run --rm demo-dockerfile
+----
+
+Expect::
+La build termina con successo come allo Step 7, e l'esecuzione stampa di nuovo `Ciao dal
+container!` [invented framing, vedi Step 9] come allo Step 9.
+
+Verify::
+`docker build` termina con codice di uscita 0 e `docker run --rm demo-dockerfile` stampa
+esattamente `Ciao dal container!`.
+
+Why::
+Mechanical: chiude il ciclo build → errore → correzione → build, lasciando l'immagine in uno stato
+funzionante per l'esercitazione che segue (sequence 16).
+Teaches: `PRQ-DOCKERFILE` nel suo complesso, come chiusura della demo.
+
+If it goes wrong::
+Se l'errore persiste, il file non è stato salvato correttamente prima della seconda build:
+rileggere `cat Dockerfile` e confrontarlo riga per riga con il blocco dello Step 2 prima di
+rilanciare la build.
+
+== Reset e ripresa
+
+*Reset* (per ripetere l'intera demo con un'altra classe, tornando allo stato delle Preconditions):
+[invented framing: nome immagine e nome file ripresi dagli step precedenti; sintassi `docker rmi`
+verificata contro `docker rmi --help` in questo sandbox]
+
+[source,bash]
+----
+docker rmi demo-dockerfile
+rm -f Dockerfile
+----
+L'immagine di base `node:20-slim` non va rimossa: resta pre-scaricata per la prossima esecuzione
+(vedi Preconditions). Il file `index.js` non va toccato: fa parte dello stato pulito di partenza,
+non della demo stessa. *[risk]* Non eseguire `docker builder prune` o `docker system prune` su una
+macchina condivisa con altre demo o con il lavoro degli studenti: rimuoverebbe cache di build non
+legate a questa sola demo.
+
+*Ripresa a metà demo* (se interrotta dopo il passo K, per continuare in sicurezza dal passo K+1
+senza ripartire dal passo 1):
+
+- Controllare con `cat Dockerfile` quali istruzioni sono già scritte nel file, e confrontarle con
+  il blocco atteso al passo corrispondente: se il contenuto corrisponde già a uno step successivo
+  (es. il file ha già tutte e 4 le righe), saltare le narrazioni già "coperte" dal contenuto visto
+  in aula prima dell'interruzione, invece di riscriverle.
+- Controllare con `docker images demo-dockerfile` se l'immagine esiste già: se sì, e il
+  `Dockerfile` non è stato modificato da quando è stata costruita, si può saltare direttamente a
+  Step 9 (esecuzione) senza ricostruire.
+- Se l'interruzione è avvenuta durante lo Step 10 (fallimento deliberato) e non è chiaro se la
+  riga `COPY` in vigore sia quella rotta o quella corretta, eseguire `cat Dockerfile` per
+  scoprirlo prima di scegliere se riprendere dallo Step 10 o dallo Step 11.
+
+== Live-failure fallback
+
+*[risk]* Questo agente non ha accesso a un ambiente di delivery reale e non può catturare uno
+screenshot o una trascrizione reale dell'output di `docker build`/`docker run` per questa demo. Un
+umano deve produrre, prima della prima erogazione in aula, almeno:
+
+- una registrazione testuale (copia-incolla del terminale) di una build riuscita (equivalente allo
+  Step 7), di un'esecuzione riuscita (Step 9), dell'errore deliberato (Step 10) e della
+  correzione (Step 11), oppure
+- uno screenshot per ciascuno di questi 4 momenti,
+
+da tenere pronti su una slide o un file separato da mostrare se la build o l'esecuzione dal vivo
+non si sblocca in tempo utile (es. per un problema di rete imprevisto nonostante il pre-download,
+o un guasto della macchina di presentazione).
+
+Se il fallback viene usato: mostrarlo esplicitamente come "questo è quello che avreste visto",
+poi riprendere il piano di sessione dal punto successivo (lezione/checkpoint di sequence 16,
+DR-IMAGE-BUILD) — l'esercitazione che segue non richiede che la demo sia stata vista dal vivo,
+solo che la sintassi FROM/COPY/RUN/CMD sia stata introdotta (già avvenuto a sequence 14).
+
+== Timing cross-check
+
+Somma dei `Timing::` dei passi: 1 + 3 + 1 + 1 + 1 + 1 + 3 + 1 + 2 + 3 + 3 = 20 min, contro i 25 min
+dichiarati in CURRICULUM per sequence 15 (`duration_minutes: 25`) [stated]. La differenza (stimata
+4-5 min di apertura/chiusura narrativa non scomposta in passi propri) è registrata come
+`instructional_decisions` in apertura del file, non corretta silenziosamente qui.

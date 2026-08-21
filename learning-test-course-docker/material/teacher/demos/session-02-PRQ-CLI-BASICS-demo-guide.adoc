@@ -1,0 +1,474 @@
+= Demo guide — Il docente esegue i comandi Docker standard (run, ps, stop, logs, exec) e ne legge l'esito
+:status: draft
+:session: 02
+:node_ref: PRQ-CLI-BASICS
+:curriculum_sequence: 10
+:target_minutes: 30
+:language: it
+
+[NOTE]
+====
+Prova questa guida una volta, dall'inizio alla fine, esattamente come scritta, prima di
+insegnarla dal vivo. Ogni comando e ogni output atteso qui sotto è una stima fondata a partire
+dal design del corso, non un fatto verificato: segnala qualunque cosa non corrisponda a quello
+che vedi e aggiorna questo file una volta corretto.
+====
+
+Copre l'item CURRICULUM `sequence: "10"`, sessione 2 ("Ciclo di vita del container e costruzione
+di un'immagine"), nodo DESIGN `PRQ-CLI-BASICS` — "Comandi Docker standard da riga di comando per
+gestire il ciclo di vita di un container: `run`, `ps`, `stop`, `logs`, `exec`. Include capire cosa
+restituisce ciascun comando e come interpretarlo per capire lo stato del container." [stated, da
+DESIGN]
+
+[NOTE.instructional-decision]
+====
+Decision: `docker run`, `docker ps` e `docker stop` vengono rieseguiti in questa demo, ma la
+narrazione si concentra sull'interpretazione dell'esito, non sulla sintassi di base, già mostrata
+dal vivo nella demo di sessione 1 (item CURRICULUM sequence "6": "Dimostrazione dal vivo (docker
+run / docker ps / docker stop) per rendere concreto il concetto di container appena presentato a
+lezione."). `docker logs` ed `docker exec` sono invece contenuto nuovo in questa demo.
+Rationale: il titolo dell'item ("...e ne legge l'esito") e la descrizione del nodo
+("capire cosa restituisce ciascun comando e come interpretarlo") indicano che il valore aggiunto
+di questa demo, rispetto a quella già vista, è la lettura dell'esito, non la riesecuzione dei
+comandi già visti.
+Confidence: inferred
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: l'immagine usata nella demo (`alpine`, con un ciclo di shell che scrive periodicamente
+sullo standard output) è una scelta del trainer, non un dato di nessuno store. È stata scelta
+perché soddisfa tre vincoli necessari per questa demo con il solo set di comandi permesso da
+`PRQ-CLI-BASICS` (niente mappatura di porte, che appartiene a `PRQ-PORT-MAPPING`, sessione 4):
+resta in esecuzione dopo `-d` (`docker ps` la mostra), scrive righe visibili sullo standard output
+a intervalli regolari (`docker logs` ha qualcosa da mostrare anche senza mappare una porta e senza
+generare traffico di rete), e contiene una shell POSIX per `docker exec ... sh`.
+Rationale: nessun nodo DESIGN o item CURRICULUM specifica un'immagine. Un'immagine "silenziosa"
+dopo l'avvio (es. un web server inattivo senza richieste in ingresso) avrebbe reso `docker logs`
+poco significativo senza introdurre la mappatura delle porte, fuori scope per questo nodo.
+Confidence: invented
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: il fallimento deliberato dello step 7 (`docker exec` su un container fermo) è stato
+scelto invece di, ad esempio, un nome di container sbagliato o un'immagine inesistente.
+Rationale: è l'unico errore, tra quelli disponibili con il solo set di comandi di `PRQ-CLI-BASICS`,
+che mette in contrasto direttamente due comandi ("logs" funziona su un container fermo, "exec" no")
+e quindi dimostra esattamente la competenza di interpretazione richiesta dal nodo, non solo un
+errore di digitazione.
+Confidence: inferred
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: la demo è divisa in 8 step, uno per comando (`stop` e la verifica successiva con `ps -a`
+sono due step separati, così come i due lati del confronto `exec`/`logs` sul container fermo), e
+ogni step è di tipo "Command" — nessuno step di tipo Narration, anche se il punto pedagogico del
+nodo è l'interpretazione dell'esito, non l'esecuzione. Il commento sull'interpretazione è scritto
+nel campo `Why::/Teaches::` di ciascuno step invece che come step di narrazione separato.
+Rationale: ogni comando ha un esito distinto e potenzialmente un proprio punto di fallimento
+(vedi "If it goes wrong" per ciascuno): un trainer che deve recuperare da un imprevisto a metà
+demo deve poter identificare senza ambiguità quale comando ha causato il problema. Non introdurre
+step di sola narrazione è una scelta di economia della guida, non un giudizio che la narrazione sia
+meno importante: il trainer resta libero di aggiungere commento a voce tra uno step e il successivo
+senza che questo comprometta la sequenza dei comandi.
+Confidence: inferred
+Awaiting: instructional-designer
+====
+
+== Preconditions
+
+* Docker installato e funzionante sulla macchina del trainer, come da esercitazione logistica di
+  sessione 1 (item CURRICULUM sequence "2", "Installazione di Docker sui laptop"). [stated, da
+  CURRICULUM]
+* [risk] Versione esatta del Docker Engine e della CLI (Command Line Interface, si può tradurre
+  come: interfaccia a riga di comando) sulla macchina del trainer: in questo sandbox di stesura è
+  disponibile Docker versione 29.4.0, ma nessuno store dichiara la versione che sarà installata sui
+  laptop del corso (per lo più Windows, alcuni Mac — LOGISTICS). Il trainer deve verificare
+  `docker --version` sulla propria macchina prima della lezione e segnalare eventuali differenze di
+  output rispetto a questa guida (in particolare formato dell'output di `docker ps`, che può
+  cambiare tra versioni maggiori).
+* [risk] Nessuno store indica se la demo verrà eseguita su Docker Desktop (probabile su Windows,
+  maggioranza dei laptop per LOGISTICS) o su un daemon Linux nativo. La shell usata per lanciare i
+  comandi deve trattare gli apici singoli come citazione letterale di stringa: bash, zsh, la bash di
+  WSL o PowerShell vanno bene; **non usare `cmd.exe`**, che non interpreta gli apici singoli come
+  delimitatori di stringa e romperebbe gli step 1 e 4 (contengono `sh -c '...'` con `$((i+1))` e
+  `$$`, sintassi di shell POSIX passata come argomento, non sintassi di `docker`). Il trainer deve
+  scegliere e verificare in anticipo quale terminale userà in aula, anche per garanzia di
+  leggibilità dal fondo della stanza.
+* Nessun container con nome `demo-cli` già presente (nuovo o residuo di un run precedente):
+  eseguire `docker ps -a --filter name=demo-cli` e, se compare qualcosa, rimuoverlo con
+  `docker rm -f demo-cli` prima di iniziare. Questa pulizia non fa parte della demo: è housekeeping
+  per garantire lo stato pulito descritto qui.
+* [risk] L'immagine `alpine` (vedi la decisione sopra) deve essere già scaricata sulla macchina
+  che farà la demo, per non dipendere da una connessione di rete live in aula. Eseguire
+  `docker pull alpine` in anticipo, fuori da questa guida e fuori dall'orario di lezione.
+* Terminale con font e dimensione leggibili dal fondo dell'aula, come per ogni demo dal vivo
+  precedente di questo corso. [inferred, prassi didattica generale, non da uno store specifico]
+* Gli studenti hanno appena assistito alla lezione precedente (item CURRICULUM sequence "9",
+  "Il modello dei processi: standard input/output, terminale, pipe, segnali", sessione 1) e alla
+  demo di sequence "6" (run/ps/stop) — questa demo può quindi richiamare entrambe senza
+  ripresentarle da zero. [stated, da CURRICULUM]
+
+== Steps
+
+=== Step 1 — Avviare il container in background
+
+Trainer-only:: yes
+Timing:: 4 min
+
+Do::
++
+[source,bash]
+----
+docker run -d --name demo-cli alpine sh -c 'i=0; while true; do i=$((i+1)); echo "riga di log numero $i"; sleep 2; done'
+----
+
+Expect::
+Il comando restituisce una sola riga: l'ID completo del container appena creato (una stringa
+esadecimale lunga, es. `3f2a1b9c8d7e...` [illustrativo, valore reale generato ad ogni avvio]),
+poi il prompt torna immediatamente disponibile perché `-d` esegue il container in background.
+
+Verify::
+Il comando restituisce un solo ID esadecimale e il prompt torna subito disponibile (nessun output
+continuo davanti al trainer).
+
+Why::
+Mechanical: `-d` (detached, esecuzione in background) è necessario perché la shell del container
+resti in esecuzione senza bloccare il terminale del trainer per i comandi successivi.
++
+Teaches: la parte "esecuzione" del nodo — `docker run` avvia un container da un'immagine, coerente
+con la lezione già vista su `PRQ-CONTAINER` (sequence "5") e già dimostrata in sequence "6".
+
+If it goes wrong::
+Se compare un errore `Conflict. The container name "/demo-cli" is already in use`, un container
+con quel nome non è stato rimosso in una prova precedente: eseguire `docker rm -f demo-cli` e
+ripetere il comando. Se compare un errore di pull dell'immagine (`Unable to find image 'alpine'
+locally` seguito da un tentativo di download che si blocca), la rete non è disponibile e
+l'immagine non era stata pre-scaricata: passare al fallback (sezione più sotto) invece di
+attendere il download in diretta.
+
+=== Step 2 — Verificare che il container sia in esecuzione
+
+Trainer-only:: yes
+Timing:: 3 min
+
+Do::
++
+[source,bash]
+----
+docker ps
+----
+
+Expect::
+Una tabella con intestazioni `CONTAINER ID`, `IMAGE`, `COMMAND`, `CREATED`, `STATUS`, `PORTS`,
+`NAMES`, e una sola riga: ID abbreviato [illustrativo], `alpine`, comando troncato, tempo trascorso
+dalla creazione [illustrativo, varia a ogni esecuzione], `Up <n> seconds` [illustrativo, il numero
+di secondi varia], nessuna porta (colonna `PORTS` vuota, perché nessuna porta è stata mappata),
+`demo-cli`.
+
+Verify::
+La colonna `STATUS` inizia con `Up` e la colonna `NAMES` legge `demo-cli`.
+
+Why::
+Mechanical: `docker ps` senza `-a` mostra solo i container attualmente in esecuzione; è la lettura
+di riferimento per "il container è acceso" prima di introdurre gli altri comandi di osservazione.
++
+Teaches: interpretazione dell'esito di `ps` — capire che `STATUS: Up ...` significa "il processo
+del container è vivo", non solo eseguire il comando meccanicamente [stated, da DESIGN,
+descrizione del nodo].
+
+If it goes wrong::
+Se la tabella è vuota, il container dello step 1 non è partito o si è già fermato: rieseguire
+`docker ps -a` per vedere anche i container fermi e leggere la colonna `STATUS` per capire perché
+(tipicamente `Exited (1) ...` se lo script della shell aveva un errore di sintassi — controllare
+gli apici del comando dello step 1).
+
+=== Step 3 — Osservare cosa scrive il container sullo standard output
+
+Trainer-only:: yes
+Timing:: 4 min
+
+Do::
++
+[source,bash]
+----
+docker logs --tail 5 demo-cli
+----
+
+Expect::
+Le ultime righe scritte dal container (al massimo 5, per l'opzione `--tail`), nel formato
+`riga di log numero <n>` [illustrativo: il valore esatto di `<n>` dipende da quanti secondi sono
+passati dallo step 1, ma `--tail 5` mantiene l'output leggibile indipendentemente dal tempo
+trascorso — il numero totale di righe scritte finora non è predicibile con precisione e non va
+citato come valore fisso].
+
+Verify::
+L'output contiene solo righe nel formato `riga di log numero <n>` (al massimo 5, in ordine
+crescente), nessun messaggio di errore.
+
+Why::
+Mechanical: `docker logs` restituisce lo standard output (in italiano: l'uscita standard, il
+canale di uscita predefinito di un processo — output standard [terminologia introdotta a lezione
+in sequence "9"]) accumulato dal processo del container da quando è partito.
++
+Teaches: collega esplicitamente `docker logs` al modello dei processi già visto in sequence "9"
+(standard input/output) — l'edge DESIGN dichiara che "Interpretare `docker logs` (stdout) e
+`docker stop` (segnale) richiede il modello dei processi." [stated, da DESIGN, edge
+PRQ-CLI-BASICS → PRQ-PROCESS-MODEL]. Punto pedagogico da rendere esplicito a voce: `logs` mostra
+solo ciò che è già stato scritto, non è un comando che "fa succedere" qualcosa. [inferred]
+
+If it goes wrong::
+Se non compare nessuna riga, sono passati meno di 2 secondi dallo step 1 (il ciclo scrive ogni
+2 secondi): attendere qualche secondo e ripetere il comando. Se compare un errore
+`No such container`, il nome digitato non corrisponde a quello creato nello step 1: verificare con
+`docker ps -a` il nome esatto.
+
+=== Step 4 — Eseguire un comando dentro il container in esecuzione
+
+Trainer-only:: yes
+Timing:: 5 min
+
+Do::
++
+[source,bash]
+----
+docker exec demo-cli sh -c 'echo sono un processo diverso, PID $$'
+----
+
+Expect::
+Una sola riga: `sono un processo diverso, PID <numero>` [illustrativo, il PID (Process ID, si può
+tradurre come: identificativo di processo) varia ad ogni esecuzione].
+
+Verify::
+La riga restituita contiene un numero di PID diverso da 1 (il PID 1 è il processo principale del
+container, quello lanciato da `docker run`; `exec` ne apre uno nuovo).
+
+Why::
+Mechanical: `docker exec` avvia un secondo processo dentro il namespace del container già in
+esecuzione, senza fermare o modificare il primo (quello avviato da `docker run`).
++
+Teaches: distingue `exec` (azione nuova, eseguita ora, apre un processo aggiuntivo) da `logs`
+(lettura passiva di ciò che è già accaduto) — la distinzione che il checkpoint di sequence "12"
+(DR-LIFECYCLE) verificherà esplicitamente. [stated, da CURRICULUM, nota di sequence "12": "verifica
+che lo studente sappia usare run/ps/stop/logs/exec ... non solo eseguirli meccanicamente"]
+
+If it goes wrong::
+Se compare `OCI runtime exec failed: ... executable file not found`, il nome della shell non è
+corretto per l'immagine usata (alcune immagini minime non hanno `sh` nel PATH atteso): verificare
+con `docker exec demo-cli which sh` prima della demo, durante la prova.
+
+=== Step 5 — Fermare il container
+
+Trainer-only:: yes
+Timing:: 3 min
+
+Do::
++
+[source,bash]
+----
+docker stop demo-cli
+----
+
+Expect::
+Il comando restituisce il nome `demo-cli` dopo una breve pausa (fino a 10 secondi
+[illustrativo, dipende dal timeout di default e da come il processo risponde al segnale]), poi il
+prompt torna disponibile.
+
+Verify::
+Il comando restituisce esattamente `demo-cli` e il prompt torna disponibile senza errori.
+
+Why::
+Mechanical: `docker stop` invia un segnale di terminazione (in italiano: segnale — terminologia
+del modello dei processi) al processo principale del container e attende che termini, prima di
+forzarne l'arresto se non risponde entro il timeout.
++
+Teaches: collega `stop` al modello dei processi (segnali), come per `logs` allo step 3 —
+edge DESIGN PRQ-CLI-BASICS → PRQ-PROCESS-MODEL. [stated, da DESIGN]
+
+If it goes wrong::
+Se il comando impiega più dei soliti pochi secondi, il processo dentro il container non risponde
+al segnale di terminazione (comportamento raro per lo script di shell usato in questa demo, ma
+possibile con altre immagini): attendere, il comando termina comunque forzando l'arresto dopo il
+timeout di default.
+
+=== Step 6 — Verificare lo stato dopo l'arresto
+
+Trainer-only:: yes
+Timing:: 2 min
+
+Do::
++
+[source,bash]
+----
+docker ps -a --filter name=demo-cli
+----
+
+Expect::
+Una riga per `demo-cli` con colonna `STATUS` che legge `Exited (0) <n> seconds ago` [illustrativo,
+il numero di secondi varia; `0` è il codice di uscita atteso per un arresto pulito].
+
+Verify::
+La colonna `STATUS` inizia con `Exited` (non `Up`), a differenza dello step 2.
+
+Why::
+Mechanical: `-a` (all, tutti) include anche i container fermi, che `docker ps` senza opzioni non
+mostra (come già osservato nel "If it goes wrong" dello step 2).
++
+Teaches: contrappone esplicitamente l'esito di `ps` prima (`Up`) e dopo (`Exited`) `stop` —
+esattamente l'interpretazione di stato richiesta dal nodo, non solo l'esecuzione dei comandi.
+
+If it goes wrong::
+Se `STATUS` legge `Exited (137) ...` invece di `(0)`, il container è stato terminato forzatamente
+(segnale SIGKILL) invece che con una terminazione pulita: non blocca la demo, ma vale la pena
+nominarlo a voce come esempio di codice di uscita diverso da zero, se il tempo lo consente.
+
+=== Step 7 — Fallimento deliberato: eseguire un comando su un container fermo
+
+Trainer-only:: yes
+Deliberate failure:: yes — dimostra che `docker exec` richiede un container in esecuzione, a
+differenza di `docker logs`, che funziona anche su un container fermo (vedi step 8): la coppia di
+step 7-8 rende visibile la differenza tra "un comando che agisce ora sul processo" e "un comando
+che legge una cronologia già scritta".
+Timing:: 4 min
+
+Do::
++
+[source,bash]
+----
+docker exec demo-cli sh -c 'echo questo non dovrebbe funzionare'
+----
+
+Expect::
+Un messaggio di errore che indica che il container non è in esecuzione (es.
+`Error response from daemon: Container ... is not running` [illustrativo, il testo esatto può
+variare tra versioni del Docker Engine — vedi precondizione sulla versione]), nessuna riga di
+output normale, il comando termina con stato di errore.
+
+Verify::
+Il comando non produce la riga di testo richiesta e l'output contiene la parola `running` (o
+equivalente, secondo la versione) accompagnata da un messaggio di errore.
+
+Why::
+Mechanical: `docker exec` deve individuare un processo principale attivo dentro il container su
+cui aprire il nuovo processo; se il container è fermo non esiste nessun namespace di processo
+attivo in cui entrare.
++
+Teaches: il punto centrale del nodo — "capire cosa restituisce ciascun comando" non significa che
+tutti i comandi restituiscono sempre qualcosa di utilizzabile: un container fermo cambia l'esito
+possibile di ciascun comando in modo diverso, e va anticipato prima del checkpoint di sequence
+"12". [inferred, collegamento didattico esplicito non dichiarato testualmente in DESIGN ma diretto
+dalla descrizione del nodo]
+
+If it goes wrong::
+Se invece il comando avesse successo, il container non si è davvero fermato allo step 5:
+verificare lo stato con `docker ps -a` prima di procedere e, se necessario, ripetere lo step 5.
+Questo è l'unico step della demo in cui un "successo" del comando è il segnale di un problema, non
+il fallimento atteso.
+
+=== Step 8 — Confrontare con `docker logs` sullo stesso container fermo
+
+Trainer-only:: yes
+Timing:: 3 min
+
+Do::
++
+[source,bash]
+----
+docker logs --tail 5 demo-cli
+----
+
+Expect::
+Le ultime righe scritte prima dell'arresto, stesso formato dello step 3 (`riga di log numero <n>`)
+ma con `<n>` più alto [illustrativo: il container ha continuato a scrivere fino allo step 5].
+Eseguendo il comando una seconda volta subito dopo, l'output è identico: il container è fermo e
+non produce più righe nuove, a differenza di quanto accadrebbe se fosse ancora in esecuzione.
+
+Verify::
+Il comando, eseguito due volte di seguito, restituisce esattamente lo stesso output entrambe le
+volte, e non genera errori — a differenza dello step 7 sullo stesso container.
+
+Why::
+Mechanical: `docker logs` legge l'output già scritto e conservato dal daemon Docker, che resta
+disponibile anche dopo che il processo del container è terminato, finché il container non viene
+rimosso.
++
+Teaches: chiude il contrasto avviato allo step 7 — `logs` funziona su un container fermo perché
+legge una cronologia già scritta, `exec` non funziona perché non c'è nessun processo vivo in cui
+entrare. Questa è la lettura d'esito richiesta esplicitamente dal nodo. [inferred, stessa base
+della nota Why dello step 7]
+
+If it goes wrong::
+Se il comando restituisce un errore `No such container`, il container è già stato rimosso (es. da
+una prova precedente con `docker rm`): ripartire dallo step 1 per rigenerarlo, oppure passare al
+fallback se il tempo in aula non consente di rifare la sequenza.
+
+== Reset
+
+Per tornare allo stato pulito delle Preconditions (per un'altra classe o per ripetere la prova):
+
+[source,bash]
+----
+docker rm -f demo-cli
+----
+
+Verificare che sia stato rimosso con `docker ps -a --filter name=demo-cli`, che deve restituire
+solo l'intestazione della tabella, nessuna riga. `docker rm -f` non fa parte del set di comandi
+insegnato da questo nodo (`PRQ-CLI-BASICS` copre `run`, `ps`, `stop`, `logs`, `exec`): è
+housekeeping del trainer, da non presentare come contenuto della demo.
+
+== Resume mid-demo
+
+* Interruzione dopo lo step 1 o 2 (container ancora in esecuzione): riprendere direttamente dallo
+  step successivo, il container è già nello stato giusto.
+* Interruzione dopo lo step 5 o 6 (container già fermato): riprendere dallo step 7 senza rieseguire
+  `stop`.
+* Interruzione dopo lo step 7 (in mezzo al fallimento deliberato): il fallimento non modifica lo
+  stato del container, si può riprendere direttamente dallo step 8.
+* Se non è chiaro in quale stato si trovi il container, eseguire `docker ps -a --filter
+  name=demo-cli` e leggere la colonna `STATUS` per decidere da quale step riprendere (`Up` → dopo
+  lo step 4, `Exited` → dallo step 7 in poi).
+
+== Live-failure fallback
+
+[risk] Questo agente non ha accesso all'ambiente di consegna reale e non può catturare uno
+screenshot o una registrazione reale dell'output atteso. Un umano deve produrre, prima della prima
+erogazione del corso, almeno una cattura testuale (copia degli output reali di `docker ps`,
+`docker logs`, `docker exec`, incluso l'errore dello step 7) eseguita durante la prova indicata
+nella nota di apertura di questa guida, da tenere come materiale di scorta in caso di
+malfunzionamento live (es. rete assente per il pull dell'immagine, Docker Desktop non partito
+correttamente sulla macchina del trainer).
+
+Se la demo si interrompe e non è recuperabile in aula: mostrare la cattura testuale sopra descritta
+al posto dell'esecuzione live, spiegando a voce ciascun comando come se fosse in esecuzione ora, e
+riprendere il filo del corso dall'esercitazione di sequence "11" (già prevista subito dopo in
+CURRICULUM), che gli studenti possono comunque affrontare al proprio ritmo una volta ripristinato
+l'ambiente.
+
+== Timing cross-check
+
+Setup (verifica precondizioni, pulizia di un eventuale container residuo): 2 min [inferred].
+
+Step 1: 4 min · Step 2: 3 min · Step 3: 4 min · Step 4: 5 min · Step 5: 3 min · Step 6: 2 min ·
+Step 7: 4 min · Step 8: 3 min.
+
+Totale: 2 + 4 + 3 + 4 + 5 + 3 + 2 + 4 + 3 = 30 min, contro `duration_minutes: 30` dichiarato
+dall'item CURRICULUM sequence "10". Il totale coincide esattamente con il budget dichiarato, ma
+questo non lascia margine per domande dal pubblico o per un primo tentativo che vada rifatto: vedi
+la nota `instructional_decisions` qui sotto.
+
+[NOTE.instructional-decision]
+====
+Decision: il totale dei tempi per step (30 min) coincide esattamente con `duration_minutes` senza
+alcun margine per domande, imprevisti o un secondo tentativo dopo un fallimento non deliberato
+(es. problema di rete nel pull dell'immagine, nonostante la precondizione di pre-pull).
+Rationale: gli step non sono stati allungati artificialmente per creare un margine, perché farlo
+avrebbe nascosto lo scostamento reale invece di segnalarlo, come indicato nella regola sul mismatch
+di timing.
+Confidence: inferred
+Awaiting: instructional-designer
+====

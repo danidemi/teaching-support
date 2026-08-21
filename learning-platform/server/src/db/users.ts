@@ -1,0 +1,68 @@
+import { createDb } from './client.js'
+import { users } from './schema.js'
+
+export interface NewUser {
+  email: string
+  passwordHash: string
+  confirmedAt: Date | null
+}
+
+export interface CreatedUser {
+  id: string
+  email: string
+}
+
+/**
+ * Narrow persistence port for the signup routes (SIGNUP-EXPEDITE-001).
+ * Kept narrow and interface-based so `app.test.ts`/route tests can inject
+ * an in-memory fake — `server/src/db/client.ts` must stay unimported by
+ * anything the DB-free unit test suite touches.
+ *
+ * No `findByEmail`-then-`create` here on purpose: that shape races (two
+ * concurrent signups with the same email can both pass the check). The
+ * duplicate-email 409 is instead derived from the unique-constraint
+ * violation `create` throws — see `isUniqueViolation`.
+ */
+export interface UserRepository {
+  create(user: NewUser): Promise<CreatedUser>
+}
+
+/** Postgres-error shape narrow enough to check the SQLSTATE code we care about. */
+interface PgError {
+  code?: string
+  cause?: unknown
+}
+
+export const UNIQUE_VIOLATION = '23505'
+
+/**
+ * Drizzle (`drizzle-orm/node-postgres`) wraps the raw `pg` error in a
+ * `DrizzleQueryError`, so the SQLSTATE `code` sits on `err.cause.code`,
+ * not `err.code` directly (verified manually against a running Postgres
+ * during SIGNUP-EXPEDITE-001 development — the fake repository in
+ * signup.test.ts throws the raw shape, which this also matches).
+ */
+export function isUniqueViolation(err: unknown): boolean {
+  if (typeof err !== 'object' || err === null) return false
+  const pgErr = err as PgError
+  if (pgErr.code === UNIQUE_VIOLATION) return true
+  return typeof pgErr.cause === 'object' && pgErr.cause !== null && (pgErr.cause as PgError).code === UNIQUE_VIOLATION
+}
+
+export function createUserRepository(databaseUrl: string): UserRepository {
+  const { db } = createDb(databaseUrl)
+
+  return {
+    async create(user) {
+      const rows = await db
+        .insert(users)
+        .values({
+          email: user.email,
+          passwordHash: user.passwordHash,
+          confirmedAt: user.confirmedAt,
+        })
+        .returning({ id: users.id, email: users.email })
+      return rows[0]
+    },
+  }
+}

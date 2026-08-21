@@ -1,0 +1,443 @@
+= Demo guide — Il docente pubblica e recupera un'immagine da un registry con push/pull
+:status: draft
+:session: 03
+:node_ref: PRQ-REGISTRY
+:target_minutes: 25
+:language: it
+
+[NOTE]
+====
+Rehearse this guide once, end to end, exactly as written, before teaching it live. Every command
+and expected output below is a grounded guess from the course design, not a tested fact — flag
+anything that does not match what you see, and update this file once corrected.
+
+In particular, rehearse Step 2 (push) and Step 5 (pull) with the room's actual network connection
+before class: both depend on internet access and on a registry account this guide cannot verify
+exists. `[risk]`
+====
+
+[NOTE.instructional-decision]
+====
+Decision: authentication to the registry (`docker login`) is treated as a Precondition, done by the
+trainer before class starts, off-screen — it is not scripted as a demo step.
+Rationale: the DESIGN node `PRQ-REGISTRY` names only "cos'è un registry", "nominare/taggare
+un'immagine" and the "comandi standard `push`/`pull`" as what this node teaches; it does not name
+login/authentication as content to teach. Typing a password or token live in front of the room is
+also undesirable regardless of what the node covers.
+Confidence: inferred
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: the registry used for this demo is Docker Hub, and the image pushed/pulled is `alpine`,
+retagged under the trainer's own namespace — not a private registry, and not the custom image
+students built from a Dockerfile in session 2 (curriculum sequence 15–16, node `DR-IMAGE-BUILD`).
+Rationale: no store (LOGISTICS, CURRICULUM, DESIGN) names a registry product, a private-registry
+setup, or the name/content of the image built in sequence 15–16. Docker Hub is the only registry
+LOGISTICS implicitly supports (no LMS or private infrastructure is mentioned; the classroom has
+internet-connected laptops per LOGISTICS). `alpine` is chosen over the session-2 custom image so
+this demo does not depend on that image still existing locally, and because it is small enough to
+push/pull quickly in front of the room — same rationale already used for the sibling demo on
+`PRQ-DOCKER-NETWORK` (session 3, sequence 23) for image choice.
+Confidence: invented
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: "recupero da un'altra macchina" is simulated by deleting the local image copies before
+pulling, on the same trainer machine, rather than using a second physical machine.
+Rationale: LOGISTICS states each student has their own laptop; it does not state the trainer has
+access to a second machine in the room. Deleting the local copies first is the closest reproducible
+substitute for "a machine that does not have this image yet" that this guide can rely on without
+assuming hardware no store confirms. This is also the only step in this guide (Step 4) that carries
+no direct `Teaches::` trace of its own — it is scaffolding this simulation requires, not new
+PRQ-REGISTRY content by itself.
+Confidence: invented
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: this guide has no `Deliberate failure:: yes` step, unlike the sibling demo on the same
+session's `PRQ-DOCKER-NETWORK` node (curriculum sequence 23), which deliberately shows a failing
+command to make network isolation (EQ_3) observable.
+Rationale: neither the CURRICULUM item's title/notes nor the DESIGN node `PRQ-REGISTRY`'s
+description ask for a contrasting failure — the node names only "cos'è un registry",
+"nominare/taggare" and the `push`/`pull` commands, all of which are demonstrated here as successful
+operations. Introducing a deliberate failure (e.g. a denied push) would not make any of those three
+things more observable than showing them working does.
+Confidence: inferred
+Awaiting: instructional-designer
+====
+
+== Preconditions
+
+- Docker Engine installed and running on the trainer's machine. Version used to check the flags in
+  this guide: Docker version 29.4.0, build 9d7ad9f, checked read-only in this sandbox
+  (`docker --version`). `[inferred]` — the trainer's actual delivery machine may run a different
+  version; re-check `docker tag --help`, `docker push --help` and `docker pull --help` if a flag in
+  the steps below does not match. `[risk]`
+- A Docker Hub account already exists and the trainer is already authenticated on the delivery
+  machine (`docker login` run and confirmed successful before class, off-screen — see the
+  instructional-decision note above). `[risk]` — this guide cannot verify any account exists; the
+  trainer must create one and log in before rehearsal, and must know the account's
+  `<DOCKERHUB_USERNAME>` used throughout this guide.
+- The account allows creating at least one new public repository by pushing to it — Docker Hub does
+  this automatically on first `push` to a namespace the account owns, no separate "create repo" UI
+  step is required. `[inferred]` — behavior for a brand-new, never-used account is not verified in
+  this sandbox. `[risk]`
+- Room network access to `hub.docker.com` / `registry-1.docker.io` is available and was tested
+  before class starts, not assumed live. `[risk]` — no store states the classroom's network
+  reliability; a live push/pull that stalls in front of the room is the single most likely failure
+  point of this demo.
+- The `alpine` image is already pulled locally (`docker pull alpine`) before class starts, not live
+  during the demo. `[risk]` — the trainer must confirm `docker images` lists `alpine:latest` before
+  starting. If the preceding demo on `PRQ-DOCKER-NETWORK` (sequence 23) ran first and pulled
+  `alpine` already, this is already satisfied; sequence 18 runs before sequence 23 in this session,
+  so do not assume it — pull it explicitly for this demo.
+- No local image is already tagged `<DOCKERHUB_USERNAME>/corso-demo` from a previous rehearsal, so
+  Step 1 does not silently overwrite unnoticed leftover state. See "Reset" below.
+- The room already saw, in the immediately preceding lecture (curriculum sequence 17, same node,
+  same session), what a registry is and how an image is named/tagged for one — this demo does not
+  re-explain those concepts in words, it performs the tagging and the `push`/`pull` on screen.
+  `[inferred]` from CURRICULUM ordering.
+- The audience already knows what a Docker image is (`PRQ-IMAGE-CONCEPT`, taught in session 1,
+  sequence 7) — this is a `Requires` edge of `PRQ-REGISTRY` in DESIGN, so this guide does not
+  re-explain what an image is.
+- The audience already knows `docker run`, `docker ps`, and `docker images` mechanically
+  (`PRQ-CLI-BASICS`, session 2, sequences 10–11) — this guide does not re-explain what those
+  commands do.
+- A terminal with a font size and window large enough to read from the back of the room is already
+  open, and a browser tab to `https://hub.docker.com` is already open and logged into the same
+  account, for Step 3. `[risk]` — the trainer must set both up themselves; no store names screen,
+  font, or browser configuration.
+
+== Steps
+
+=== Step 1 — Tag the image for the registry namespace
+
+Trainer-only:: yes
+Deliberate failure:: no
+Timing:: 3 min
+
+Do::
++
+[source,bash]
+----
+docker tag alpine:latest <DOCKERHUB_USERNAME>/corso-demo:v1
+----
++
+`<DOCKERHUB_USERNAME>` — the trainer's own Docker Hub account name, set in Preconditions.
+`corso-demo` — the repository name chosen for this demo; any name the account owns works, this one
+is used consistently through the rest of this guide. `v1` — an explicit tag, chosen instead of
+relying on the implicit `latest`, so the room sees a real tag typed out. `[invented framing]`
+
+Expect::
+No output — `docker tag` prints nothing on success. `[inferred]`
+
+Verify::
+`docker images` lists a second row for the same image id as `alpine:latest`, with REPOSITORY
+`<DOCKERHUB_USERNAME>/corso-demo` and TAG `v1`.
+
+Why::
+Mechanical: a registry push always needs a fully qualified `<namespace>/<repo>:<tag>` name; the
+plain local name `alpine:latest` cannot be pushed directly to the trainer's own Docker Hub
+namespace.
+Teaches: PRQ-REGISTRY — nominare/taggare un'immagine per pubblicarla, performed concretely on an
+already-known image rather than only described (sequence 17's lecture described this same idea in
+words).
+
+If it goes wrong::
+- `docker: 'tag' requires exactly 2 arguments` — a typo in the command; re-type it exactly as
+  written above.
+- `Error response from daemon: No such image: alpine:latest` — Preconditions' `docker pull alpine`
+  was not done; run it now, then repeat this step.
+
+=== Step 2 — Push the image to the registry
+
+Trainer-only:: yes
+Deliberate failure:: no
+Timing:: 4 min
+
+Do::
++
+[source,bash]
+----
+docker push <DOCKERHUB_USERNAME>/corso-demo:v1
+----
+
+Expect::
+A sequence of lines, one per image layer, each moving through states such as `Preparing`,
+`Waiting`, `Pushing`, and finally `Pushed` or `Layer already exists` (for layers Docker Hub already
+has from other public images sharing the same base), ending with a line printing the tag `v1` and a
+digest such as `sha256:<hash>`. `[inferred]` — exact layer count, timing, and the digest are
+illustrative and will differ every run; on a typical classroom connection this step is the one most
+likely to run slower than rehearsed.
+
+Verify::
+The last line of output reads `v1: digest: sha256:<hash> size: <n>` — a mention of `digest`, not an
+error, confirms the push completed.
+
+Why::
+Mechanical: this is the "pubblica" half of the item's title — the image now exists on the registry,
+not only on the trainer's machine.
+Teaches: PRQ-REGISTRY — il comando standard `push`.
+
+If it goes wrong::
+- `denied: requested access to the resource is denied` — the trainer is not actually logged in as
+  `<DOCKERHUB_USERNAME>`, or the repository name collides with one owned by another account; check
+  `docker login` was completed per Preconditions, and that `<DOCKERHUB_USERNAME>` in Step 1's tag
+  matches exactly.
+- The push stalls with no line progressing for more than ~15 seconds — likely the room's network;
+  let it run a little longer once, and if it still stalls, move to the Live-failure fallback rather
+  than losing several minutes of class time waiting. `[risk]`
+
+=== Step 3 — Show the pushed image on Docker Hub
+
+Trainer-only:: yes
+Deliberate failure:: no
+Timing:: 2 min
+
+Do::
+UI interaction — switch to the already-open browser tab, reload
+`https://hub.docker.com/r/<DOCKERHUB_USERNAME>/corso-demo`, and point at the *Tags* list.
+`[invented framing]` — no store names this UI or confirms its exact layout; describe what you see
+rather than reading a scripted path if the page has changed since this guide was written.
+
+Expect::
+The repository page shows one tag, `v1`, with a "last pushed" time close to "a few seconds ago".
+`[inferred]`
+
+Verify::
+The tag list shows exactly `v1` and no other tag (confirming this is the same push just run, not a
+leftover from an earlier rehearsal).
+
+Why::
+Mechanical: none — this step adds no new local state.
+Teaches: PRQ-REGISTRY — cos'è un registry, made visible as a real, browsable place the image now
+lives, not only a command's exit code.
+
+If it goes wrong::
+- The page does not reflect the new tag yet — reload once more after a few seconds; Docker Hub's
+  UI can lag slightly behind a push completing. `[risk]` — exact lag was not verified in this
+  sandbox (no network access here).
+- The browser is not available (no projector output for two windows, no second display) — skip
+  this step and narrate instead: "the image now also exists on Docker Hub under my account, not
+  only on this laptop" — then continue at Step 4.
+
+=== Step 4 — Delete the local copies to simulate a machine that does not have the image yet
+
+Trainer-only:: yes
+Deliberate failure:: no
+Timing:: 3 min
+
+Do::
++
+[source,bash]
+----
+docker rmi <DOCKERHUB_USERNAME>/corso-demo:v1 alpine:latest
+----
++
+Removes both the tagged copy and the base `alpine:latest` copy, so nothing named `alpine` remains
+locally under any tag. `[invented framing]` — see the instructional-decision note above on why this
+step, not a second machine, stands in for "un'altra macchina".
+
+Expect::
+Two or more lines confirming removal (`Untagged: ...`, `Deleted: sha256:<hash>`) for each tag and
+each now-unreferenced layer. `[inferred]`
+
+Verify::
+`docker images` no longer lists any row for `alpine` or for
+`<DOCKERHUB_USERNAME>/corso-demo`.
+
+Why::
+Mechanical: without this step, Step 5's `pull` would silently do nothing observable — the image is
+already present locally, so the room would not see a real download happen.
+Teaches: none directly — this step is scaffolding for Step 5, not new PRQ-REGISTRY content by
+itself. See the instructional-decision note above.
+
+If it goes wrong::
+- `Error response from daemon: conflict: unable to remove repository reference ... (must force) -
+  container ... is using its referenced image` — a running or stopped container still references
+  `alpine`; find it with `docker ps -a`, remove it (`docker rm <container>`), then repeat this step.
+
+=== Step 5 — Pull the image back from the registry
+
+Trainer-only:: yes
+Deliberate failure:: no
+Timing:: 3 min
+
+Do::
++
+[source,bash]
+----
+docker pull <DOCKERHUB_USERNAME>/corso-demo:v1
+----
+
+Expect::
+Lines showing each layer being fetched (`Pulling fs layer`, `Downloading`, `Pull complete`), ending
+with `Status: Downloaded newer image for <DOCKERHUB_USERNAME>/corso-demo:v1` and the full image
+reference. `[inferred]` — exact layer count and download time are illustrative and will differ
+every run.
+
+Verify::
+`docker images` now lists `<DOCKERHUB_USERNAME>/corso-demo:v1` again, even though Step 4 removed
+every local copy — proving the image came from the registry, not from anything left on disk.
+
+Why::
+Mechanical: this is the "recupera" half of the item's title, and the direct proof that Step 2's
+push actually worked.
+Teaches: PRQ-REGISTRY — il comando standard `pull`, e concretamente "recuperabile ... da un'altra
+macchina" (DR-IMAGE-DISTRIBUTE, GOAL_003), qui simulato sulla stessa macchina del docente.
+
+If it goes wrong::
+- `Error response from daemon: pull access denied for <DOCKERHUB_USERNAME>/corso-demo, repository
+  does not exist or may require authentication` — Step 2's push did not actually complete; re-check
+  Step 3's Docker Hub page, and re-run Step 2 if the tag is missing there.
+- The pull stalls — same network caveat as Step 2; same fallback applies.
+
+=== Step 6 — Run the pulled image to prove it is executable
+
+Trainer-only:: yes
+Deliberate failure:: no
+Timing:: 3 min
+
+Do::
++
+[source,bash]
+----
+docker run --rm <DOCKERHUB_USERNAME>/corso-demo:v1 echo "immagine recuperata dal registry"
+----
+
+Expect::
+A single line of output: `immagine recuperata dal registry`, then the container exits and is
+removed (`--rm`). `[inferred]`
+
+Verify::
+The exact line `immagine recuperata dal registry` appears in the terminal, with no error before it.
+
+Why::
+Mechanical: pulling an image is not by itself proof it works; running it is.
+Teaches: PRQ-REGISTRY — closes the loop on "recuperabile ed eseguibile da un'altra macchina" from
+the node's own description, not only "recuperabile".
+
+If it goes wrong::
+- `docker: Error response from daemon: No such image` — Step 5's pull did not complete or used a
+  different tag string; re-check the exact reference against Step 5 and re-run.
+
+=== Step 7 — Narrate the recap tying the demo back to the lecture and forward to the hands-on
+
+Trainer-only:: yes
+Deliberate failure:: no
+Timing:: 2 min
+
+Do::
+Narration — no command. Say, in the trainer's own words: "we took an image we already had, gave it
+a name that includes our registry account, pushed it — you saw it appear on Docker Hub — then we
+deleted every local copy and pulled it back, and it still ran. That is what 'un'immagine
+recuperabile ed eseguibile da un'altra macchina' means in practice, not just in words. Now it is
+your turn." `[invented framing]` — exact wording left to the trainer.
+
+Expect::
+No system output; this is a spoken recap while Steps 5–6's terminal output is still visible on
+screen for reference.
+
+Verify::
+The room can, when asked, name the two commands just used (`push`, `pull`) and what each one does.
+
+Why::
+Mechanical: none — pure narration.
+Teaches: PRQ-REGISTRY as a whole, closing the loop with the lecture that immediately preceded this
+item (curriculum sequence 17) and setting up curriculum sequence 19 (hands_on, `DR-IMAGE-DISTRIBUTE`,
+checkpoint on GOAL_003), where students repeat this same push/pull themselves.
+
+If it goes wrong::
+- The room has no questions and looks unconvinced — re-run Steps 4–6 back to back if time allows,
+  since the delete-then-recover sequence is more convincing repeated than described once.
+
+== Restore `alpine:latest` before the rest of this session
+
+`[risk]` — Step 4 deletes `alpine:latest`, not only the retagged copy. Curriculum sequence 23, later
+in this same session (node `PRQ-DOCKER-NETWORK`, a separate demo guide), states in its own
+Preconditions that `alpine` must already be pulled locally *before* that demo starts, not live
+during it. If this guide (sequence 18) runs earlier in the same session as intended, that
+precondition is now false unless it is restored:
+
+[source,bash]
+----
+docker pull alpine
+----
+
+Run this once, right after Step 6 of this guide (or at the latest, before sequence 23 starts), so
+the trainer's machine is back in the state sequence 23 assumes. This restore is not needed for
+curriculum sequence 19 (the hands_on checkpoint immediately after this demo) — that item runs on
+students' own laptops, not the trainer's machine, so it is unaffected either way.
+
+== Reset
+
+To return to the Preconditions' clean state for another cohort:
+
+[source,bash]
+----
+docker rmi <DOCKERHUB_USERNAME>/corso-demo:v1
+docker pull alpine
+----
+
+Verify `docker images` lists `alpine:latest` but no row for
+`<DOCKERHUB_USERNAME>/corso-demo` before starting the demo again. The remote repository on Docker
+Hub is left in place — re-running Step 2 later simply overwrites tag `v1` with a new push; no
+remote cleanup is required between cohorts.
+
+== Resume mid-demo
+
+- Interrupted after Step 1: the local tag `<DOCKERHUB_USERNAME>/corso-demo:v1` exists, nothing was
+  pushed yet. Continue at Step 2.
+- Interrupted after Step 2: the push may or may not have fully completed. Check Step 2's Verify
+  assertion (the `digest` line) in the trainer's own terminal scrollback; if it is missing, re-run
+  Step 2 before continuing.
+- Interrupted after Step 3: nothing to redo; the browser tab is read-only. Continue at Step 4.
+- Interrupted after Step 4: both local copies are already gone. Continue directly at Step 5 — do
+  not re-run Step 4 (it will fail harmlessly with "No such image", which is not itself a problem,
+  but skip it to save time).
+- Interrupted after Step 5: the image is back locally. Confirm with `docker images` before Step 6.
+- Interrupted after Step 6: nothing to redo (`--rm` already cleaned up the container); proceed to
+  Step 7's narration directly.
+
+== Live-failure fallback
+
+`[risk]` — this agent has no access to a real delivery environment, a Docker Hub account, or actual
+network conditions in the classroom, and cannot produce an actual captured terminal transcript or
+screenshot. A human must, during rehearsal, capture and attach here:
+
+- The literal output of Step 2's `docker push`, a screenshot of Step 3's Docker Hub tag page, the
+  literal output of Step 4's `docker rmi`, Step 5's `docker pull`, and Step 6's `docker run`, from
+  one full successful rehearsal run.
+
+Until that capture exists, if the live demo breaks (most likely at Step 2 or Step 5, on the
+network) and cannot be fixed in class: narrate the model verbally using Step 7's recap language,
+and, if the Docker Hub tag page from an earlier rehearsal was captured, show that screenshot instead
+of the live browser. Resume the session at curriculum sequence 19 (the hands-on checkpoint on
+`DR-IMAGE-DISTRIBUTE`) as planned; that item still lets students attempt push/pull themselves even
+if the trainer's own live run did not complete, since it is verified independently by the checkpoint
+in that item, not by this demo having succeeded.
+
+== Timing cross-check
+
+Step 1: 3 min + Step 2: 4 min + Step 3: 2 min + Step 4: 3 min + Step 5: 3 min + Step 6: 3 min +
+Step 7: 2 min = 20 min of steps. Add approx. 3 min of setup slack (opening the terminal and browser
+tab, confirming Preconditions were already met) for a total of approx. 23 min against the item's
+`duration_minutes` of 25 in CURRICULUM — a 2-minute margin under budget, not over. Recorded here
+rather than adjusting either number.
+
+[NOTE.instructional-decision]
+====
+Decision: left a small margin under the curriculum's 25-minute budget rather than adding a step to
+fill it exactly.
+Rationale: this demo depends on a live network round-trip to an external registry twice (Step 2
+push, Step 5 pull) — the two steps most likely to run slower than rehearsed in a real classroom. A
+small buffer absorbs that variance without forcing an artificial extra step into the script.
+Confidence: inferred
+Awaiting: instructional-designer
+====

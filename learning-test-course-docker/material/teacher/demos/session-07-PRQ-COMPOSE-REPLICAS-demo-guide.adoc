@@ -1,0 +1,435 @@
+= Demo guide — Il docente scala un servizio a più repliche con Compose
+:status: draft
+:sequence: 49
+:session: 07
+:node_ref: PRQ-COMPOSE-REPLICAS
+:target_minutes: 20
+:language: it
+
+// CURRICULUM: sessione 7, item sequence "49", didactic_activity "demo", duration_minutes 20.
+// DESIGN: nodo PRQ-COMPOSE-REPLICAS — "Eseguire più repliche di uno stesso servizio con Docker
+// Compose (scalabilità di base)." knowledge_type: procedural. provenance_tags: ["inferred"] —
+// nessun documento SSOT dichiara i comandi esatti di questa demo; ogni comando qui sotto è quindi
+// una deduzione motivata, non un fatto verificato nell'ambiente reale del docente.
+// Requires (DESIGN): PRQ-COMPOSE-DEEP — sintassi Compose avanzata per topologie multi-servizio
+// (app + database + servizio mock, es. SMTP). Questa demo presuppone quel prerequisito acquisito
+// e non lo ri-spiega.
+// Contesto in CURRICULUM: item precedente nella stessa sessione (sequence "48", stesso node_ref,
+// didactic_activity "lecture", 20 min) ha già introdotto la teoria della scalabilità con Compose
+// immediatamente prima di questa demo.
+
+[NOTE]
+====
+Provare questa guida una volta, dall'inizio alla fine, esattamente come scritta, prima di
+insegnarla dal vivo. Ogni comando e ogni output atteso sotto è una deduzione fondata a partire
+dal design del corso, non un fatto verificato — segnalare qualsiasi discrepanza rispetto a ciò
+che si osserva e aggiornare questo file una volta corretto.
+====
+
+[NOTE.instructional-decision]
+====
+Decision: Il nodo PRQ-COMPOSE-REPLICAS ha `provenance_tags: ["inferred"]` in DESIGN — nessuna
+fonte SSOT specifica il comando, il file compose di partenza o l'output reale. Ho scelto di
+costruire l'intera demo su `docker compose up --scale`, l'unico meccanismo di cui ho una verifica
+locale di sintassi (`docker compose up --help` nella sandbox di autoring, Docker Compose v5.1.2),
+e di non usare `deploy.replicas` nel file compose perché non ho evidenza che `docker compose up`
+(senza Swarm) lo rispetti in questa versione.
+Rationale: preferire un solo meccanismo verificabile a livello di sintassi piuttosto che due
+meccanismi di cui uno è pura congettura, invece di rischiare un errore di sintassi nel file
+YAML (YAML Ain't Markup Language — non traducibile letteralmente, si può tradurre come:
+linguaggio di serializzazione dei dati usato dal file compose) come possibile fallimento
+alternativo, meno legato alla scalabilità in sé.
+Confidence: inferred
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: Ho scelto come fallimento deliberato la collisione di porta host fissa (`"8080:8080"`)
+quando si scala il servizio a più di una replica, invece di un fallimento più teorico (es. errore
+di sintassi YAML).
+Rationale: è il fallimento più probabile e più didattico nel contesto reale della scalabilità di
+base con Compose — traccia direttamente alla descrizione del nodo ("scalabilità di base") e dà
+al docente un aggancio concreto per introdurre il tema "le porte pubblicate in modo fisso non
+scalano", senza dover introdurre già ora la sintassi avanzata di range di porte (che è oggetto di
+PRQ-COMPOSE-DEEP, prerequisito già acquisito, non di questo nodo).
+Confidence: inferred
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: Granularità dei passi: ho separato "tentativo di scalare" (fallimento), "spiegazione
+dell'errore" e "correzione del file" in tre passi distinti invece di un passo unico, perché ognuno
+richiede un'azione di tipo diverso (comando, narrazione, interazione UI — interfaccia utente,
+grafica o a riga di comando che sia) e un docente che perde il filo a metà demo deve poter
+individuare quale singola azione è sospetta.
+Rationale: coerente con la regola "preferire più passi piccoli a un passo che ne raggruppa
+diversi" della spec.
+Confidence: inferred
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: non ho ridistribuito il margine tra il tempo stimato dei passi e i `duration_minutes`
+dichiarati in CURRICULUM su un passo specifico (vedi "Timing cross-check" per il calcolo).
+Rationale: un margine ragionevole su un budget di 20 minuti è compatibile con normali imprevisti
+da demo dal vivo (rilettura di un errore, domande dalla platea); forzare un passo aggiuntivo solo
+per far coincidere esattamente la somma avrebbe significato inventare contenuto non tracciabile a
+DESIGN o CURRICULUM.
+Confidence: inferred
+Awaiting: instructional-designer
+====
+
+== Preconditions
+
+- **Tool**: Docker Engine e Docker Compose plugin (v2, comando `docker compose`, non il vecchio
+  `docker-compose` standalone). Sintassi dei comandi di questa guida verificata contro Docker
+  Compose v5.1.2 presente nella sandbox di stesura di questa guida `[inferred]` — la versione
+  effettivamente installata sulla macchina del docente in aula non è verificata da questo
+  documento. `[risk]` Il docente deve controllare `docker compose version` sulla propria macchina
+  prima della demo e segnalare qui eventuali differenze di sintassi.
+- **Stato di partenza — file compose**: `[risk]` Nessuno store SSOT contiene un file
+  `docker-compose.yml` di progetto per questo corso. Il docente deve preparare, prima della demo,
+  un file compose con almeno un servizio applicativo chiamato `app` che pubblica una porta host
+  fissa (es. `"8080:8080"`), riprendendo la topologia app + database + servizio mock (es. SMTP —
+  Simple Mail Transfer Protocol, protocollo semplice di trasferimento della posta) introdotta come
+  prerequisito in PRQ-COMPOSE-DEEP. Il blocco YAML `[invented framing]` sotto è un esempio
+  illustrativo per rendere questa guida provabile, non il file reale del corso:
++
+[source,yaml]
+----
+services:
+  app:
+    image: <APP_IMAGE>
+    ports:
+      - "8080:8080"
+    depends_on:
+      - db
+  db:
+    image: <DB_IMAGE>
+    volumes:
+      - db-data:/var/lib/data
+  mailer:
+    image: <SMTP_MOCK_IMAGE>
+
+volumes:
+  db-data:
+----
++
+`<APP_IMAGE>`, `<DB_IMAGE>`, `<SMTP_MOCK_IMAGE>` — le immagini realmente usate nel corso.
+`[risk]` Il docente deve sostituire questi segnaposto con i riferimenti reali del progetto del
+corso prima di rehearsal.
+- **Stato di partenza — sistema in esecuzione**: CURRICULUM pone l'item precedente nella stessa
+  sessione (sequence "48", stesso nodo, `didactic_activity: lecture`) immediatamente prima di
+  questa demo `[stated]`, ma una lezione non lascia di per sé un ambiente live: CURRICULUM non
+  dichiara che il progetto compose sia già in esecuzione a questo punto. `[risk]` Il docente deve
+  quindi avviare esplicitamente il progetto prima dell'inizio della demo, con
+  `docker compose up -d`, e verificare con `docker compose ps` che sia partita una sola istanza di
+  `app` (vedi Step 1) — questo avvio fa parte del setup, non è un passo della demo davanti alla
+  platea.
+- **Terminale**: una sola finestra di terminale visibile alla platea, posizionata nella cartella
+  che contiene il file compose di cui sopra (directory di lavoro corrente = cartella del
+  progetto).
+- **Rete/credenziali**: nessuna richiesta oltre a quanto già configurato per l'ambiente Docker
+  locale del docente; nessun accesso di rete esterno necessario per questa demo. `[inferred]` —
+  dedotto dal fatto che il nodo riguarda solo la scalabilità locale di un servizio, non
+  distribuzione o registry.
+- **Pubblico**: gli studenti osservano, non seguono in parallelo su una propria macchina — tutti
+  i passi sono `Trainer-only:: yes`, coerentemente con il titolo dell'item ("Il docente scala...").
+  Lo stesso scenario tornerà come laboratorio guidato nell'item successivo (sequence "50",
+  `didactic_activity: hands_on`).
+
+== Steps
+
+=== Step 1 — Mostrare lo stato di partenza a una replica
+
+Trainer-only:: yes
+Deliberate failure:: no
+Timing:: 2 min
+
+Do::
++
+[source,bash]
+----
+docker compose ps
+----
+
+Expect::
+Il comando restituisce una tabella con una sola riga per il servizio `app`, colonna `STATUS` su
+`running` (o equivalente "Up"). `[inferred]` — il testo esatto della colonna varia con la versione
+di Compose installata; non verificato in questo documento.
+
+Verify::
+La tabella mostra esattamente una riga con `NAME` che inizia per `<PROJECT>-app-` e colonna
+`STATUS`/`State` che riporta lo stato di esecuzione (running/Up). `<PROJECT>` è il nome del
+progetto compose in uso, illustrativo — cambia con la cartella del progetto del docente.
+
+Why::
+Mechanical: stabilisce il punto di partenza visibile alla platea prima di introdurre la
+scalabilità.
+Teaches: introduce l'osservazione che di default un servizio Compose ha una sola istanza — la
+premessa concreta di "scalabilità di base" (descrizione del nodo PRQ-COMPOSE-REPLICAS).
+
+If it goes wrong::
+Se il comando non restituisce nessuna riga, il progetto compose non è stato avviato: eseguire
+`docker compose up -d` prima di procedere e ripetere questo passo. Se restituisce più di una riga
+per `app`, un rehearsal precedente non è stato ripulito: eseguire la sezione "Reset" più sotto
+prima di continuare.
+
+=== Step 2 — Tentare di scalare a 3 repliche (fallimento deliberato)
+
+Trainer-only:: yes
+Deliberate failure:: yes — dimostra che una porta host fissa pubblicata nel servizio impedisce la
+scalabilità, perché due container non possono essere in ascolto sulla stessa porta dell'host.
+Timing:: 2 min
+
+Do::
++
+[source,bash]
+----
+docker compose up -d --scale app=3
+----
+
+Expect::
+Il comando termina con un errore relativo al binding della porta host (es. "port is already
+allocated" o messaggio equivalente) dopo aver avviato correttamente la prima replica aggiuntiva.
+`[inferred]` — il testo esatto del messaggio d'errore non è verificato in questo documento, perché
+eseguire questo comando avrebbe significato mutare l'ambiente di stesura di questa guida, cosa non
+consentita in fase di autoring.
+
+Verify::
+Il codice di uscita del comando è diverso da zero e il terminale mostra un messaggio di errore che
+menziona la porta pubblicata (es. `8080`) come già in uso, non un errore di sintassi del file YAML.
+
+Why::
+Mechanical: una porta host fissa (`"8080:8080"`) può essere occupata da un solo container alla
+volta; scalare a più repliche tenta di avviare più container che vogliono tutti occupare la stessa
+porta host.
+Teaches: rende visibile il limite pratico della scalabilità con Compose — il nodo descrive
+"scalabilità di base" e questo passo mostra dove quella base incontra un vincolo reale, prima
+della correzione al passo successivo.
+
+If it goes wrong::
+Se il comando riesce senza errori (tutte e 3 le repliche partono), il file compose di partenza non
+pubblica una porta host fissa come previsto nelle Preconditions: verificare la sezione `ports:`
+del servizio `app` e correggerla prima della demo dal vivo, oppure — se si vuole comunque mostrare
+il fallimento — rimuovere la porta pubblicata solo dopo questo passo, non prima.
+
+=== Step 3 — Spiegare l'errore alla platea
+
+Trainer-only:: yes
+Deliberate failure:: no
+Timing:: 2 min
+
+Do::
+Indicare a voce la riga di errore nel terminale e spiegare: la porta dell'host è una risorsa unica
+sulla macchina, non del container; pubblicare una porta host fissa (`8080:8080`) lega quel numero
+di porta a un solo container. Ogni replica in più deve poter usare una porta diversa, o non
+pubblicare affatto una porta fissa sull'host.
+
+Expect::
+La platea individua nel messaggio di errore la porta menzionata al passo 2 e collega il fallimento
+alla riga `ports:` mostrata nella Precondition.
+
+Verify::
+Il docente indica esplicitamente la riga `ports: - "8080:8080"` nel file compose (aperto o
+mostrato) e la fa corrispondere al numero di porta comparso nel messaggio di errore del passo
+precedente.
+
+Why::
+Mechanical: nessuna azione di sistema in questo passo; è la spiegazione che rende comprensibile
+l'errore appena mostrato.
+Teaches: collega l'errore osservato al concetto di porta (rete) come risorsa dell'host, non del
+container — prerequisito già coperto in sessioni precedenti, qui solo richiamato, non
+ri-spiegato.
+
+If it goes wrong::
+Se la platea non individua la riga giusta, mostrare esplicitamente il file compose evidenziando la
+sezione `ports:` del servizio `app` (passo UI, non richiede comandi).
+
+=== Step 4 — Correggere il file compose
+
+Trainer-only:: yes
+Deliberate failure:: no
+Timing:: 3 min
+
+Do::
+Nell'editor già aperto sul file compose, rimuovere o commentare la riga `ports: - "8080:8080"` del
+servizio `app`, salvare il file.
+
+Expect::
+Il file compose salvato non pubblica più una porta host fissa per `app`; il servizio resta
+comunque raggiungibile all'interno della rete Compose dagli altri servizi (es. `db`, `mailer`),
+solo non più direttamente dall'host su quella porta fissa.
+
+Verify::
+Rileggere a voce la sezione `services.app` del file salvato e confermare che la riga `ports:` con
+la porta fissa non è più presente (o è stata sostituita da un intervallo).
+
+Why::
+Mechanical: rimuovere il binding fisso della porta host elimina il conflitto mostrato al passo 2 e
+rende possibile eseguire più container dello stesso servizio in parallelo.
+Teaches: mostra la condizione pratica perché la scalabilità di base funzioni — un servizio
+scalabile con Compose non deve dipendere da una porta host fissa e univoca.
+
+If it goes wrong::
+Se l'editor non salva o il file resta con la porta fissa, il comando del passo 5 fallirà di nuovo
+con lo stesso errore: prima di ripetere il passo 5, riverificare con un semplice comando di lettura
+del file (es. apertura nell'editor) che la modifica sia stata salvata.
+
+=== Step 5 — Scalare di nuovo a 3 repliche (successo)
+
+Trainer-only:: yes
+Deliberate failure:: no
+Timing:: 2 min
+
+Do::
++
+[source,bash]
+----
+docker compose up -d --scale app=3
+----
+
+Expect::
+Il comando avvia due nuovi container del servizio `app` (la prima istanza era già in esecuzione
+dal passo 1) e termina senza errori. `[inferred]` — testo esatto dell'output non verificato.
+
+Verify::
+Il codice di uscita del comando è zero e il terminale non mostra righe di errore relative alla
+porta.
+
+Why::
+Mechanical: senza porta host fissa in conflitto, Compose può avviare più container dello stesso
+servizio con nomi distinti (es. `<PROJECT>-app-1`, `<PROJECT>-app-2`, `<PROJECT>-app-3` —
+`<PROJECT>` e i suffissi numerici sono illustrativi, non testo letterale che ricorre sempre).
+Teaches: dimostra il comportamento centrale del nodo — eseguire più repliche dello stesso servizio
+con Compose (scalabilità di base).
+
+If it goes wrong::
+Se il comando fallisce ancora con un errore di porta, il file non è stato salvato correttamente al
+passo 4: tornare al passo 4. Se fallisce con un errore diverso (es. immagine non trovata), è un
+problema di ambiente non specifico a questa demo: passare alla sezione "Live-failure fallback".
+
+=== Step 6 — Verificare le 3 repliche in esecuzione
+
+Trainer-only:: yes
+Deliberate failure:: no
+Timing:: 2 min
+
+Do::
++
+[source,bash]
+----
+docker compose ps app
+----
+
+Expect::
+La tabella mostra 3 righe per il servizio `app`, tutte con colonna `STATUS`/`State` su
+running/"Up". `[inferred]` — formato esatto della tabella non verificato.
+
+Verify::
+Il numero di righe restituite per `app` è esattamente 3, e tutte riportano lo stesso stato di
+esecuzione osservato al passo 1 per la singola istanza.
+
+Why::
+Mechanical: `docker compose ps` elenca i container del progetto raggruppati per servizio,
+confermando visivamente il risultato della scalabilità.
+Teaches: chiude il ciclo dimostrativo — la platea vede il numero di repliche passare da 1 a 3, la
+prova concreta del nodo insegnato.
+
+If it goes wrong::
+Se compaiono meno di 3 righe, uno o più container sono usciti subito dopo l'avvio: eseguire
+`docker compose logs app` per mostrare la causa, oppure passare al fallback se il tempo stringe.
+
+=== Step 7 — Spiegare perché il database non si scala allo stesso modo
+
+Trainer-only:: yes
+Deliberate failure:: no
+Timing:: 3 min
+
+Do::
+A voce, indicando il servizio `db` nel file compose: un database con dati propri (`volumes:` con
+un volume dedicato) non si scala semplicemente aumentando il numero di repliche con lo stesso
+comando, perché repliche indipendenti dello stesso servizio con lo stesso volume competerebbero
+sullo stesso spazio di dati; la scalabilità mostrata in questa demo riguarda servizi senza stato
+proprio (qui, `app`), non un servizio con stato persistente come `db`.
+
+Expect::
+La platea collega la differenza osservata (perché si scala `app` e non `db` in questa demo) al
+concetto di volume, già introdotto nei prerequisiti, senza bisogno di ri-spiegarlo da zero.
+
+Verify::
+Il docente indica esplicitamente la riga `volumes:` del servizio `db` nel file e la contrappone
+all'assenza di volumi propri nel servizio `app`.
+
+Why::
+Mechanical: nessuna azione di sistema; chiarisce il limite di applicabilità della tecnica appena
+mostrata prima che la platea la generalizzi in modo scorretto.
+Teaches: precisa l'ambito di "scalabilità di base" nella descrizione del nodo — vale per servizi
+senza stato proprio, non un meccanismo generale applicabile a ogni servizio del sistema.
+
+If it goes wrong::
+Se la platea non ha chiaro il concetto di volume, non ri-spiegarlo qui: rimandare esplicitamente
+alla sessione in cui è stato introdotto e proseguire, per non sforare il tempo assegnato a questa
+demo.
+
+== Reset
+
+Per tornare allo stato pulito delle Preconditions (una sola istanza di `app` in esecuzione, porta
+host fissa ripristinata):
+
+[source,bash]
+----
+docker compose down
+----
+
+Poi ripristinare nel file compose la riga `ports: - "8080:8080"` sul servizio `app` (rimossa al
+passo 4), salvare, ed eseguire di nuovo:
+
+[source,bash]
+----
+docker compose up -d
+----
+
+Verificare con `docker compose ps` che compaia una sola riga per `app` prima di rieseguire la demo
+per un'altra coorte.
+
+== Resume mid-demo
+
+- **Interruzione dopo il passo 2 o 3** (prima di aver modificato il file): riprendere dal passo 4,
+  nessuna azione di recupero necessaria — il sistema è ancora nello stato del passo 1 più
+  un tentativo fallito.
+- **Interruzione dopo il passo 4** (file già modificato, scalabilità non ancora ritentata):
+  riprendere dal passo 5 direttamente.
+- **Interruzione dopo il passo 5 o 6** (repliche già attive): riprendere dal passo 7 (narrazione,
+  nessuna dipendenza da stato di sistema) oppure, se si deve interrompere del tutto, applicare
+  "Reset" prima della sessione successiva.
+
+== Live-failure fallback
+
+`[risk]` Questo documento non può produrre una registrazione reale del terminale o uno screenshot
+del comando riuscito: chi lo scrive non ha accesso all'ambiente di delivery. Prima della prima
+erogazione in aula, un umano deve catturare e allegare qui (o in un file collegato):
+
+- l'output testuale reale di `docker compose up -d --scale app=3` sul file compose corretto
+  (passo 5), e
+- l'output reale di `docker compose ps app` con 3 repliche in esecuzione (passo 6),
+
+così che, se la demo dal vivo si blocca e non si risolve in aula, il docente possa mostrare questi
+output catturati come se la demo fosse stata eseguita, narrando gli stessi passi 5-6 su materiale
+pre-registrato. Dopo aver mostrato il fallback, riprendere direttamente dal passo 7 (narrazione,
+non richiede stato di sistema funzionante) e procedere normalmente con l'item successivo (sequence
+"50", laboratorio guidato sullo stesso scenario).
+
+== Timing cross-check
+
+Somma dei passi: 2 + 2 + 2 + 3 + 2 + 2 + 3 = 16 min. Setup stimato 4 min `[inferred]`: a
+differenza di quanto ipotizzato in una prima stesura, l'item precedente (sequence "48") è una
+lezione, non un item con ambiente live — CURRICULUM non dichiara che lasci il progetto compose
+già avviato (vedi il `[risk]` nelle Preconditions). Il setup deve quindi includere l'avvio del
+progetto (`docker compose up -d`) e la verifica che sia partita una sola istanza di `app`, non solo
+l'apertura di terminale ed editor. Totale stimato: 20 min contro i 20 min di `duration_minutes`
+dichiarati per sequence "49" in CURRICULUM — nessuna differenza residua, ma il margine è ora nullo:
+qualsiasi imprevisto (es. pull di immagini lento al primo avvio) fa sforare il budget.

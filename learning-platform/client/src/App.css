@@ -18,6 +18,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 0.75rem;
 }
 
 .sign-in-button {
@@ -28,4 +29,14 @@
   background-color: #1f2a44;
   color: #ffffff;
   cursor: pointer;
+}
+
+.sign-up-link {
+  font-size: 1rem;
+  padding: 0.6rem 1.5rem;
+  border-radius: 0.375rem;
+  border: 1px solid #1f2a44;
+  color: #1f2a44;
+  text-decoration: none;
+  display: inline-block;
 }

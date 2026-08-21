@@ -46,5 +46,17 @@ path_pattern: `material/teacher/quizzes/`
 filename_pattern: `quiz-<TYPE_OF_QUIZ>-<PROGRESS>.md`
 ```
 
+## Material 4
+
+```
+type: demo guide
+audience: Trainer
+preferred_formats: AsciiDoc
+owning_subagent: learning-demo-author
+trigger: One per CURRICULUM item with didactic_activity demo — a trainer-only, step-by-step script for a live demonstration, precise enough that a command-shaped step can be copy-pasted
+path_pattern: `material/teacher/demos/`
+filename_pattern: `session-NN-<node_ref>-demo-guide.adoc`
+```
+
 `node_ref` in a filename is the item's own `node_ref`.
 

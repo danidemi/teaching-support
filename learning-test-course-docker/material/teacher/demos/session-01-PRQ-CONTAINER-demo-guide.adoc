@@ -1,0 +1,462 @@
+= Demo guide — Il docente avvia, elenca e ferma un container dal vivo
+:status: draft
+:session: 01
+:node_ref: PRQ-CONTAINER
+:curriculum_sequence: 6
+:target_minutes: 25
+:language: it
+
+[NOTE]
+====
+Prova questa guida una volta, dall'inizio alla fine, esattamente come scritta, prima di
+insegnarla dal vivo. Ogni comando e ogni output atteso qui sotto è una stima fondata a partire
+dal design del corso, non un fatto verificato: segnala qualunque cosa non corrisponda a quello
+che vedi e aggiorna questo file una volta corretto.
+====
+
+Copre l'item CURRICULUM `sequence: "6"`, sessione 1 ("Perché Docker, container, immagini e
+processi"), nodo DESIGN `PRQ-CONTAINER` — "Cos'è un container Docker: un processo isolato con il
+proprio filesystem e ambiente, creato a partire da un'immagine. Differenza concettuale rispetto a
+una macchina virtuale (EU_1: Docker non è una macchina virtuale)." [stated, da DESIGN]
+
+EDITORIAL_GUIDELINES esiste (`specifications/editorial_guidelines.md`): questa guida ne segue le
+regole terminologiche (`container` sempre in inglese; "rete", "processo" sempre in italiano) e di
+tono (registro semi-formale, diretto, hands-on first). [stated]
+
+[NOTE.instructional-decision]
+====
+Decision: la demo usa solo `docker run` e `docker stop`, oltre a `docker ps`/`docker ps -a`, e non
+introduce `docker logs` né `docker exec`. Non spiega la sintassi dei comandi come competenza a sé
+(quella è `PRQ-CLI-BASICS`, sessione 2, item CURRICULUM sequence "10", che li reintroduce e li
+cita esplicitamente come già "mostrati dal vivo" in questa demo). Qui i comandi sono il veicolo,
+non il contenuto: ogni `Teaches::` traccia a una clausola della descrizione di `PRQ-CONTAINER`
+("processo isolato", "proprio filesystem e ambiente", "creato a partire da un'immagine", EU_1),
+non alla lettura di `STATUS`/PID che appartiene a `PRQ-CLI-BASICS`.
+Rationale: l'item CURRICULUM sequence "6" dichiara esplicitamente lo scopo — "rendere concreto il
+concetto di container appena presentato a lezione" — non insegnare i comandi.
+Confidence: inferred
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: la guida non usa vocabolario di `PRQ-PROCESS-MODEL` (standard input/output, segnali,
+PID, terminale) — quel nodo è item CURRICULUM sequence "9", ancora da svolgere quando questa demo
+va in scena (sequence "6"). Dove il nodo DESIGN `PRQ-CONTAINER` stesso usa la parola "processo"
+("un processo isolato"), la guida la usa nello stesso senso generico già coperto da `PRQ-ISOLATION`
+(sequence "4", appena vista), non nel senso tecnico di stdin/stdout/segnali.
+Rationale: LOGISTICS dichiara esplicitamente che il modello dei processi NON è un prerequisito
+assunto e va insegnato/richiamato più avanti nel corso (item sequence "9"); usarlo qui
+anticiperebbe contenuto non ancora disponibile all'aula.
+Confidence: stated
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: l'immagine usata (`alpine`) è una scelta del trainer, non un dato di nessuno store. È
+stata scelta per due motivi legati esattamente a questo nodo: (1) è un'immagine minima che scarica
+e avvia un container in una manciata di secondi, il che rende visibile a occhio EU_1 (nessun avvio
+di sistema operativo separato, a differenza di una macchina virtuale); (2) non richiede altro che
+un comando banale (`sleep`) per restare "in esecuzione" senza dover introdurre `docker logs` o
+mappatura di porte, entrambi fuori scope per questo nodo.
+Rationale: nessun nodo DESIGN o item CURRICULUM specifica un'immagine per questa demo.
+Confidence: invented
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: questa demo non include un fallimento deliberato.
+Rationale: gli unici fallimenti puliti disponibili con il solo set di comandi `run`/`ps`/`stop`
+(es. nome container duplicato, container inesistente) sono errori di digitazione o di housekeeping,
+non fenomeni che dimostrano qualcosa sul concetto di container (isolamento, filesystem proprio,
+provenienza da un'immagine, differenza da una VM). Il fallimento deliberato più significativo per
+questo set di comandi (`exec` su un container fermo) è già usato da `PRQ-CLI-BASICS`, sessione 2,
+sequence "10", e richiede `docker exec`, fuori scope qui.
+Confidence: inferred
+Awaiting: instructional-designer
+====
+
+== Preconditions
+
+* Docker installato e funzionante sulla macchina del trainer, come da esercitazione logistica di
+  sessione 1 (item CURRICULUM sequence "2", "Installazione di Docker sui laptop"). [stated, da
+  CURRICULUM]
+* [risk] Versione esatta del Docker Engine/CLI sulla macchina del trainer: in questo sandbox di
+  stesura è disponibile Docker versione 29.4.0, ma nessuno store dichiara la versione che sarà
+  installata sui laptop del corso (in prevalenza Windows, pochi Mac — LOGISTICS, "Dotazione
+  tecnica"). Il trainer deve verificare `docker --version` sulla propria macchina prima della
+  lezione e segnalare eventuali differenze rispetto a questa guida (in particolare il formato
+  dell'output di `docker ps`, che può cambiare tra versioni maggiori).
+* [risk] Nessuno store indica se la demo verrà eseguita su Docker Desktop (probabile su Windows,
+  maggioranza dei laptop per LOGISTICS) o su un daemon Linux nativo, né quale terminale userà il
+  trainer (PowerShell, WSL, terminale integrato di Docker Desktop). I comandi sotto sono `docker`
+  puro e non dipendono dalla shell, ma il trainer deve decidere e provare in anticipo quale
+  terminale userà in aula, in modo che sia leggibile dal fondo della stanza.
+* Nessun container con nome `container-uno` o `container-due` già presente (nuovo o residuo di un
+  run precedente), e nessun altro container il cui nome contenga la sottostringa `container-`
+  (vedi il filtro usato allo step 7): eseguire `docker ps -a --filter name=container-` e, se
+  compare qualcosa, rimuoverlo con `docker rm -f <NOME>` prima di iniziare. Questa pulizia non fa
+  parte della demo: è housekeeping per garantire lo stato pulito descritto qui.
+* [risk] L'immagine `alpine` (vedi la decisione sopra) deve essere già scaricata sulla macchina
+  che farà la demo, per non dipendere da una connessione di rete live in aula, e anche perché
+  l'attesa di un pull in diretta contraddirebbe il punto sulla velocità di avvio (step 1).
+  Eseguire `docker pull alpine` in anticipo, fuori da questa guida e fuori dall'orario di lezione.
+* Terminale con font e dimensione leggibili dal fondo dell'aula. [inferred, prassi didattica
+  generale, non da uno store specifico]
+* Gli studenti hanno appena assistito, nella stessa sessione, alla lezione di item CURRICULUM
+  sequence "5" ("Cos'è un container", che introduce EU_1) e, prima ancora, a sequence "4"
+  (`PRQ-ISOLATION`) e sequence "3" (`PRQ-WHY-DOCKER`, root del grafo DESIGN). Non hanno ancora
+  visto sequence "9" (`PRQ-PROCESS-MODEL`) né sequence "10" (`PRQ-CLI-BASICS`, sessione 2): questa
+  demo è il loro primo contatto con comandi Docker eseguiti dal vivo. [stated, da CURRICULUM e
+  DESIGN]
+
+== Steps
+
+=== Step 1 — Avviare e osservare un container che finisce da solo
+
+Trainer-only:: yes
+Timing:: 3 min
+
+Do::
++
+[source,bash]
+----
+docker run --rm alpine date
+----
+
+Expect::
+Una sola riga con data e ora correnti (es. `Fri Aug 21 09:41:03 UTC 2026` [illustrativo, il
+valore reale varia a ogni esecuzione e dipende dal fuso orario del container]), poi il prompt
+torna disponibile quasi subito.
+
+Verify::
+Il risultato compare in pochi secondi, senza nessuna schermata di avvio di un sistema operativo
+né altra attesa percepibile come un boot. [risk] Il tempo esatto non è verificabile da questo
+agente: su un daemon Linux nativo è tipicamente sotto il secondo, ma su Docker Desktop (probabile
+su Windows, maggioranza dei laptop per LOGISTICS), specie al primo avvio dell'immagine dopo il
+pull, possono passare 1-3 secondi. Il trainer deve misurarlo durante la prova indicata nella nota
+di apertura e, se necessario, riformulare questa riga con il tempo osservato sulla propria
+macchina: il punto pedagogico non è un numero preciso di millisecondi, ma l'assenza di una
+sequenza di boot.
+
+Why::
+Mechanical: `--rm` rimuove automaticamente il container non appena il comando al suo interno
+(`date`) termina, per non lasciare in giro un container "usa e getta" che non serve più ai passi
+successivi.
++
+Teaches: EU_1 in modo diretto — l'avvio non richiede il boot di un sistema operativo separato,
+perché un container è un processo del sistema host, a differenza di quanto farebbe una macchina
+virtuale. [stated, da DESIGN, descrizione del nodo "Differenza concettuale rispetto a una macchina
+virtuale"]
+
+If it goes wrong::
+Se il comando si blocca per diversi secondi con un messaggio `Unable to find image 'alpine'
+locally` seguito da un tentativo di download, l'immagine non era stata pre-scaricata e la rete
+d'aula non è disponibile: passare al fallback (sezione più sotto) invece di attendere il download
+in diretta, perché l'attesa contraddirebbe il punto che questo step vuole dimostrare.
+
+=== Step 2 — Avviare un primo container che resta in esecuzione
+
+Trainer-only:: yes
+Timing:: 2 min
+
+Do::
++
+[source,bash]
+----
+docker run -d --name container-uno alpine sleep 3600
+----
+
+Expect::
+Il comando restituisce una sola riga: l'ID completo del container appena creato (una stringa
+esadecimale lunga, es. `3f2a1b9c8d7e...` [illustrativo, valore reale generato ad ogni avvio]), poi
+il prompt torna subito disponibile.
+
+Verify::
+Il comando restituisce un solo ID esadecimale e il prompt torna subito disponibile.
+
+Why::
+Mechanical: `-d` (background) e `sleep 3600` (un'ora, ampiamente oltre la durata della demo e di
+un'eventuale prova di rehearsal) mantengono il container in esecuzione per i passi successivi,
+senza bloccare il terminale del trainer.
++
+Teaches: `docker run` crea un container a partire da un'immagine (`alpine`) — la clausola "creato
+a partire da un'immagine" della descrizione del nodo. [stated, da DESIGN]
+
+If it goes wrong::
+Se compare `Conflict. The container name "/container-uno" is already in use`, un container con
+quel nome non è stato rimosso in una prova precedente: eseguire `docker rm -f container-uno` e
+ripetere il comando.
+
+=== Step 3 — Avviare un secondo container dalla stessa immagine
+
+Trainer-only:: yes
+Timing:: 2 min
+
+Do::
++
+[source,bash]
+----
+docker run -d --name container-due alpine sleep 3600
+----
+
+Expect::
+Come allo step 2: una sola riga con un ID esadecimale diverso da quello dello step 2
+[illustrativo].
+
+Verify::
+Il comando restituisce un ID esadecimale diverso da quello ottenuto allo step 2, e il prompt
+torna subito disponibile.
+
+Why::
+Mechanical: stessa immagine (`alpine`) di `container-uno`, ma un nome diverso, per avere due
+container distinti pronti per il confronto dello step successivo.
++
+Teaches: la stessa immagine può originare più container distinti e indipendenti — collega
+esplicitamente "creato a partire da un'immagine" (un'immagine è un modello riutilizzabile, non un
+container) a "processo isolato" (ogni container è la sua propria istanza). [stated, da DESIGN,
+descrizione del nodo; l'edge DESIGN `PRQ-IMAGE-CONCEPT` → `PRQ-CONTAINER` dichiara che
+"un'immagine è il modello da cui si avvia un container"]
+
+If it goes wrong::
+Stesso errore di conflitto di nome dello step 2, con `container-due`: rimuovere con
+`docker rm -f container-due` e ripetere.
+
+=== Step 4 — Elencare i container in esecuzione e confrontarli
+
+Trainer-only:: yes
+Timing:: 4 min
+
+Do::
++
+[source,bash]
+----
+docker ps
+----
+
+Expect::
+Una tabella con intestazioni `CONTAINER ID`, `IMAGE`, `COMMAND`, `CREATED`, `STATUS`, `PORTS`,
+`NAMES`, e due righe: `container-uno` e `container-due`, entrambe con `IMAGE` uguale a `alpine` e
+un `CONTAINER ID` diverso [illustrativo, i valori esatti variano a ogni esecuzione], entrambe con
+`STATUS` che inizia con `Up`.
+
+Verify::
+La tabella contiene esattamente due righe, entrambe con `IMAGE` = `alpine`, con due valori
+diversi nella colonna `CONTAINER ID`.
+
+Why::
+Mechanical: `docker ps` senza `-a` mostra solo i container attualmente in esecuzione, la lettura
+di riferimento per "sono entrambi accesi in questo momento".
++
+Teaches: rende visibile che due container nati dalla stessa immagine sono due entità distinte e
+isolate l'una dall'altra (due `CONTAINER ID` diversi, due righe separate) — la clausola "processo
+isolato" della descrizione del nodo, e l'edge DESIGN `PRQ-CONTAINER` → `PRQ-ISOLATION` ("il
+concetto di container si appoggia sull'idea più generale di isolamento"). [stated, da DESIGN]
+
+If it goes wrong::
+Se la tabella mostra una sola riga o è vuota, uno o entrambi i container degli step 2-3 non sono
+partiti o si sono già fermati: eseguire `docker ps -a` per vedere anche i container fermi e
+leggere la colonna `STATUS` per capire perché, poi ripetere lo step mancante.
+
+=== Step 5 — Nessun boot separato: il punto EU_1 (narrazione)
+
+Trainer-only:: yes
+Timing:: 3 min
+
+Do::
+Narrazione: indicando a voce l'output dello step 4 ancora visibile a schermo, il trainer fa
+notare che nessuno dei due comandi (step 2 e 3) ha mostrato uno schermo di avvio di un sistema
+operativo, una schermata di boot, o un'attesa percepibile — a differenza di quanto accade
+avviando una macchina virtuale. [invented framing: il confronto con il tempo di boot di una VM è
+retorico, nessuno store fornisce un numero esatto per il tempo di boot di una VM da citare in
+aula]
+
+Expect::
+Nessun output nuovo: il punto è verbale, appoggiato sull'output già presente a schermo dagli step
+precedenti.
+
+Verify::
+Il trainer ha detto ad alta voce, collegandolo esplicitamente allo step 1 e alla tabella dello
+step 4, che i container non hanno fatto boot di un sistema operativo proprio.
+
+Why::
+Mechanical: nessuna azione tecnica in questo step — è il momento in cui si nomina esplicitamente
+ciò che gli step 1-4 hanno già reso visibile, prima di passare all'arresto.
++
+Teaches: EU_1 in modo esplicito e verbale — "Docker non è una macchina virtuale" — chiudendo il
+collegamento con la lezione appena vista (item CURRICULUM sequence "5") e con la root del grafo
+DESIGN `PRQ-WHY-DOCKER` (edge `PRQ-CONTAINER` → `PRQ-WHY-DOCKER`: "il concetto di container va
+introdotto come soluzione al problema di riproducibilità presentato nella framing di apertura").
+[stated, da DESIGN]
+
+If it goes wrong::
+Non applicabile: nessun comando eseguito in questo step.
+
+=== Step 6 — Fermare un solo container
+
+Trainer-only:: yes
+Timing:: 2 min
+
+Do::
++
+[source,bash]
+----
+docker stop container-uno
+----
+
+Expect::
+Il comando restituisce il nome `container-uno` dopo una breve pausa (fino a 10 secondi
+[illustrativo, dipende dal timeout di default]), poi il prompt torna disponibile.
+
+Verify::
+Il comando restituisce esattamente `container-uno` e il prompt torna disponibile senza errori.
+
+Why::
+Mechanical: `docker stop` termina il container `container-uno`, senza toccare `container-due`.
++
+Teaches: prepara il confronto dello step successivo — fermare un container non ha effetto
+sull'altro, perché sono isolati l'uno dall'altro. [stated, da DESIGN, edge `PRQ-CONTAINER` →
+`PRQ-ISOLATION`]
+
+If it goes wrong::
+Se il comando restituisce `No such container`, il nome digitato non corrisponde a quello creato
+allo step 2: verificare con `docker ps -a` il nome esatto.
+
+=== Step 7 — Verificare che l'altro container non sia stato toccato
+
+Trainer-only:: yes
+Timing:: 3 min
+
+Do::
++
+[source,bash]
+----
+docker ps -a --filter name=container-
+----
+
+Expect::
+Due righe: `container-uno` con `STATUS` che legge `Exited (0) <n> seconds ago` [illustrativo, il
+numero di secondi varia; `0` è il codice di uscita atteso per un arresto pulito], `container-due`
+con `STATUS` che inizia ancora con `Up`.
+
+Verify::
+La riga di `container-uno` inizia con `Exited` e la riga di `container-due` inizia con `Up`, nella
+stessa tabella.
+
+Why::
+Mechanical: `-a` (tutti) include anche i container fermi, che `docker ps` senza opzioni non
+mostra; il filtro `name=container-` seleziona per corrispondenza di sottostringa entrambi i nomi
+usati in questa demo (`container-uno`, `container-due`) in un'unica tabella, per il confronto
+diretto, senza dover verificare se più filtri identici combinati con `--filter` in questa versione
+di Docker si comportano in OR o in AND. [risk] Se in aula sono presenti altri container con un
+nome che contiene la sottostringa `container-` non legati a questa demo, compariranno anche loro
+nella stessa tabella: verificarlo nelle Preconditions.
++
+Teaches: rende visibile, in una sola tabella, che fermare un container non ha alcun effetto
+sull'altro — la conferma concreta della clausola "processo isolato": ogni container ha il proprio
+ciclo di vita, indipendente dagli altri. [inferred, collegamento didattico esplicito non
+dichiarato testualmente in DESIGN ma diretto dalla descrizione del nodo e dall'edge verso
+`PRQ-ISOLATION`]
+
+If it goes wrong::
+Se anche `container-due` legge `Exited`, è stato fermato per errore in un passaggio precedente:
+verificare a quale step è successo ripercorrendo i comandi eseguiti finora e, se necessario,
+ripetere lo step 3 per rigenerarlo prima di continuare.
+
+=== Step 8 — Fermare anche il secondo container
+
+Trainer-only:: yes
+Timing:: 2 min
+
+Do::
++
+[source,bash]
+----
+docker stop container-due
+----
+
+Expect::
+Il comando restituisce il nome `container-due` dopo una breve pausa, poi il prompt torna
+disponibile.
+
+Verify::
+Il comando restituisce esattamente `container-due` e il prompt torna disponibile senza errori.
+
+Why::
+Mechanical: chiude la demo riportando anche il secondo container allo stato fermo, coerente con la
+pulizia che segue.
++
+Teaches: ribadisce, sull'ultima azione della demo, che `docker stop` agisce su un container per
+nome, individualmente — lo stesso comando già usato allo step 6 su `container-uno`, ora ripetuto
+su un'entità distinta. [stated, da DESIGN, descrizione del nodo]
+
+If it goes wrong::
+Se il comando restituisce `No such container`, il container è già stato rimosso o non è mai
+partito correttamente allo step 3: verificare con `docker ps -a` e, se necessario, ripartire dallo
+step 3.
+
+== Reset
+
+Per tornare allo stato pulito delle Preconditions (per un'altra classe o per ripetere la prova):
+
+[source,bash]
+----
+docker rm -f container-uno container-due
+----
+
+Verificare che siano stati rimossi con `docker ps -a --filter name=container-`, che deve
+restituire solo l'intestazione della tabella, nessuna riga.
+`docker rm -f` non fa parte del set di comandi di questa demo (`run`, `ps`, `stop`, per CURRICULUM
+sequence "6"): è housekeeping del trainer, da non presentare come contenuto della demo.
+
+== Resume mid-demo
+
+* Interruzione dopo lo step 1: nessuno stato residuo (il container si è già rimosso da solo grazie
+  a `--rm`), riprendere direttamente dallo step 2.
+* Interruzione dopo lo step 2 o 3 (uno o entrambi i container in esecuzione): verificare con
+  `docker ps -a --filter name=container-` quali dei due esistono già, avviare solo quello
+  mancante, poi riprendere dallo step 4.
+* Interruzione dopo lo step 6 o 7 (`container-uno` già fermato, `container-due` ancora in
+  esecuzione): riprendere direttamente dallo step 8, senza rieseguire `docker stop container-uno`.
+* Se non è chiaro in quale stato si trovino i container, eseguire il comando dello step 7 e
+  leggere la colonna `STATUS` di entrambe le righe per decidere da quale step riprendere.
+
+== Live-failure fallback
+
+[risk] Questo agente non ha accesso all'ambiente di consegna reale e non può catturare uno
+screenshot o una registrazione reale dell'output atteso. Un umano deve produrre, prima della prima
+erogazione del corso, almeno una cattura testuale (copia degli output reali di `docker run`,
+`docker ps` e `docker stop` per entrambi i container, incluso l'output combinato dello step 7)
+eseguita durante la prova indicata nella nota di apertura di questa guida, da tenere come
+materiale di scorta in caso di malfunzionamento live (es. rete assente per il pull dell'immagine,
+Docker Desktop non partito correttamente sulla macchina del trainer).
+
+Se la demo si interrompe e non è recuperabile in aula: mostrare la cattura testuale sopra descritta
+al posto dell'esecuzione live, narrando ciascun comando come se fosse in esecuzione ora e
+insistendo a voce sui due punti che la demo doveva rendere visibili (avvio quasi istantaneo, EU_1;
+due container isolati dalla stessa immagine), poi riprendere il filo del corso dalla lezione
+successiva già prevista in CURRICULUM (item sequence "7", "Cos'è un'immagine Docker").
+
+== Timing cross-check
+
+Setup (verifica precondizioni, pulizia di eventuali container residui): 2 min [inferred].
+
+Step 1: 3 min · Step 2: 2 min · Step 3: 2 min · Step 4: 4 min · Step 5: 3 min · Step 6: 2 min ·
+Step 7: 3 min · Step 8: 2 min.
+
+Totale: 2 + 3 + 2 + 2 + 4 + 3 + 2 + 3 + 2 = 23 min, contro `duration_minutes: 25` dichiarato
+dall'item CURRICULUM sequence "6". Scostamento di 2 min in meno rispetto al budget dichiarato.
+
+[NOTE.instructional-decision]
+====
+Decision: il totale dei tempi per step (23 min) non è stato allungato artificialmente per
+coincidere con i 25 min di `duration_minutes`.
+Rationale: i 2 minuti di margine risultanti sono lasciati come spazio per domande dal pubblico o
+per un primo tentativo di uno step che vada rifatto (es. un `docker run` da ripetere per un
+conflitto di nome), invece di nascondere lo scostamento allungando artificialmente le stime di
+singoli step, come indicato nella regola sul mismatch di timing.
+Confidence: inferred
+Awaiting: instructional-designer
+====

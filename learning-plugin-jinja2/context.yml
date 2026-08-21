@@ -86,3 +86,10 @@ didactic_material:
     trigger: Used in the curriculum to gain a feedback about the learning progress, be it for evaluation or simply to better understand how well the students are learning.
     path_pattern: "`material/teacher/quizzes/`"
     filename_pattern: "`quiz-<TYPE_OF_QUIZ>-<PROGRESS>.md`"
+  - type: demo guide
+    audience: Trainer
+    preferred_formats: AsciiDoc
+    owning_subagent: learning-demo-author
+    trigger: One per CURRICULUM item with didactic_activity demo — a trainer-only, step-by-step script for a live demonstration, precise enough that a command-shaped step can be copy-pasted
+    path_pattern: "`material/teacher/demos/`"
+    filename_pattern: "`session-NN-<node_ref>-demo-guide.adoc`"

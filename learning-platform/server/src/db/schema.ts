@@ -35,5 +35,12 @@ export const users = pgTable('users', {
   // Nullable: a newly registered user is not associated to any tenant yet
   // (TENANT-001's "if I'm not associated to any tenant, create one").
   currentTenantId: uuid('current_tenant_id').references(() => tenants.id),
+  // Nullable: Google-OAuth users (LOGIN-001) never set a password.
+  // SIGNUP-EXPEDITE-001/SIGN-UP-001 set this on email/password sign-up.
+  passwordHash: text('password_hash'),
+  // Nullable: null until the account is confirmed. SIGNUP-EXPEDITE-001 sets
+  // this immediately on signup; SIGN-UP-001 leaves it null until the
+  // confirmation-link flow runs.
+  confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })

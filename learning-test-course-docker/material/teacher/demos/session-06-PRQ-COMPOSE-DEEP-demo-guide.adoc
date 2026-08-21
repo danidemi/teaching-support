@@ -1,0 +1,720 @@
+= Demo guide — Il docente scrive e avvia un docker-compose.yml a 3 o più servizi
+:status: draft
+:session: 06
+:node_ref: PRQ-COMPOSE-DEEP
+:target_minutes: 30
+:language: it
+
+[NOTE]
+====
+Ripeti questa guida una volta, dall'inizio alla fine, esattamente come scritta, prima di
+insegnarla in aula. Ogni comando e ogni output atteso qui sotto è una stima fondata a partire
+dal design del corso, non un fatto verificato — segnala qualunque cosa non corrisponda a ciò che
+vedi e aggiorna questo file una volta corretto.
+====
+
+Copre l'item CURRICULUM sequence `46`, sessione 6, `node_ref` `PRQ-COMPOSE-DEEP`. [stated]
+
+[NOTE.instructional-decision]
+====
+Decision: Gli step che ripetono conoscenza già acquisita (immagine e variabili d'ambiente di
+`db`, volume, mappatura di porta) sono raggruppati in un solo step invece di essere scomposti uno
+per chiave, a differenza della granularità usata nella guida sorella per `PRQ-COMPOSE-SHALLOW`
+(item 42, stesso `node_ref` di sessione). Gli step che introducono contenuto nuovo del pass
+"deep" (`healthcheck`, `condition: service_healthy`, assegnazione esplicita di una rete
+nominata) restano invece isolati uno per step.
+Rationale: per la Precondizione sull'audience (vedi sotto), la classe ha già scritto ed eseguito
+un file Compose a due servizi (item 42) e lo ha rifatto in autonomia nell'hands-on (item 43,
+DR-COMPOSE); ripetere la stessa scomposizione fine su contenuto già padroneggiato allungherebbe
+la demo senza isolare un rischio nuovo. La spec richiede step piccoli abbastanza da isolare
+l'azione sospetta in caso di errore: il rischio nuovo di questo pass è la gestione delle reti tra
+3+ servizi, non la sintassi di base di un singolo servizio.
+Confidence: inferred
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: Il guasto deliberato di questa guida consiste nello scrivere il servizio `smtp-mock`
+senza la chiave `networks:`, mentre `db` e `app` la dichiarano esplicitamente verso la rete
+nominata `backend`. Questo isola `smtp-mock` sulla rete di progetto implicita, diversa da
+`backend`, e rende `smtp-mock` irraggiungibile per nome da `app` — un errore visibile solo a
+runtime (dopo `docker compose up`), non da `docker compose config`.
+Rationale: la descrizione DESIGN di `PRQ-COMPOSE-DEEP` cita esplicitamente "la gestione delle
+dipendenze tra più servizi e delle reti/volumi in un sistema con più componenti" come ciò che
+cambia rispetto al pass shallow. Il guasto deliberato della guida sorella (item 42) riguardava
+`depends_on` e la prontezza del servizio, e quella stessa guida rimanda esplicitamente "il pass
+deep (item 46)" per una soluzione più robusta: questa guida usa `condition: service_healthy` per
+quel punto (Step 4) e riserva il guasto deliberato al tema nuovo — la rete — per non duplicare il
+contenuto della guida sorella.
+Confidence: invented
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: Riusare `postgres:16` per `db` e `nginx:alpine` per `app`, le stesse immagini della
+guida sorella (item 42), invece di scegliere immagini diverse per questa demo.
+Rationale: DESIGN descrive `PRQ-COMPOSE-DEEP` come una "spirale di approfondimento" che riprende
+`PRQ-COMPOSE-SHALLOW` (edge `Requires` tra i due nodi). Mantenere le stesse immagini rende visibile
+alla classe che si tratta della stessa base a cui si aggiunge complessità di topologia, non di un
+esercizio scollegato.
+Confidence: inferred
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: Usare `mailhog/mailhog` come immagine del servizio mock SMTP (Simple Mail Transfer
+Protocol — protocollo per l'invio di email; qui usato solo come nome del servizio da raggiungere
+in rete, senza inviare email reali), senza fissare un tag di versione preciso.
+Rationale: nessuno store nomina uno strumento concreto per il "servizio mock SMTP" citato nella
+descrizione di `DR-COMPLEX-SYSTEM`/`PRQ-COMPOSE-DEEP`; è uno strumento reale e diffuso per questo
+scopo, scelto per rendere la demo autosufficiente. Non è stato possibile eseguire `docker pull` in
+questo ambiente (vietato dalla propria spec, che esclude chiamate di rete durante la stesura) per
+verificare quali tag esistono davvero: il docente deve verificarlo lui stesso prima dell'aula.
+Confidence: invented
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: La somma dei tempi dei singoli step (vedi "Verifica dei tempi" in fondo al file) è 24
+minuti, contro i 30 minuti di `duration_minutes` dichiarati in CURRICULUM per l'item 46. Non ho
+allungato artificialmente gli step né riscritto il valore di CURRICULUM per farli coincidere.
+Rationale: material_authoring_rules.md e demo_guide_spec.md chiedono di registrare lo scostamento
+come decisione in sospeso. I 6 minuti di margine sono plausibilmente assorbiti da domande del
+pubblico durante la narrazione della topologia (Step 1) e dall'attesa reale (non simulata) dei
+tempi di `pull` delle immagini se non già scaricate, ma questa è una stima, non una misura.
+Confidence: stated
+Awaiting: instructional-designer
+====
+
+== Precondizioni
+
+* Ambiente con `docker` e Docker Compose (plugin `docker compose`, sintassi v2) installati e
+  funzionanti. In questo sandbox sono presenti `docker` versione 29.4.0 e `docker compose`
+  versione v5.1.2 — valori osservati localmente con `docker --version` e `docker compose
+  version`, non verificati nell'ambiente di erogazione reale. [inferred]
+* [risk] Il docente deve confermare, prima della lezione, la versione di `docker` e di `docker
+  compose` effettivamente installata sulla macchina di erogazione. Se la versione è precedente a
+  Compose v2 (comando standalone `docker-compose`, senza spazio), la sintassi dei comandi in
+  questa guida resta valida ma il comando cambia da `docker compose` a `docker-compose`.
+* [risk] Le immagini `postgres:16`, `nginx:alpine` e `mailhog/mailhog` devono essere già presenti
+  in locale (pre-scaricate con `docker pull` prima dell'aula) o comunque raggiungibili in rete
+  durante la demo. Il docente deve verificare personalmente, prima di entrare in aula, che il tag
+  `mailhog/mailhog` scelto in questa guida esista ancora e si comporti come descritto: nessuno
+  store del corso lo conferma, ed è stato scelto senza poter eseguire `docker pull` in fase di
+  stesura di questa guida.
+* Cartella di lavoro vuota e dedicata alla demo, ad esempio `~/demo-compose-deep/`, senza un
+  `docker-compose.yml` preesistente al suo interno. [inferred]
+* Nessun container, rete o volume con nome che confligga con quelli creati in questa demo (`db`,
+  `smtp-mock`, `app`, rete `backend`, volume `db-data`) già in esecuzione sulla macchina.
+  Verificabile con `docker ps -a`, `docker network ls` e `docker volume ls` prima di iniziare.
+  [inferred]
+* La demo del pass shallow (item 42, stesso node_ref `PRQ-COMPOSE-SHALLOW`) è stata smontata
+  completamente (`docker compose down -v` eseguito a fine di quella guida) prima di iniziare
+  questa, per evitare conflitti di nome sulla stessa macchina se le due demo condividono
+  l'ambiente del docente. [inferred]
+* Il pubblico ha appena seguito, in questa stessa sessione: l'item 43 (hands_on, `DR-COMPOSE`,
+  GOAL_006), in cui ha scritto e avviato in autonomia un proprio file Compose a due servizi
+  applicazione+database; l'item 44 (quiz di richiamo su rete e volumi in Compose); e l'item 45
+  (lezione, stesso `node_ref` `PRQ-COMPOSE-DEEP`), sulla sintassi Compose avanzata per topologie a
+  3 o più servizi. Il pubblico conosce quindi già la sintassi di base di `docker-compose.yml`,
+  `depends_on` nella sua forma semplice, e ha appena visto a lezione — non ancora scritta e
+  avviata dal vivo — la sintassi avanzata che questa demo mette in pratica. [stated, da
+  CURRICULUM]
+* Il pubblico conosce, dall'edge `Requires` di DESIGN verso `PRQ-TOPOLOGY`, che una topologia a 3+
+  servizi va prima progettata concettualmente (quali servizi servono, quali dipendenze e
+  comunicazioni tra loro) e solo dopo tradotta in sintassi Compose: questa demo assume quella
+  capacità, non la insegna da zero. [stated, da DESIGN]
+* Terminale con editor di testo disponibile (il docente può usare l'editor che preferisce; questa
+  guida non prescrive quale). [inferred]
+
+== Step
+
+=== Step 1 — Narrare la topologia prima di scrivere il file
+
+Trainer-only:: yes
+Timing:: 2 min
+
+Do::
+Azione narrata — nessun comando. Il docente richiama a voce la topologia decisa nella lezione
+appena conclusa (item 45): un sistema a 3 servizi — `app`, `db` e un servizio mock SMTP
+(`smtp-mock`) — in cui `app` dipende da entrambi gli altri due, e i tre servizi devono
+raggiungersi tra loro per nome su una rete dedicata condivisa, non su quella di default. Il
+docente dichiara esplicitamente che questo passo di progettazione concettuale (quali servizi,
+quali dipendenze, quale rete) va fatto *prima* di aprire l'editor, e che lo scriverà come se lo
+stesse decidendo insieme alla classe.
+
+Expect::
+Nessun output di sistema: è narrazione. La classe ha visto o disegnato (a lavagna o a voce) uno
+schema con 3 nodi e le relative freccie di dipendenza prima che compaia una riga di YAML (YAML
+Ain't Markup Language — nome ricorsivo, non traducibile letteralmente: è il formato di testo con
+cui è scritto `docker-compose.yml`).
+
+Verify::
+Il docente ha nominato a voce, prima di scrivere qualunque file, i 3 nomi di servizio (`app`,
+`db`, `smtp-mock`) e almeno una rete nominata condivisa.
+
+Why::
+Mechanical: fissa la topologia a parole prima di tradurla in sintassi, così un errore successivo
+nel file si può ricondurre a "ho scritto la topologia decisa qui?" invece che a un dubbio di
+progettazione a metà demo.
+Teaches: `PRQ-TOPOLOGY` — progettare la topologia di un sistema complesso prima di scrivere il
+file Compose; introduce il contesto di `PRQ-COMPOSE-DEEP`.
+
+If it goes wrong::
+Se la classe propone una topologia diversa (es. `db` e `smtp-mock` su reti separate, senza
+condivisione con `app`): è un'occasione didattica valida, ma il docente riporta la discussione
+sulla topologia di questa guida per restare nei tempi, annotando la proposta alternativa per un
+momento successivo (es. l'hands-on o il debriefing del quiz dell'item 47).
+
+=== Step 2 — Mostrare la cartella di lavoro vuota
+
+Trainer-only:: yes
+Timing:: 1 min
+
+Do::
+Azione UI/terminale — il docente apre un terminale già posizionato nella cartella di lavoro
+dedicata e lancia `ls -la` per mostrare che è vuota. [inferred]
+
+Expect::
+L'output di `ls -la` mostra solo `.` e `..`, nessun file preesistente.
+
+Verify::
+Nessuna riga di output oltre a `.` e `..` (o alle voci equivalenti mostrate dal terminale in
+uso).
+
+Why::
+Mechanical: stabilisce lo stato di partenza pulito richiesto dalle Precondizioni, davanti alla
+classe.
+Teaches: introduce il contesto — non ancora contenuto di `PRQ-COMPOSE-DEEP` in sé.
+
+If it goes wrong::
+Se compare un `docker-compose.yml` o altri file lasciati da una demo precedente (es. il residuo
+dell'item 42 se eseguito nella stessa cartella per errore), cancellarli (`rm docker-compose.yml`)
+prima di procedere: uno stato non pulito invalida gli step successivi.
+
+=== Step 3 — Dichiarare la rete nominata e il servizio database
+
+Trainer-only:: yes
+Timing:: 3 min
+
+Do::
+Azione narrata — il docente crea `docker-compose.yml` e scrive, nell'ordine, la sezione `networks:`
+di primo livello con la rete `backend`, poi il servizio `db` con immagine, variabili d'ambiente e
+volume (già visti nel pass shallow, item 42, e nell'hands-on, item 43), assegnandolo esplicitamente
+alla rete `backend` invece di lasciarlo sulla rete di default.
+
+[source,yaml]
+----
+networks:
+  backend:
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: demo
+      POSTGRES_DB: demo
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - backend
+----
+
+e, in fondo al file, a pari livello di `services:` e `networks:`:
+
+[source,yaml]
+----
+volumes:
+  db-data:
+----
+
+Expect::
+Il file ha tre chiavi di primo livello (`networks:`, `services:`, `volumes:`); sotto `services:`
+compare un solo servizio, `db`, con una chiave `networks:` che elenca `backend`.
+
+Verify::
+`db:` è indentato di due spazi sotto `services:`; la chiave `networks:` di `db` contiene l'unico
+elemento `backend`, uguale al nome dichiarato nella sezione `networks:` di primo livello.
+
+Why::
+Mechanical: `image`, `environment` e `volumes` sono le chiavi già note dal pass shallow;
+`networks:` sul servizio è la novità di questo step — assegna esplicitamente `db` a una rete
+nominata invece che a quella di default.
+Teaches: `PRQ-COMPOSE-DEEP` — gestione esplicita delle reti in un sistema con più componenti,
+riprendendo la sintassi di base già vista in `PRQ-COMPOSE-SHALLOW`.
+
+If it goes wrong::
+Un nome di rete scritto in modo diverso tra la sezione `networks:` di primo livello e la chiave
+`networks:` di `db` (es. `backend` contro `back-end`) non dà errore visibile finché non si esegue
+`docker compose config` allo Step 7: se la classe nota l'incongruenza, correggerla subito.
+
+=== Step 4 — Aggiungere l'healthcheck del database
+
+Trainer-only:: yes
+Timing:: 2 min
+
+Do::
+Azione narrata — il docente aggiunge una chiave `healthcheck` al servizio `db`, spiegando che
+serve a far sapere a Compose quando PostgreSQL è davvero pronto ad accettare connessioni, non solo
+quando il container è partito — il limite di `depends_on` senza condizione già osservato nella
+demo precedente (item 42) su un sistema a due servizi.
+
+[source,yaml]
+----
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+----
+
+Expect::
+Il servizio `db` ha ora, oltre a `image`, `environment`, `volumes` e `networks`, una quinta chiave
+`healthcheck` con `test`, `interval`, `timeout` e `retries`.
+
+Verify::
+`healthcheck:` è indentato allo stesso livello di `image:` sotto `db:` (quattro spazi sotto
+`services:`), e la sua sottochiave `test` contiene la stringa `pg_isready -U postgres`.
+
+Why::
+Mechanical: `pg_isready` è l'utility di PostgreSQL che verifica se il server accetta connessioni;
+usarla come `test` dell'`healthcheck` dà a Compose un segnale di prontezza reale, distinto
+dall'avvio del container.
+Teaches: `PRQ-COMPOSE-DEEP` — gestione robusta delle dipendenze tra servizi, il punto che la guida
+del pass shallow (item 42) aveva esplicitamente rimandato a questo pass.
+
+If it goes wrong::
+Se la classe chiede perché non si è usato semplicemente `depends_on: [db]` come nel pass shallow:
+non rispondere subito — lo Step 6 (dove `app` userà `condition: service_healthy`) e il confronto
+con l'item 42 lo mostreranno empiricamente.
+
+=== Step 5 — Dichiarare il servizio mock SMTP, senza assegnargli la rete (seme del guasto)
+
+Trainer-only:: yes
+Timing:: 2 min
+
+Do::
+Azione narrata — il docente aggiunge il terzo servizio, `smtp-mock`, con l'immagine e la porta
+dell'interfaccia web, scrivendolo con lo stesso ritmo naturale usato per `db`. La guida richiede
+di *non* aggiungere qui la chiave `networks:` — questa omissione è intenzionale e verrà rivelata
+come errore solo allo Step 10, non ora: il docente non deve segnalarla alla classe in questo
+momento, per far emergere il problema come lo farebbe in un caso reale.
+
+[source,yaml]
+----
+  smtp-mock:
+    image: mailhog/mailhog
+    ports:
+      - "8025:8025"
+----
+
+Expect::
+Il file ha ora tre servizi sotto `services:`: `db`, `smtp-mock` e (dallo step successivo) `app`.
+`smtp-mock` non ha una chiave `networks:`, a differenza di `db`.
+
+Verify::
+`smtp-mock:` è indentato allo stesso livello di `db:`; non compare alcuna chiave `networks:` sotto
+`smtp-mock:`.
+
+Why::
+Mechanical: `ports: ["8025:8025"]` espone l'interfaccia web di MailHog sull'host, per poterla
+mostrare più avanti come conferma visiva. [inferred, sull'interfaccia effettiva di
+`mailhog/mailhog` — non verificato in questo ambiente]
+Teaches: introduce il terzo servizio della topologia annunciata allo Step 1; l'assenza di
+`networks:` qui è il materiale grezzo del guasto deliberato dello Step 10.
+
+If it goes wrong::
+Nessun errore possibile a questo punto: il file resta sintatticamente valido. Se il docente si
+accorge di aver scritto `networks:` per abitudine, cancellarlo di nuovo — il guasto deliberato
+dipende dalla sua assenza.
+
+=== Step 6 — Dichiarare il servizio applicativo con le due dipendenze
+
+Trainer-only:: yes
+Timing:: 2 min
+
+Do::
+Azione narrata — il docente aggiunge `app`, con la porta esposta già nota dal pass shallow, la
+rete `backend` esplicita, e un `depends_on` in forma estesa (a differenza della forma breve usata
+nell'item 42) con condizioni diverse per ciascuna dipendenza.
+
+[source,yaml]
+----
+  app:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    depends_on:
+      db:
+        condition: service_healthy
+      smtp-mock:
+        condition: service_started
+    networks:
+      - backend
+----
+
+Expect::
+Il file ha ora tre servizi completi sotto `services:`. `app` ha una chiave `depends_on` con due
+sotto-chiavi (`db` e `smtp-mock`), ciascuna con la propria `condition`.
+
+Verify::
+Sotto `depends_on` di `app`, `db` ha `condition: service_healthy` e `smtp-mock` ha `condition:
+service_started` — due valori diversi, non lo stesso per entrambi.
+
+Why::
+Mechanical: la forma estesa di `depends_on` (mappa di servizio → condizione) permette condizioni
+diverse per dipendenza diversa, a differenza della forma breve (lista di nomi) vista nel pass
+shallow, che equivale sempre a `service_started` per tutti.
+Teaches: `PRQ-COMPOSE-DEEP` — sintassi avanzata di `depends_on` per topologie a 3+ servizi, con
+gestione differenziata delle dipendenze.
+
+If it goes wrong::
+Se il docente scrive per abitudine la forma breve (`depends_on: [db, smtp-mock]`) come nel pass
+shallow: non è un errore di sintassi, ma perde la distinzione `service_healthy`/`service_started`
+appena introdotta — farlo notare e riscrivere nella forma estesa prima di procedere.
+
+=== Step 7 — Validare la sintassi del file senza avviare nulla
+
+Trainer-only:: yes
+Timing:: 1 min
+
+Do::
+[source,bash]
+----
+docker compose config
+----
+
+Expect::
+Compose stampa a schermo il file risolto e normalizzato, con i 3 servizi e i valori predefiniti
+espliciti. Il comando **non segnala alcun errore**, nonostante `smtp-mock` non condivida la rete
+`backend` con `app` e `db`: `docker compose config` valida solo la sintassi YAML e i riferimenti
+di servizio, non se le reti dichiarate rendono davvero raggiungibili i servizi tra loro. [inferred
+— non è stato eseguito alcun `docker compose
+config` reale in fase di stesura di questa guida, per non contaminare l'ambiente descritto; è una
+stima basata sul comportamento documentato del comando, da confermare nella sessione di prova]
+
+Verify::
+Il comando termina senza errori (nessun messaggio `yaml:` o `service ... has neither...`) e
+l'output mostra i 3 servizi `app`, `db` e `smtp-mock`.
+
+Why::
+Mechanical: `docker compose config` risolve e valida il file senza effetti collaterali, prima di
+eseguire davvero il sistema.
+Teaches: `PRQ-COMPOSE-DEEP` — il limite di questo tipo di validazione: un file sintatticamente
+corretto può comunque descrivere una topologia di rete rotta, cosa che si vedrà solo a runtime
+(Step 10).
+
+If it goes wrong::
+Un errore di parsing YAML (indentazione, due punti mancanti) blocca `docker compose config` con un
+messaggio che indica la riga: tornare al punto del file segnalato e correggere l'indentazione, non
+rieseguire l'intero step da zero.
+
+=== Step 8 — Avviare l'intero sistema con un solo comando
+
+Trainer-only:: no
+Timing:: 2 min
+
+Do::
+[source,bash]
+----
+docker compose up -d
+----
+
+Expect::
+Compose crea la rete `backend`, la rete di progetto implicita (per `smtp-mock`, che non ne
+dichiara una propria), il volume `db-data`, e avvia i 3 container. L'ordine di avvio rispetta
+`depends_on`: `db` e `smtp-mock` partono prima di `app`, ma `app` attende anche che `db` risulti
+`healthy`, non solo avviato. [inferred]
+
+Verify::
+`docker compose ps` mostra tre righe (`db`, `smtp-mock`, `app`); la colonna STATUS di `db` include
+la parola `healthy` dopo qualche secondo (non subito all'avvio, per via dell'`interval`
+dell'healthcheck).
+
+Why::
+Mechanical: `up -d` è il comando che avvia l'intero sistema descritto nel file, in background.
+Teaches: `PRQ-COMPOSE-DEEP` — "avvio dell'intero sistema con un solo comando" resta vero anche a 3+
+servizi, punto di continuità con il pass shallow.
+
+If it goes wrong::
+Se `app` (porta 8080) o `smtp-mock` (porta 8025) risultano già occupate sulla macchina del
+docente, Compose segnala un errore di bind della porta: cambiare temporaneamente il valore host in
+`docker-compose.yml` (es. `"8081:80"` o `"8026:8025"`) e rilanciare `docker compose up -d`.
+
+=== Step 9 — Verificare lo stato dei 3 servizi
+
+Trainer-only:: no
+Timing:: 1 min
+
+Do::
+[source,bash]
+----
+docker compose ps
+----
+
+Expect::
+Tre righe, una per servizio. `app` e `smtp-mock` mostrano STATUS `Up`/`running`; `db` mostra
+STATUS `Up (healthy)` o equivalente secondo la versione. [inferred, il testo esatto dipende dalla
+versione di Compose installata nell'ambiente di erogazione]
+
+Verify::
+La riga di `db` contiene la parola `healthy`; nessuna delle tre righe mostra `Exited` o
+`Restarting`.
+
+Why::
+Mechanical: conferma lo stato dei 3 container prima di passare al guasto deliberato, così un
+problema di avvio non si confonde con il guasto di rete che segue.
+Teaches: `PRQ-COMPOSE-DEEP` — verifica dello stato di un sistema multi-servizio più complesso di
+quello a due servizi già visto.
+
+If it goes wrong::
+Se `db` non raggiunge mai `healthy`, controllare `docker compose logs db`: un errore di sintassi
+in `POSTGRES_USER`/`POSTGRES_PASSWORD` o nel comando `test` dell'healthcheck (Step 4) è la causa
+più probabile, non il tema di rete di questo step.
+
+=== Step 10 — Mostrare che `app` non raggiunge `smtp-mock` per nome (guasto deliberato)
+
+Trainer-only:: yes
+Deliberate failure:: yes — dimostra che assegnare esplicitamente dei servizi a una rete nominata
+(qui `backend`) non basta se *un* servizio viene dimenticato: `smtp-mock`, senza chiave
+`networks:`, finisce sulla rete di progetto implicita, diversa da `backend`, e diventa
+irraggiungibile per nome dagli altri servizi. [invented framing]
+Timing:: 3 min
+
+Do::
+[source,bash]
+----
+docker compose exec app wget -T 2 -O - http://smtp-mock:8025/
+----
+
+Nota: niente flag `-q` (silenzioso) — lo scopo di questo comando è mostrare a schermo il
+messaggio di errore stesso, non solo osservare che il comando fallisce.
+
+Expect::
+Il comando fallisce e stampa a schermo un messaggio di errore di risoluzione del nome (tipo "bad
+address 'smtp-mock'" o equivalente secondo la versione di BusyBox `wget` presente nell'immagine
+`nginx:alpine`), perché `app` (rete `backend`) e `smtp-mock` (rete di progetto implicita) non
+condividono alcuna rete. Nessuna risposta HTTP (HyperText Transfer Protocol — protocollo usato per
+richiedere pagine web, qui l'interfaccia di MailHog) viene stampata. [inferred, non verificabile in
+questo ambiente senza eseguire `docker pull` dell'immagine, vietato dalla spec di questa guida]
+
+Verify::
+Il comando termina con un codice di uscita diverso da zero, e sullo schermo compare un messaggio
+di errore di risoluzione del nome (non un corpo di risposta web).
+
+Why::
+Mechanical: la risoluzione del nome `smtp-mock` funziona solo tra container che condividono
+almeno una rete Docker; `app` non è su alcuna rete in comune con `smtp-mock`.
+Teaches: `PRQ-COMPOSE-DEEP` — "gestione delle reti ... in un sistema con più componenti": a 3+
+servizi, dimenticare la rete su *uno solo* dei servizi rompe la comunicazione con quello
+specifico servizio, senza che `docker compose config` (Step 7) lo segnali.
+
+If it goes wrong::
+Se il comando `wget` non esiste nell'immagine `nginx:alpine` installata (variazione possibile tra
+versioni dell'immagine, non verificata in questo ambiente): usare in alternativa `docker compose
+exec app ping -c 1 smtp-mock` — un fallimento di risoluzione del nome produce un errore
+equivalente ("bad address" o "unknown host"). [risk] Nessuno store confirma quali utility siano
+presenti nell'immagine `nginx:alpine` in uso il giorno della lezione: verificarlo nella sessione di
+prova richiesta in testa a questo file.
+
+=== Step 11 — Correggere il file aggiungendo la rete mancante
+
+Trainer-only:: yes
+Timing:: 2 min
+
+Do::
+Azione narrata — il docente torna nell'editor e aggiunge a `smtp-mock` la stessa chiave
+`networks:` già usata per `db` e `app`, spiegando che la correzione è "dare a `smtp-mock` la rete
+che avrebbe dovuto avere fin dall'inizio", poi rilancia il sistema perché Compose applichi la
+modifica ai container già in esecuzione.
+
+[source,yaml]
+----
+  smtp-mock:
+    image: mailhog/mailhog
+    ports:
+      - "8025:8025"
+    networks:
+      - backend
+----
+
+[source,bash]
+----
+docker compose up -d
+----
+
+Expect::
+Compose ricrea solo il container `smtp-mock` (gli altri due restano invariati, perché la loro
+configurazione non è cambiata) e lo collega alla rete `backend`. [inferred, comportamento standard
+di `up -d` su un servizio modificato]
+
+Verify::
+`docker compose ps` mostra ancora tre righe; `docker network inspect <PROGETTO>_backend` elenca
+ora tre container come membri della rete, non due. `<PROGETTO>` è il nome della cartella di lavoro
+(es. `demo-compose-deep`), che Compose usa come prefisso automatico del nome delle reti quando non
+è impostato esplicitamente un nome di progetto — confermare il prefisso esatto con `docker network
+ls` se il nome non corrisponde.
+
+Why::
+Mechanical: aggiungere `networks:` a un servizio e rilanciare `up -d` è sufficiente per collegarlo
+alla rete corretta, senza dover fermare l'intero sistema.
+Teaches: `PRQ-COMPOSE-DEEP` — la correzione di una topologia di rete sbagliata è una modifica
+puntuale al file, non una riscrittura da zero.
+
+If it goes wrong::
+Se `docker compose up -d` non ricrea `smtp-mock` (capita se la cache di Compose non rileva la
+modifica): forzare con `docker compose up -d --force-recreate smtp-mock`.
+
+=== Step 12 — Verificare che la correzione funzioni
+
+Trainer-only:: no
+Timing:: 2 min
+
+Do::
+[source,bash]
+----
+docker compose exec app wget -q -T 2 -O - http://smtp-mock:8025/
+----
+
+Expect::
+Il comando questa volta ha successo e stampa a schermo il contenuto della pagina di gestione di
+MailHog (una risposta web, non un errore di risoluzione del nome). [inferred, sul contenuto
+effettivo dell'interfaccia web di `mailhog/mailhog` — non verificato in questo ambiente]
+
+Verify::
+Il comando termina con codice di uscita zero e produce output non vuoto sullo standard output,
+a differenza dello Step 10.
+
+Why::
+Mechanical: confronta lo stesso comando, prima e dopo la correzione, isolando la rete come unica
+variabile cambiata.
+Teaches: `PRQ-COMPOSE-DEEP` — chiude il ciclo del guasto deliberato mostrando l'effetto della
+correzione, non solo descrivendola a voce.
+
+If it goes wrong::
+Se il comando fallisce ancora, verificare con `docker network inspect <PROGETTO>_backend` (stesso
+`<PROGETTO>` dello Step 11 — il nome della cartella di lavoro) che `smtp-mock` sia davvero elencato
+tra i membri della rete: se non lo è, lo Step 11 non è stato applicato (controllare che `docker
+compose up -d` non abbia restituito errori).
+
+=== Step 13 — Fermare il sistema con un solo comando
+
+Trainer-only:: no
+Timing:: 1 min
+
+Do::
+[source,bash]
+----
+docker compose down
+----
+
+Expect::
+Compose ferma ed elimina i 3 container e le due reti (`backend` e quella implicita). Il volume
+`db-data` resta, perché `down` senza `-v` non rimuove i volumi. [inferred, comportamento standard
+di `compose down`]
+
+Verify::
+`docker compose ps -a` non elenca più alcun container per questo progetto; `docker volume ls`
+mostra ancora il volume `db-data` (o equivalente con prefisso di progetto).
+
+Why::
+Mechanical: chiude la demo riportando containers e reti allo stato precedente, mantenendo il dato
+persistito nel volume.
+Teaches: `PRQ-COMPOSE-DEEP` — l'arresto di un sistema a 3+ servizi resta un solo comando, come nel
+pass shallow.
+
+If it goes wrong::
+Se `docker compose down` segnala che una rete non può essere rimossa perché ancora in uso da un
+container esterno alla demo, identificarlo con `docker network inspect` e chiuderlo separatamente,
+fuori da questa demo.
+
+== Reset
+
+Per tornare allo stato pulito delle Precondizioni, per un'altra classe:
+
+[source,bash]
+----
+docker compose down -v
+rm docker-compose.yml
+----
+
+`-v` rimuove anche il volume `db-data`, così la prossima esecuzione di PostgreSQL reinizializza il
+database da zero, coerente con lo Step 2. Verificare poi con `ls -la` che la cartella sia di nuovo
+vuota e con `docker volume ls` che `db-data` non compaia più. [inferred]
+
+[risk] Verificare anche con `docker network ls` che non resti una rete di progetto implicita
+(quella creata allo Step 8 per `smtp-mock`, prima della correzione dello Step 11) orfana sulla
+macchina: non è stato possibile stabilire con certezza, senza eseguire il run reale, se `docker
+compose down` rimuove anche una rete implicita che, al momento dello stop, nessun servizio del
+file risolto usa più. Se una rete `<PROGETTO>_default` (o equivalente) resta elencata dopo `down
+-v`, rimuoverla manualmente con `docker network rm <NOME_RETE>` prima di considerare l'ambiente
+pulito per un'altra classe.
+
+== Ripresa a metà demo
+
+Se la demo si interrompe dopo uno step, prima di riprendere dallo step successivo:
+
+* Interruzione dopo gli Step 3-6 (file non ancora eseguito): controllare che il file
+  `docker-compose.yml` contenga esattamente le righe scritte fino a quel punto (confrontare con il
+  blocco YAML dello step raggiunto), poi riprendere da lì. In particolare, verificare che
+  `smtp-mock` sia ancora senza `networks:` se l'interruzione è avvenuta prima dello Step 10 — non
+  correggerlo per errore prima del guasto deliberato.
+* Interruzione dopo lo Step 8 o durante gli Step 9-10 (sistema in esecuzione, guasto non ancora
+  mostrato o appena mostrato): eseguire `docker compose ps` per verificare che i 3 servizi siano
+  ancora `Up`, poi riprendere dallo step raggiunto senza rilanciare `up -d` (non necessario se
+  nulla è caduto).
+* Interruzione dopo lo Step 11 o 12 (correzione già applicata o in corso): eseguire `docker
+  network inspect <PROGETTO>_backend` (`<PROGETTO>` è il nome della cartella di lavoro; confermare
+  il prefisso esatto con `docker network ls` se non corrisponde) per verificare se `smtp-mock` è
+  già membro della rete; se lo è, la correzione è già avvenuta e si può riprendere dallo Step 12;
+  se non lo è, riprendere dallo Step 11.
+* Interruzione dopo lo Step 13 (sistema già fermato): il volume `db-data` esiste ancora; per
+  riprendere la demo da capo con dati puliti seguire la procedura di Reset, oppure rilanciare
+  `docker compose up -d` per riprendere con i dati del run precedente se lo scopo è solo mostrare
+  di nuovo l'avvio.
+
+== Fallback in caso di guasto live
+
+[risk] Questa guida non dispone di uno screenshot o di una registrazione reale del run riuscito,
+perché l'agente che scrive questa guida non ha accesso all'ambiente di erogazione né a capacità di
+catturare immagini. Un umano deve catturare, prima della lezione dal vivo (durante la sessione di
+prova richiesta in testa a questo file):
+
+* Uno screenshot o l'output testuale copiato di `docker compose up -d` andato a buon fine con i 3
+  servizi.
+* Uno screenshot o l'output testuale copiato di `docker compose ps` con `db` in stato `healthy` e
+  gli altri due `Up`.
+* L'output esatto del comando `wget` allo Step 10 (fallimento) e allo Step 12 (successo), incluso
+  il messaggio di errore reale prodotto dalla versione di `wget`/BusyBox effettivamente presente
+  nell'immagine `nginx:alpine` usata il giorno della lezione.
+* Uno screenshot dell'interfaccia web di MailHog sulla porta 8025, se disponibile, come prova
+  visiva alternativa al comando da riga di comando.
+
+Se la demo si blocca e non si risolve entro un paio di minuti (ad esempio per un problema di rete
+che impedisce il pull delle immagini, non risolvibile pre-scaricandole per un guasto imprevisto
+della sede, o per un comportamento imprevisto dell'immagine `mailhog/mailhog` non verificabile in
+fase di stesura di questa guida), il docente mostra il materiale catturato sopra come se il run
+fosse avvenuto in aula, lo commenta a voce riga per riga, e riprende il corso dall'item successivo
+(sequence 47, quiz di verifica, che copre comunque tutto l'arco da `PRQ-COMPOSE-SHALLOW` a
+`PRQ-COMPOSE-DEEP`).
+
+== Verifica dei tempi
+
+Setup prima dello Step 1: 0 minuti — la preparazione della cartella di lavoro è coperta dalle
+Precondizioni, non è un'azione a tempo dentro la demo (lo Step 2 la mostra alla classe ma non la
+esegue dal vivo).
+
+Somma dei `Timing::` dichiarati: Step 1 (2) + Step 2 (1) + Step 3 (3) + Step 4 (2) + Step 5 (2) +
+Step 6 (2) + Step 7 (1) + Step 8 (2) + Step 9 (1) + Step 10 (3) + Step 11 (2) + Step 12 (2) + Step
+13 (1) = 24 minuti.
+
+Il `duration_minutes` dell'item 46 in CURRICULUM è 30 minuti. La somma degli step (24 minuti) non
+coincide con il budget dichiarato; anche aggiungendo margini realistici per domande dal pubblico
+durante la narrazione della topologia (Step 1) e piccoli imprevisti (stimabili in modo indicativo,
+non misurato, in altri 4-6 minuti), il totale si avvicina ai 30 minuti assegnati senza superarli con
+certezza. Questo scostamento è registrato come voce `instructional_decisions` sopra, non corretto
+riscrivendo in silenzio né la somma degli step né il valore di CURRICULUM. [stated + inferred]

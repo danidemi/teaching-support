@@ -1,0 +1,545 @@
+= Demo guide — Il docente ispeziona un sistema a container in avaria con logs, inspect, network ed exec
+:status: draft
+:session: 05
+:curriculum_item: 34
+:node_ref: PRQ-DIAG-TOOLS
+:target_minutes: 30
+:language: it
+
+[NOTE]
+====
+Provare questa guida una volta, dall'inizio alla fine, esattamente come scritta, prima di
+insegnarla dal vivo. Ogni comando e ogni output previsto qui sotto è una stima fondata a partire
+dalla progettazione del corso, non un fatto verificato — segnalare qualunque cosa non corrisponda
+a ciò che si osserva, e aggiornare questo file una volta corretto.
+====
+
+Copre CURRICULUM sessione 5, item sequence "34" (`node_ref` `PRQ-DIAG-TOOLS`), che segue
+immediatamente item 33 (lezione sulla sintassi di `logs`, `inspect`, `network`, `exec`, stesso
+`node_ref`) nella stessa sessione. [stated, da `design/curriculum.json`]
+
+[NOTE.instructional-decision]
+====
+Decision: Lo scenario di avaria (due container, uno che termina con errore per una variabile
+d'ambiente mal configurata che punta a un nome host inesistente) è inventato da questo agente:
+nessuno store definisce un compose file, delle immagini o uno stato di partenza per questo demo.
+Rationale: Il nodo DESIGN richiede di dimostrare "quale strumento usare per quale tipo di
+sintomo" usando tutti e quattro gli strumenti (`logs`, `inspect`, `network`, `exec`); uno
+scenario concreto è indispensabile per rendere lo script eseguibile riga per riga.
+Confidence: invented
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: Lo scenario condivide il dominio (un problema di collegamento in rete tra due
+container) con item 37 (hands_on su DR-TROUBLESHOOTING, "due container che non si collegano"),
+ma qui il sintomo di partenza è un container che termina con errore (crash), non un semplice
+mancato collegamento tra due container in esecuzione. Il demo si ferma alla raccolta di evidenza
+con i quattro strumenti e non formula un'ipotesi (quella è materia di item 35-36, PRQ-HYPOTHESIS,
+che nel grafo DESIGN richiede PRQ-DIAG-TOOLS come prerequisito).
+Rationale: Mantenere il demo distinto dall'esercitazione che segue, mostrando il metodo di
+raccolta evidenza prima che gli studenti lo applichino da soli in un caso diverso.
+Confidence: inferred
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: Non viene dedicato alcuno step a spiegare il modello di rete Docker, il ciclo di vita
+del container o il modello dei processi.
+Rationale: DESIGN elenca `PRQ-CLI-BASICS`, `PRQ-DOCKER-NETWORK`, `PRQ-PROCESS-MODEL` come
+prerequisiti già richiesti da `PRQ-DIAG-TOOLS`; sono assumibili senza re-insegnarli, e i 30
+minuti disponibili non lo permetterebbero comunque.
+Confidence: stated
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: Ogni step è marcato `Trainer-only:: yes`. Non è previsto che gli studenti eseguano gli
+stessi comandi in parallelo durante il demo.
+Rationale: Nessuno store indica che questo item sia un follow-along; le Preconditions
+provisionano solo la macchina del docente (un solo progetto compose predisposto in anticipo), non
+un ambiente per ciascuno studente. Trattarlo come follow-along richiederebbe provisionare 20+
+copie dello stesso stato di avaria, cosa che nessuno store commissiona per questo item.
+Confidence: inferred
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: La somma dei `Timing::` dei 13 step (19 minuti, dopo la suddivisione degli step
+"avviare il sistema" / "osservare lo stato" e "elencare le reti" / "ispezionare la rete" in coppie
+di step separati) più una stima di 2 minuti di setup non scriptabile (proiettare il terminale,
+richiamare l'attenzione dell'aula) dà 21 minuti, contro i 30 minuti di `duration_minutes`
+dichiarati per item sequence "34" in CURRICULUM.
+Rationale: Non correggo né la somma né il numero dichiarato in CURRICULUM. Il margine residuo
+(circa 9 minuti) è plausibilmente destinato a domande dal pubblico durante gli step narrativi, ma
+questa è una stima, non un fatto verificato.
+Confidence: inferred
+Awaiting: instructional-designer
+====
+
+== Preconditions
+
+* Docker Engine e Docker Compose installati e funzionanti sulla macchina del docente.
+  [risk] La versione esatta richiesta non è dichiarata in nessuno store: questa guida usa la
+  sintassi osservata in sandbox (Docker 29.4.0, Docker Compose v5.1.2) solo per allineare i flag
+  dei comandi [inferred]; il docente deve confermare che la propria macchina di delivery abbia
+  una versione compatibile prima di provare il demo.
+* Un progetto compose predisposto in anticipo, con due servizi:
+** `db` — un database che parte e resta in esecuzione senza problemi, con `container_name: db`
+   impostato esplicitamente nel compose file.
+** `app` — un servizio applicativo, con `container_name: app` impostato esplicitamente, che
+   appena avviato termina con codice di uscita 1 perché la sua variabile d'ambiente che indica
+   l'host del database punta a un nome (`db-service`) che non corrisponde al nome di nessun
+   container collegato alla rete del progetto (il nome corretto è `db`).
++
+[risk] Nessuno store fornisce un compose file, delle immagini o uno stato di avaria reale: il
+docente deve costruire e testare questo progetto compose (o un progetto equivalente che riproduca
+lo stesso sintomo) prima della lezione, verificare che i nomi dei container risultino esattamente
+`app` e `db` (non i nomi con prefisso di progetto che Compose assegnerebbe senza
+`container_name`, dato che i comandi di questa guida usano quei nomi letterali), e verificare che
+il fallimento sia riproducibile in modo stabile. Il contenuto esatto del compose file è
+`[invented framing]` in questa guida.
+* Il progetto compose non è ancora avviato all'inizio del demo (stato di partenza pulito: nessun
+  container del progetto in esecuzione).
+* Non sono richieste credenziali di rete esterne: tutto il demo avviene sul motore Docker locale
+  del docente.
+* Il pubblico ha appena seguito item 33 (stessa sessione, stesso `node_ref`), quindi conosce già
+  la sintassi di base di `logs`, `inspect`, `network`, `exec`. [stated, da `design/curriculum.json`]
+* Terminale del docente configurato con carattere grande e proiettato in modo leggibile dalla
+  sala. [inferred, prassi standard di demo dal vivo]
+
+== Steps
+
+=== Step 1 — Presentare lo scenario
+
+Trainer-only:: yes
+Timing:: 1 min
+
+Do::
+Narrazione: il docente dichiara che un collega ha segnalato un sistema che "non funziona" e che
+il docente stesso non l'ha ancora ispezionato, per riprodurre in aula il punto di partenza reale
+di una diagnosi.
+
+Expect::
+L'aula sa che il sistema mostrato non è stato preparato "per far vedere subito la soluzione", ma
+va ispezionato passo per passo con gli strumenti appena visti a lezione.
+
+Verify::
+Nessuna verifica tecnica: lo step è narrativo.
+
+Why::
+Mechanical: nessuna, prepara solo il contesto.
+Teaches: inquadra il resto del demo come raccolta di evidenza, non come esposizione di una
+soluzione già nota — coerente con la descrizione del nodo `PRQ-DIAG-TOOLS`.
+
+If it goes wrong::
+Nessun rischio tecnico in questo step.
+
+=== Step 2 — Avviare il sistema
+
+Trainer-only:: yes
+Timing:: 1 min
+
+Do::
+[source,bash]
+----
+docker compose up -d
+----
+
+Expect::
+Il comando scarica/costruisce (se necessario) e avvia entrambi i servizi in background e ritorna
+il prompt.
+
+Verify::
+Il comando termina senza errori e restituisce il controllo del terminale.
+
+Why::
+Mechanical: entrambi i servizi devono essere avviati prima di poter osservare quale dei due è in
+avaria.
+Teaches: nessuno — step di preparazione dello scenario, non applica ancora nessuno dei quattro
+strumenti del nodo `PRQ-DIAG-TOOLS`.
+
+If it goes wrong::
+Se il comando restituisce un errore (per esempio un'immagine mancante o una porta già occupata),
+il progetto compose preparato non è pronto: risolvere prima di procedere, non passare allo step
+successivo con un errore non spiegato in un demo dal vivo.
+
+=== Step 3 — Osservare lo stato dei container
+
+Trainer-only:: yes
+Timing:: 1 min
+
+Do::
+[source,bash]
+----
+docker ps -a
+----
+
+Expect::
+`db` compare nello stato `Up` e `app` nello stato `Exited (1)` (il tempo trascorso da "Exited" è
+illustrativo e varia a ogni esecuzione). [inferred]
+
+Verify::
+La colonna `STATUS` della riga `app` contiene la stringa `Exited (1)`.
+
+Why::
+Mechanical: bisogna sapere quale container è effettivamente il problema prima di scegliere quale
+strumento usare.
+Teaches: punto di partenza dell'ispezione — `ps -a` (già noto da `PRQ-CLI-BASICS`) individua
+*quale* container è in avaria, prima di scegliere lo strumento di diagnosi.
+
+If it goes wrong::
+Se `app` risulta ancora in stato `Up`, il processo non ha ancora terminato: attendere qualche
+secondo e rieseguire `docker ps -a`. Solo se resta `Up` dopo circa 30 secondi lo scenario non si
+sta riproducendo. [inferred] Se invece anche `db` risulta in stato non `Up` (per esempio `Exited`
+o `Restarting`), il progetto compose preparato non riproduce lo scenario previsto: interrompere e
+usare il fallback (vedi "Live-failure fallback"), non continuare con uno stato diverso da quello
+descritto qui.
+
+=== Step 4 — Scegliere il primo strumento: perché il processo è morto?
+
+Trainer-only:: yes
+Timing:: 1 min
+
+Do::
+Narrazione: il docente chiede all'aula "il processo dentro `app` si è interrotto: quale dei
+quattro strumenti ci dice *perché* un processo è morto?" e guida verso `logs`, perché registra
+l'output prodotto dal processo prima di terminare.
+
+Expect::
+L'aula riconosce `logs` come lo strumento adatto a questo sintomo specifico (processo terminato),
+distinto da `inspect` (configurazione), `network` (topologia) ed `exec` (interazione con un
+processo ancora vivo).
+
+Verify::
+Nessuna verifica tecnica: lo step è narrativo, ma il criterio di scelta va esplicitato ad alta
+voce prima di digitare il comando dello step successivo.
+
+Why::
+Mechanical: nessuna azione sul sistema.
+Teaches: il cuore del nodo `PRQ-DIAG-TOOLS` — "quale strumento usare per quale tipo di sintomo" —
+qui applicato al sintomo "il container non è più in esecuzione".
+
+If it goes wrong::
+Nessun rischio tecnico in questo step.
+
+=== Step 5 — Leggere i log del container terminato
+
+Trainer-only:: yes
+Timing:: 2 min
+
+Do::
+[source,bash]
+----
+docker logs app
+----
+
+Expect::
+Il comando restituisce l'output prodotto dal processo prima di terminare, incluso un messaggio
+di errore che nomina l'host di destinazione `db-service` come irraggiungibile o non risolvibile
+(il testo esatto del messaggio dipende dall'applicazione usata nel progetto compose e non è
+verificato da questa guida). [inferred]
+
+Verify::
+L'output contiene la stringa `db-service` in un messaggio di errore.
+
+Why::
+Mechanical: `logs` è l'unico strumento tra i quattro che mostra l'output prodotto da un processo
+che non è più in esecuzione.
+Teaches: applica `PRQ-DIAG-TOOLS` — leggere l'evidenza che un processo terminato lascia dietro di
+sé.
+
+If it goes wrong::
+Se il container `app` non compare più (per esempio è stato rimosso automaticamente da una
+politica di restart), il comando restituisce un errore "No such container": verificare la
+configurazione di `restart` nel progetto compose preparato in anticipo — deve essere assente o
+impostata su `no` perché il container resti ispezionabile in stato `Exited`.
+
+=== Step 6 — Scegliere il secondo strumento: la configurazione corrisponde a quanto visto nei log?
+
+Trainer-only:: yes
+Timing:: 1 min
+
+Do::
+Narrazione: il docente chiede "il log nomina `db-service`: è un valore che qualcuno ha configurato
+di proposito, o è un errore di configurazione? Quale strumento mostra la configurazione effettiva
+passata al container?" e guida verso `inspect`.
+
+Expect::
+L'aula riconosce che `inspect` mostra la configurazione effettivamente applicata al container
+(comprese le variabili d'ambiente), distinta da ciò che il processo ha scritto nei log.
+
+Verify::
+Nessuna verifica tecnica: step narrativo.
+
+Why::
+Mechanical: nessuna azione sul sistema.
+Teaches: distingue "cosa ha fatto il processo" (`logs`) da "come è stato configurato il
+container" (`inspect`) — la seconda metà del criterio di scelta del nodo `PRQ-DIAG-TOOLS`.
+
+If it goes wrong::
+Nessun rischio tecnico in questo step.
+
+=== Step 7 — Ispezionare la configurazione del container
+
+Trainer-only:: yes
+Timing:: 3 min
+
+Do::
+[source,bash]
+----
+docker inspect --format '{{json .Config.Env}}' app
+----
+
+Expect::
+Il comando restituisce l'elenco delle variabili d'ambiente configurate per `app` in formato JSON
+(JSON, sigla di JavaScript Object Notation — notazione a oggetti derivata dal linguaggio
+JavaScript), tra cui una voce simile a `DATABASE_HOST=db-service`. Il nome esatto della variabile
+dipende dal progetto compose preparato in anticipo. [inferred]
+
+Verify::
+L'elenco delle variabili d'ambiente contiene una voce con valore `db-service`.
+
+Why::
+Mechanical: `inspect --format` filtra l'output completo (molto lungo) alla sola sezione
+rilevante, evitando di far scorrere in aula un blocco JSON di centinaia di righe.
+Teaches: conferma con `inspect` l'evidenza raccolta con `logs` — il valore `db-service` non è un
+errore transitorio del processo ma un valore di configurazione stabile.
+
+If it goes wrong::
+Se il formato Go template non è quello atteso nella versione di Docker installata sulla macchina
+di delivery, usare `docker inspect app` senza `--format` e indicare a voce la sezione
+`Config.Env` nell'output completo — verificare questa alternativa durante la prova, come
+richiesto dalla nota di rehearsal in testa a questo file.
+
+=== Step 8 — Scegliere il terzo strumento: quel nome esiste davvero sulla rete?
+
+Trainer-only:: yes
+Timing:: 1 min
+
+Do::
+Narrazione: il docente chiede "`db-service` è il nome che l'app si aspetta di risolvere: quale
+strumento mostra chi è davvero collegato alla stessa rete Docker?" e guida verso `network
+inspect`.
+
+Expect::
+L'aula riconosce che `network` mostra la topologia — quali container sono effettivamente membri
+di una rete — distinta dalla configurazione di un singolo container vista con `inspect`.
+
+Verify::
+Nessuna verifica tecnica: step narrativo.
+
+Why::
+Mechanical: nessuna azione sul sistema.
+Teaches: terzo criterio di scelta del nodo `PRQ-DIAG-TOOLS` — quando il sintomo riguarda un nome
+non risolto, lo strumento da consultare è quello che elenca l'appartenenza alla rete, non la
+configurazione del singolo container.
+
+If it goes wrong::
+Nessun rischio tecnico in questo step.
+
+=== Step 9 — Elencare le reti
+
+Trainer-only:: yes
+Timing:: 1 min
+
+Do::
+[source,bash]
+----
+docker network ls
+----
+
+Expect::
+L'elenco delle reti presenti sulla macchina, inclusa quella creata automaticamente da Compose per
+il progetto (tipicamente di nome `<nome-progetto>_default`). [inferred]
+
+Verify::
+Nell'elenco compare una riga con un nome di rete che termina in `_default` (o il nome della rete
+effettivamente definita nel progetto compose preparato).
+
+Why::
+Mechanical: bisogna leggere il nome esatto della rete prima di potervi eseguire `network
+inspect`.
+Teaches: nessuno di nuovo — passo di lettura del nome, propedeutico allo step successivo.
+
+If it goes wrong::
+Se compaiono più reti con nomi simili (per esempio perché altri progetti compose sono già stati
+avviati sulla stessa macchina prima della lezione), identificare quella corretta nello step
+successivo guardando quale elenca `db` tra i membri: preparare la macchina di delivery senza altri
+progetti compose attivi prima di iniziare, per evitare questa ambiguità in aula.
+
+=== Step 10 — Ispezionare la rete del progetto
+
+Trainer-only:: yes
+Timing:: 2 min
+
+Do::
+[source,bash]
+----
+docker network inspect <NOME_RETE>
+----
+
+`<NOME_RETE>` è il nome letto nello step precedente. [inferred]
+
+Expect::
+Il comando restituisce un blocco JSON con una sezione `Containers` che elenca `db` come membro
+della rete, ma non `db-service` sotto nessuna forma (né come nome container né come alias).
+`app`, essendo terminato, non compare tra i membri della rete: `network inspect` elenca solo i
+container in esecuzione. [inferred]
+
+Verify::
+La sezione `Containers` dell'output nomina `db` e non contiene alcuna voce `db-service`.
+
+Why::
+Mechanical: `network inspect` è l'unico dei quattro strumenti che mostra l'appartenenza alla rete
+indipendentemente dallo stato di esecuzione di un singolo container.
+Teaches: raccoglie la prova diretta che `db-service` non è un nome risolvibile su questa rete —
+completa l'evidenza raccolta nei tre step precedenti. L'assenza di `app` dall'elenco anticipa
+anche il criterio dello step successivo: `exec` richiederà un container ancora in esecuzione.
+
+If it goes wrong::
+Se il nome di rete letto nello step precedente non esiste, ricontrollare l'output di `docker
+network ls`: un errore di battitura nel copiare il nome è la causa più probabile in un demo dal
+vivo.
+
+=== Step 11 — Scegliere il quarto strumento: verificarlo da dentro un container vivo
+
+Trainer-only:: yes
+Timing:: 1 min
+
+Do::
+Narrazione: il docente chiede "abbiamo dedotto che `db-service` non risolve nulla: come lo
+verifichiamo empiricamente, invece di dedurlo solo dall'elenco?" e guida verso `exec`, l'unico
+strumento tra i quattro che permette di eseguire un comando dentro un container ancora in
+esecuzione — qui `db`, il solo dei due container ancora vivo.
+
+Expect::
+L'aula riconosce che `exec` richiede un container in esecuzione, e che qui è utilizzabile solo su
+`db`, non su `app` (terminato).
+
+Verify::
+Nessuna verifica tecnica: step narrativo.
+
+Why::
+Mechanical: nessuna azione sul sistema.
+Teaches: quarto criterio di scelta del nodo `PRQ-DIAG-TOOLS` — `exec` verifica empiricamente
+un'ipotesi di lettura eseguendo un comando reale, ma solo su un container ancora in esecuzione.
+
+If it goes wrong::
+Nessun rischio tecnico in questo step.
+
+=== Step 12 — Verificare la risoluzione del nome dall'interno del container ancora attivo
+
+Trainer-only:: yes
+Deliberate failure:: yes — dimostra che il nome `db-service` non risolve a nessun indirizzo IP
+(IP, sigla di Internet Protocol — protocollo Internet; qui si intende l'indirizzo numerico
+assegnato al container sulla rete) dalla prospettiva di un container collegato alla stessa rete,
+confermando empiricamente l'evidenza raccolta con `network inspect`; non è un errore imprevisto
+del demo.
+Timing:: 3 min
+
+Do::
+[source,bash]
+----
+docker exec db sh -c 'getent hosts db-service; echo "exit=$?"'
+----
+
+Expect::
+`getent hosts` non trova nessuna corrispondenza per `db-service` sul risolutore DNS interno di
+Docker (DNS, sigla di Domain Name System — sistema dei nomi di dominio; qui si intende il
+servizio di risoluzione dei nomi interno alla rete Docker), quindi non stampa nessuna riga di
+indirizzo prima della riga `exit=`. [inferred]
+
+Verify::
+L'ultima riga stampata legge `exit=2` (il codice di uscita esatto di `getent` in caso di nome non
+trovato è illustrativo e va confermato in fase di prova: qualunque valore diverso da `exit=0`
+conferma l'assenza di risoluzione). [inferred]
+
+Why::
+Mechanical: `getent hosts` interroga lo stesso risolutore che l'app userebbe per contattare
+`db-service`, riproducendo il fallimento dal punto di vista della rete invece che dedurlo solo
+dagli elenchi visti negli step precedenti.
+Teaches: chiude il ciclo dei quattro strumenti applicati allo stesso sintomo, e mostra che `exec`
+serve a verificare empiricamente una lettura fatta con gli altri tre strumenti.
+
+If it goes wrong::
+Se il comando restituisce invece un indirizzo IP e `exit=0` (l'immagine di `db` non include
+`getent`, o il progetto compose preparato definisce per errore un alias `db-service` sulla rete),
+il fallimento atteso non si manifesta: usare in alternativa `docker exec db sh -c 'getent hosts
+db; echo "exit=$?"'` per mostrare che solo il nome corretto risolve, e segnalare la discrepanza
+per la revisione di questo file. Se l'immagine non contiene la shell `sh` o il binario `getent`,
+provare `docker exec db ping -c 1 db-service` come alternativa equivalente, verificandola durante
+la prova.
+
+=== Step 13 — Chiudere la raccolta di evidenza
+
+Trainer-only:: yes
+Timing:: 1 min
+
+Do::
+Narrazione: il docente riassume l'evidenza raccolta — il log nomina `db-service`, la
+configurazione conferma quel valore, la rete non elenca nessun membro con quel nome, e la verifica
+empirica conferma che non risolve — e dichiara esplicitamente che il prossimo passo (formulare
+un'ipotesi su cosa è andato storto e come verificarla) è materia della prossima parte della
+sessione, non di questo demo.
+
+Expect::
+L'aula ha un elenco ordinato di quattro evidenze, una per strumento, senza che il docente abbia
+ancora affermato quale sia "la causa" del problema.
+
+Verify::
+Nessuna verifica tecnica: step narrativo e di chiusura.
+
+Why::
+Mechanical: nessuna azione sul sistema.
+Teaches: rende esplicito il confine tra `PRQ-DIAG-TOOLS` (raccogliere evidenza, questo demo) e
+`PRQ-HYPOTHESIS` (formulare un'ipotesi a partire dall'evidenza, item 35-36 immediatamente dopo).
+
+If it goes wrong::
+Nessun rischio tecnico in questo step.
+
+== Reset
+
+Per tornare allo stato pulito descritto nelle Preconditions:
+
+[source,bash]
+----
+docker compose down
+----
+
+Verificare con `docker ps -a` che nessun container del progetto sia più elencato prima di
+riavviare il demo per un'altra classe.
+
+== Resume mid-demo
+
+Se il demo viene interrotto dopo uno degli step 2–12, il docente può riprendere dallo step
+successivo senza rifare `docker compose down && docker compose up -d`, purché prima verifichi con
+`docker ps -a` che lo stato sia ancora quello atteso a quel punto (`db` in `Up`, `app` in `Exited
+(1)`). Se lo stato non corrisponde più — per esempio perché qualcuno ha già eseguito `docker
+compose down` o riavviato `app` — eseguire prima il Reset e poi lo Step 2, invece di continuare da
+uno stato non verificato.
+
+== Live-failure fallback
+
+[risk] Questo agente non ha accesso alla macchina di delivery e non può catturare screenshot o
+transcript reali degli output attesi. Prima della lezione, un umano deve catturare e conservare
+(per esempio come file di testo o registrazione dello schermo) l'output effettivo di ciascuno dei
+quattro comandi principali (step 5, 7, 10, 12) eseguito sul progetto compose preparato, così da
+poterlo mostrare se il demo dal vivo si rompe e non è recuperabile in aula.
+
+Se il demo si rompe e non è recuperabile in aula: mostrare il transcript catturato in precedenza,
+narrando ogni output come se fosse quello appena prodotto, e riprendere la sessione dallo Step 13
+(chiusura) per non perdere il collegamento con item 35-36.
+
+== Timing cross-check
+
+Somma dei `Timing::` dei 13 step (dopo la suddivisione degli step "avviare il sistema" /
+"osservare lo stato" e "elencare le reti" / "ispezionare la rete" in coppie separate):
+1+1+1+1+2+1+3+1+1+2+1+3+1 = 19 minuti, più 2 minuti di setup stimato = 21 minuti, contro i 30
+minuti di `duration_minutes` dichiarati per item sequence "34" in CURRICULUM. Il risultato e la
+decisione di non correggere né la somma né il numero dichiarato sono registrati nel blocco
+`instructional_decisions` in testa a questo file.

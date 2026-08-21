@@ -1,0 +1,418 @@
+= Demo guide — Il docente crea una rete Docker e collega due container che si raggiungono per nome
+:status: draft
+:session: 03
+:sequence: 23
+:node_ref: PRQ-DOCKER-NETWORK
+:target_minutes: 30
+:language: it
+
+Questo file copre l'item CURRICULUM con `sequence: "23"` (sessione 3) e il nodo DESIGN
+`PRQ-DOCKER-NETWORK`.
+
+[NOTE]
+====
+Provare questa guida una volta, dall'inizio alla fine, esattamente come scritta, prima di
+insegnarla dal vivo. Ogni comando e ogni output atteso qui sotto è una stima fondata a partire dal
+design del corso, non un fatto verificato — segnalare qualsiasi cosa non corrisponda a quanto si
+osserva, e aggiornare questo file una volta corretto.
+
+In particolare, provare con attenzione lo Step 4 (il contrasto successo/isolamento): è lo step più
+probabile a discostarsi da quanto scritto qui, perché nessuno store dichiara il testo esatto
+dell'errore che una data versione di Docker Engine stampa per una risoluzione di nome fallita.
+`[risk]`
+====
+
+[NOTE.instructional-decision]
+====
+Decision: questo item (CURRICULUM sequence 23) è scritto come solo-docente (`Trainer-only:: yes`
+su tutti gli step): il pubblico osserva, non segue in parallelo sulla propria macchina. L'attività
+equivalente per gli studenti è un item CURRICULUM diverso, sequence 27 (sessione 4, `DR-NETWORK`),
+dove gli studenti costruiscono da soli lo stesso tipo di collegamento.
+Rationale: l'item sequence 22 (lezione, stesso nodo, immediatamente prima di questo nella
+sessione 3) ha già presentato il modello di rete Docker. Il compito di questa demo è rendere
+visibile quel modello, non dare agli studenti pratica autonoma — quella pratica è deliberatamente
+spostata alla sessione 4, dove può essere verificata insieme alla mappatura delle porte e al
+checkpoint DR-NETWORK.
+Confidence: inferred
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: lo Step 4 è scritto come `Deliberate failure:: yes` (risoluzione del nome tentata da un
+container fuori dalla rete Docker creata) invece di mostrare solo il caso di successo.
+Rationale: il nodo DESIGN PRQ-DOCKER-NETWORK copre esplicitamente EQ_3 ("cosa vuol dire in pratica
+che la rete Docker è isolata"). L'isolamento non è visibile da un solo esempio funzionante; serve
+un fallimento in contrasto per essere dimostrato concretamente, non solo affermato a parole.
+Confidence: inferred
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: il container server usa l'immagine `nginx` (server web pronto all'uso, in ascolto sulla
+porta 80 senza configurazione aggiuntiva); il container client usa l'immagine `alpine`, con
+`wget` (BusyBox `wget`, non `curl` — `alpine` non include `curl` di base) come strumento per fare
+la richiesta.
+Rationale: nessuno store nomina un'immagine, un endpoint o uno strumento client per questa demo —
+la scelta è `[invented framing]`. Usare un'immagine server reale (`nginx`) invece di un container
+"vuoto" (es. `alpine` con `sleep`) rende il caso di successo (Step 3) effettivamente un successo —
+una risposta HTTP reale — coerente con il titolo dell'item CURRICULUM ("due container che si
+raggiungono per nome"), non una connessione rifiutata da spiegare a parole. Questa scelta evita
+inoltre di introdurre la mappatura delle porte (`-p`), che appartiene al nodo `PRQ-PORT-MAPPING`,
+non ancora insegnato a questo punto del curriculum (introdotto per la prima volta in sessione 4,
+sequence 25): la raggiungibilità è mostrata da *dentro* la rete Docker, con un `docker run` di un
+container collegato alla stessa rete, mai pubblicando una porta verso l'host.
+Confidence: invented
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: tutta la prosa di questa guida è scritta in italiano, incluso il blocco di apertura
+obbligatorio dello spec (`reference/demo_guide_spec.md`), che è stato tradotto insieme al resto
+invece di essere lasciato in inglese.
+Rationale: `:language: it` e EDITORIAL_GUIDELINES sono vincolanti per tutto il materiale del
+corso, senza eccezione dichiarata per un blocco di template. EDITORIAL_GUIDELINES fissa inoltre
+termini vincolanti sia in inglese (`container`, `volume`, `compose`) sia in italiano (rete,
+indirizzo IP, porta, processo, memoria); questa coerenza terminologica ha senso solo dentro una
+prosa italiana, non in una prosa inglese con termini italiani inseriti a forza.
+Confidence: inferred
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: lasciato un margine di 3 minuti sotto il budget di 30 minuti di CURRICULUM (24 minuti
+di step + circa 3 minuti di setup = circa 27 minuti) invece di aggiungere un settimo step per
+riempirlo esattamente. Vedi "Timing cross-check" più sotto per il conteggio completo.
+Rationale: una demo dal vivo sfora più spesso il tempo provato (domande, un terminale più lento
+del previsto, uno scaricamento fallito) di quanto lo anticipi; un piccolo margine assorbe questo
+senza forzare uno step artificiale in più.
+Confidence: inferred
+Awaiting: instructional-designer
+====
+
+== Preconditions
+
+- Docker Engine installato e in esecuzione sulla macchina del docente. Versione usata per
+  controllare le opzioni di questa guida: Docker version 29.4.0, build 9d7ad9f, verificata in
+  sola lettura in questo sandbox (`docker --version`). `[inferred]` — la macchina reale usata in
+  aula potrebbe avere una versione diversa; controllare `docker network create --help` e
+  `docker run --help` se le opzioni degli Step 1 o 2 non corrispondono. `[risk]`
+- Le immagini `nginx` e `alpine` sono già scaricate in locale (`docker pull nginx`,
+  `docker pull alpine`) prima dell'inizio della lezione, non durante la demo dal vivo — uno
+  scaricamento dal vivo dipende dalla rete dell'aula e non è ciò che questa demo vuole mostrare.
+  `[risk]` — il docente deve scaricare entrambe le immagini in anticipo e confermare che
+  `docker images` le elenchi entrambe.
+- Nessun container di una demo precedente usa i nomi `web` o resta collegato a una rete chiamata
+  `corso-rete`, così gli Step 1–3 non entrano in conflitto con stato residuo. Vedi "Reset" più
+  sotto per come garantirlo.
+- L'aula ha già visto, nella lezione immediatamente precedente (CURRICULUM sequence 22, stesso
+  nodo), il modello delle reti Docker isolate e della risoluzione dei nomi tra container — questa
+  demo non ri-spiega quel modello a parole, lo rende visibile sullo schermo. `[inferred]` dalla
+  sequenza di CURRICULUM.
+- L'aula sa già usare `docker run`, `docker ps` ed `docker exec` a livello meccanico (item
+  CURRICULUM 10–11, `PRQ-CLI-BASICS`, insegnati in sessione 2) — questa guida non ri-spiega cosa
+  fanno quei comandi. `[inferred]` da CURRICULUM; `PRQ-CLI-BASICS` non è un arco `Requires` di
+  `PRQ-DOCKER-NETWORK` in DESIGN, ma l'ordine degli item insegnati supporta questa assunzione.
+- L'aula sa già cos'è un container (`PRQ-CONTAINER`) e cosa sono un indirizzo IP (IP: Internet
+  Protocol, si può tradurre come: protocollo Internet, lo schema di indirizzamento usato per
+  identificare un dispositivo su una rete) e una porta (`PRQ-NETWORK-BASICS`) — entrambi archi
+  `Requires` di `PRQ-DOCKER-NETWORK` in DESIGN, quindi questa guida non ri-spiega né l'uno né
+  l'altro.
+- Un terminale con dimensione del font e della finestra leggibile dal fondo dell'aula è già
+  aperto, e il prompt della shell del docente non è affollato di output residuo. `[risk]` — il
+  docente deve predisporre questo aspetto autonomamente; nessuno store definisce schermo o
+  configurazione del font.
+
+== Steps
+
+=== Step 1 — Creare la rete Docker
+
+Trainer-only:: yes
+Deliberate failure:: no
+Timing:: 3 min
+
+Do::
++
+[source,bash]
+----
+docker network create corso-rete
+----
++
+`corso-rete` — nome scelto per la rete Docker "bridge" definita dall'utente usata in questa demo;
+qualsiasi nome funziona, questo viene usato in modo coerente nel resto della guida.
+`[invented framing]`
+
+Expect::
+Una singola riga che stampa l'id della nuova rete, una stringa esadecimale di 64 caratteri.
+`[inferred]` — l'id esatto è generato al momento della creazione e sarà diverso a ogni
+esecuzione.
+
+Verify::
+`docker network ls` elenca una rete di nome `corso-rete` con colonna DRIVER `bridge`.
+
+Why::
+Mechanical: la demo ha bisogno di una rete diversa dalla rete bridge di default di Docker, perché
+solo una rete definita dall'utente offre ai container la risoluzione dei nomi automatica
+reciproca tramite DNS (Domain Name System, si può tradurre come: sistema dei nomi di dominio, il
+meccanismo che traduce un nome host in un indirizzo IP).
+Teaches: PRQ-DOCKER-NETWORK — reti isolate (una rete creata esplicitamente, non quella implicita
+di default).
+
+If it goes wrong::
+- `Error response from daemon: network with name corso-rete already exists` — un'esecuzione
+  precedente non è stata pulita. Eseguire la procedura di Reset più sotto, poi ripetere questo
+  step.
+- `Cannot connect to the Docker daemon` — il servizio Docker non è in esecuzione sulla macchina
+  del docente; avviarlo prima di continuare (il comando esatto di avvio dipende dal sistema
+  operativo ed è fuori dallo scopo di questa guida). `[risk]`
+
+=== Step 2 — Avviare il container server sulla nuova rete
+
+Trainer-only:: yes
+Deliberate failure:: no
+Timing:: 4 min
+
+Do::
++
+[source,bash]
+----
+docker run -d --name web --network corso-rete nginx
+----
++
+`web` — nome con cui questo container sarà raggiungibile per nome dall'altro container, sulla rete
+`corso-rete`. `nginx` — server web che ascolta sulla porta 80 senza configurazione, immagine
+scelta per questa demo (vedi la nota `instructional_decisions` sopra). `[invented framing]`
+
+Expect::
+Una singola riga che stampa l'id del nuovo container, una stringa esadecimale di 64 caratteri
+(diversa a ogni esecuzione). `[inferred]`
+
+Verify::
+`docker ps` elenca un container di nome `web`, colonna STATUS con `Up <N> seconds`.
+
+Why::
+Mechanical: questo è il primo dei due container che devono raggiungersi per nome.
+Teaches: PRQ-DOCKER-NETWORK — un container che entra a far parte di una rete Docker definita
+dall'utente tramite `--network`.
+
+If it goes wrong::
+- `Unable to find image 'nginx:latest' locally` seguito da un tentativo di scaricamento —
+  l'immagine non è stata pre-scaricata come richiesto nelle Preconditions; lasciare completare il
+  download se l'aula ha accesso alla rete, altrimenti passare al Live-failure fallback se il
+  download si blocca.
+- `docker: Error response from daemon: Conflict. The container name "/web" is already in use` —
+  un container residuo di un'esecuzione precedente. Eseguire Reset, poi ripetere.
+
+=== Step 3 — Raggiungere il container server per nome da un secondo container
+
+Trainer-only:: yes
+Deliberate failure:: no
+Timing:: 5 min
+
+Do::
++
+[source,bash]
+----
+docker run --rm --network corso-rete alpine wget -qO- http://web
+----
++
+Il container che esegue la richiesta è "usa e getta" (`--rm` lo rimuove subito dopo la sua
+esecuzione) — non ha bisogno di un `--name` proprio. `web` — il nome host risolto tramite il DNS
+interno della rete Docker all'indirizzo IP del container `web`, non un indirizzo IP scritto a mano
+dal docente. Questa è l'istanza concreta di EQ_2 (invio di una richiesta REST — Representational
+State Transfer, si può tradurre come: trasferimento di stato rappresentazionale, uno stile di
+richiesta HTTP — HyperText Transfer Protocol, il protocollo usato dal web — tra sistemi — tra
+container) richiamata da PRQ-DOCKER-NETWORK, qui semplificata a una richiesta HTTP diretta alla
+pagina di benvenuto di `nginx`, non a un vero endpoint applicativo. `[invented framing]`
+
+Expect::
+Il comando stampa a schermo il codice HTML (HyperText Markup Language, il linguaggio usato per
+scrivere pagine web) della pagina di benvenuto di default di `nginx` (contiene il testo "Welcome
+to nginx!"). `[inferred]`
+
+Verify::
+L'output contiene la stringa `Welcome to nginx!`. Questo prova che il nome `web` si è risolto a un
+indirizzo IP raggiungibile e che quell'indirizzo ha risposto con una pagina reale.
+
+Why::
+Mechanical: questa è la prova più semplice possibile che due container sulla stessa rete Docker
+definita dall'utente si raggiungono per nome.
+Teaches: PRQ-DOCKER-NETWORK — risoluzione dei nomi tra container (DNS interno).
+
+If it goes wrong::
+- `wget: bad address 'web'` — la risoluzione del nome è fallita; controllare con
+  `docker network inspect corso-rete` che entrambi i container siano effettivamente collegati.
+  Non procedere allo Step 4 finché questo non è risolto, perché lo Step 4 dipende dal fatto che
+  questo stesso meccanismo funzioni qui.
+- Il comando resta in attesa invece di rispondere in pochi secondi — interrompere con Ctrl-C dopo
+  circa 10 secondi e rieseguire; un'attesa così lunga è di per sé un segnale che qualcosa non va
+  nella rete, non un comportamento atteso. `[risk]` — il comportamento esatto di timeout non è
+  stato verificato con un'esecuzione reale.
+
+=== Step 4 — Mostrare che un container fuori dalla rete non raggiunge `web` per nome
+
+Trainer-only:: yes
+Deliberate failure:: yes — dimostra EQ_3 (cosa vuol dire in pratica che la rete Docker è isolata):
+un container non collegato a `corso-rete` non riesce nemmeno a risolvere il nome `web`, in
+contrasto con lo Step 3, dove il nome si è risolto e ha risposto.
+Timing:: 5 min
+
+Do::
++
+[source,bash]
+----
+docker run --rm alpine wget -qO- http://web
+----
++
+Notare l'unica differenza rispetto al comando dello Step 3: manca l'opzione `--network corso-rete`.
+Questo container esegue invece sulla rete bridge di default di Docker. `[invented framing]`
+
+Expect::
+Il comando fallisce immediatamente (non dopo un'attesa), segnalando che il nome `web` non si è
+potuto risolvere affatto — un fallimento diverso da quello, assente, dello Step 3.
+`[inferred]`
+
+Verify::
+Il testo dell'errore contiene `bad address 'web'` (il messaggio di fallimento di risoluzione di
+BusyBox `wget`) — distinto dalla risposta con `Welcome to nginx!` dello Step 3, e questo contrasto
+è il punto dello step. Dirlo a voce alta all'aula: "nello Step 3 il nome si è risolto e ha
+risposto, qui non si risolve nemmeno — questo è cosa vuol dire in pratica che una rete è isolata."
+
+Why::
+Mechanical: contrapporre un fallimento di risoluzione (questo step) a un successo con risposta
+reale (Step 3) è ciò che rende osservabile l'isolamento di una rete, invece di limitarsi ad
+affermarlo.
+Teaches: PRQ-DOCKER-NETWORK — EQ_3, isolamento della rete Docker.
+
+If it goes wrong::
+- Il nome si risolve inaspettatamente — la rete bridge di default di Docker non fa risoluzione
+  dei nomi tra container, quindi una causa più probabile è un resolver DNS della macchina o della
+  rete dell'aula con un dominio di ricerca (search domain) o una regola locale che intercetta
+  `web`; controllare la configurazione di rete della macchina del docente, non la rete Docker,
+  prima di procedere. `[risk]` — la causa esatta di un'eventuale risoluzione anomala non è
+  verificabile da questo agente senza un ambiente reale.
+- Se la versione di `alpine`/BusyBox `wget` in aula stampa un testo diverso per un fallimento di
+  risoluzione rispetto a quanto scritto qui, correggere questo file con la stringa esatta dopo la
+  prova, invece di presentare dal vivo una stima non verificata come un fatto. `[risk]`
+
+=== Step 5 — Ispezionare la rete per rendere il modello esplicito
+
+Trainer-only:: yes
+Deliberate failure:: no
+Timing:: 4 min
+
+Do::
++
+[source,bash]
+----
+docker network inspect corso-rete
+----
+
+Expect::
+Un documento JSON (JavaScript Object Notation, un formato di dati testuale) che descrive
+`corso-rete`: il suo `Driver` (`bridge`), il suo oggetto `Containers` che elenca `web` con un
+`Name` e un `IPv4Address` come `172.18.0.2/16` — la sottorete e l'indirizzo esatti sono
+illustrativi e saranno diversi a ogni esecuzione. `[inferred]`
+
+Verify::
+L'oggetto `Containers` elenca esattamente una voce, `web`, e nessuna voce per il container "usa e
+getta" degli Step 3–4 (già rimosso da `--rm`).
+
+Why::
+Mechanical: vedere la struttura JSON rende concreta l'idea astratta di "rete isolata" in qualcosa
+che l'aula può indicare direttamente — una sottorete reale, un'associazione container-IP reale.
+Teaches: PRQ-DOCKER-NETWORK — reti isolate, come oggetto reale con appartenenza reale, non solo
+come descrizione verbale.
+
+If it goes wrong::
+- L'output è molto lungo e scorre fuori dallo schermo — usare un pager o evidenziare a voce solo
+  la sezione `Containers` invece di leggere tutto il JSON. `[risk]` — l'altezza esatta del
+  terminale/scrollback è una scelta del docente, non qualcosa che questa guida può verificare.
+
+=== Step 6 — Riassumere collegando la demo alla lezione precedente
+
+Trainer-only:: yes
+Deliberate failure:: no
+Timing:: 3 min
+
+Do::
+Narrazione — nessun comando. Dire, con parole proprie del docente: "abbiamo creato una rete
+Docker, messo un container su di essa, e un secondo container su quella stessa rete l'ha raggiunto
+per nome, con una risposta reale — quella risoluzione del nome è il DNS interno descritto a
+lezione. Quando abbiamo lanciato la stessa richiesta da un container non collegato a quella rete,
+il nome non si è risolto affatto — questo è cosa vuol dire 'isolata' in pratica, non solo a
+parole." `[invented framing]` — la formulazione esatta è lasciata al docente.
+
+Expect::
+Nessun output di sistema; è un riassunto parlato mentre l'output dei terminali degli Step 3–5
+resta visibile a schermo come riferimento.
+
+Verify::
+L'aula, se interrogata, riesce a ripetere con parole proprie i due comportamenti appena mostrati:
+il nome si risolve sulla rete condivisa, il nome non si risolve fuori da essa.
+
+Why::
+Mechanical: nessuna — pura narrazione.
+Teaches: PRQ-DOCKER-NETWORK nel suo complesso (EQ_2 ed EQ_3 insieme), chiudendo il collegamento
+con la lezione immediatamente precedente (CURRICULUM sequence 22).
+
+If it goes wrong::
+- L'aula non ha domande e sembra poco convinta — rieseguire di seguito lo Step 3 e lo Step 4 se il
+  tempo lo consente, perché il contrasto diretto prima/dopo convince di più ripetuto che
+  descritto.
+
+== Reset
+
+Per tornare allo stato pulito delle Preconditions per un'altra coorte:
+
+[source,bash]
+----
+docker rm -f web
+docker network rm corso-rete
+----
+
+Verificare che `docker ps -a` non elenchi più `web` e che `docker network ls` non elenchi più
+`corso-rete` prima di ripetere la demo. `nginx` e `alpine` restano scaricati in locale; non serve
+rimuoverli.
+
+== Resume mid-demo
+
+- Interruzione dopo lo Step 1: `corso-rete` esiste, nient'altro ancora. Continuare dallo Step 2.
+- Interruzione dopo lo Step 2: `web` è in esecuzione su `corso-rete`. Eseguire `docker ps` per
+  confermare che `web` sia ancora `Up`; se è terminato, rieseguire il comando dello Step 2 dopo
+  aver rimosso il vecchio container `web` (`docker rm web`). Altrimenti continuare dallo Step 3.
+- Interruzione dopo lo Step 3 o lo Step 4: entrambi sono container "usa e getta" (`--rm`), quindi
+  non serve alcuna pulizia tra di loro o prima dello Step 5 — basta rieseguire il comando
+  `docker run` corrispondente.
+- Interruzione dopo lo Step 5: niente da rifare; procedere direttamente alla narrazione dello
+  Step 6.
+
+== Live-failure fallback
+
+`[risk]` — questo agente non ha accesso a un ambiente di erogazione reale e non può produrre una
+vera trascrizione di terminale catturata o uno screenshot. Un umano deve, durante la prova,
+catturare e allegare qui:
+
+- L'output letterale di `docker network create` (Step 1), `docker run` (Step 2), l'output HTML
+  con "Welcome to nginx!" dello Step 3, il testo di errore `bad address 'web'` dello Step 4, e il
+  JSON di `docker network inspect` dello Step 5, da un'unica esecuzione di prova completa e
+  riuscita.
+
+Finché quella cattura non esiste, se la demo dal vivo si rompe e non si può riparare in aula:
+narrare il modello a voce usando il linguaggio del riassunto dello Step 6, disegnando su lavagna o
+slide le due reti (rete con `web` sopra, il nome si risolve; un container fuori da essa, il nome
+non si risolve) invece che su un terminale. Riprendere la sessione da CURRICULUM sequence 24 (il
+quiz di verifica) come previsto; il quiz copre comunque PRQ-DOCKER-NETWORK indipendentemente dal
+fatto che i comandi dal vivo siano stati eseguiti.
+
+== Timing cross-check
+
+Step 1: 3 min + Step 2: 4 min + Step 3: 5 min + Step 4: 5 min + Step 5: 4 min + Step 6: 3 min = 24
+min di step. Aggiungendo circa 3 min di margine di setup (aprire il terminale, confermare che le
+Preconditions siano già soddisfatte) si arriva a circa 27 min contro i `duration_minutes` di 30
+dell'item in CURRICULUM — un margine di 3 minuti sotto budget, non sopra. Registrato qui invece
+di modificare uno dei due numeri; vedi la nota `instructional_decisions` corrispondente in testa
+al file.

@@ -1,0 +1,491 @@
+= Demo guide — Il docente scrive e avvia con un solo comando un docker-compose.yml a due servizi
+:status: draft
+:session: 06
+:node_ref: PRQ-COMPOSE-SHALLOW
+:target_minutes: 30
+:language: it
+
+[NOTE]
+====
+Ripeti questa guida una volta, dall'inizio alla fine, esattamente come scritta, prima di
+insegnarla in aula. Ogni comando e ogni output atteso qui sotto è una stima fondata a partire
+dal design del corso, non un fatto verificato — segnala qualunque cosa non corrisponda a ciò che
+vedi e aggiorna questo file una volta corretto.
+====
+
+Copre l'item CURRICULUM sequence `42`, sessione 6, `node_ref` `PRQ-COMPOSE-SHALLOW`. [stated]
+
+[NOTE.instructional-decision]
+====
+Decision: Ogni step copre una sola azione del docente (scrivere una porzione del file,
+eseguire un comando, osservare un output) invece di raggruppare più comandi in un solo step.
+Rationale: la spec richiede step piccoli abbastanza da isolare, in caso di errore a metà demo,
+esattamente quale azione è sospetta. Un file compose a due servizi si presta a una scomposizione
+fine senza allungare eccessivamente la demo.
+Confidence: inferred
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: Includere uno step osservativo (Step 8), non un guasto deliberato, in cui il docente
+confronta i timestamp dei log di `app` e `db` per far notare che `depends_on` (nella forma breve
+usata qui, equivalente a `condition: service_started`) ordina solo l'avvio dei container, non la
+prontezza del servizio al loro interno. Poiché il servizio applicativo scelto per questa demo è
+`nginx:alpine` (vedi decisione più sotto) e non contatta mai `db`, nessun errore viene prodotto:
+lo step resta un'osservazione sui log, non un guasto deliberato riproducibile.
+Rationale: la sintassi shallow di Compose introduce `depends_on` con la sua forma più semplice
+(lista di nomi di servizio); il rischio più comune e più istruttivo a questo livello è
+confondere "container avviato" con "servizio pronto". Nessuno store richiede esplicitamente
+questo punto, ed è per costruzione non deterministico (dipende da quanto è "calda" l'immagine e
+dalla velocità della macchina) — per questo non è trattato come guasto deliberato affidabile, ma
+come narrazione appoggiata a un'osservazione che può o non può manifestarsi in un run specifico.
+Confidence: invented
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: Usare `nginx:alpine` come servizio applicativo invece di un'app custom scritta per il
+corso, per tenere la demo autosufficiente e non dipendente da codice applicativo non presente in
+nessuno store.
+Rationale: DESIGN e CURRICULUM non specificano quale applicazione usare per questo pass
+"shallow"; DR-COMPOSE (l'item successivo, hands-on) è quello che userà applicazione + database
+reali secondo il proprio checkpoint (GOAL_006). Usare un'immagine generica qui evita di
+anticipare contenuto che appartiene all'hands-on.
+Confidence: invented
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: La somma dei tempi dei singoli step (vedi "Verifica dei tempi" in fondo al file) non
+raggiunge i 30 minuti dichiarati in CURRICULUM per l'item 42; non ho allungato artificialmente
+gli step per far coincidere la somma.
+Rationale: material_authoring_rules.md e demo_guide_spec.md chiedono di registrare lo scostamento
+come decisione in sospeso, non di correggere in silenzio uno dei due numeri.
+Confidence: stated
+Awaiting: instructional-designer
+====
+
+== Precondizioni
+
+* Ambiente con `docker` e Docker Compose (plugin `docker compose`, sintassi v2) installati e
+  funzionanti. In questo sandbox sono presenti `docker` versione 29.4.0 e `docker compose`
+  versione v5.1.2 — valori osservati localmente con `docker --version` e `docker compose
+  version`, non verificati nell'ambiente di erogazione reale. [inferred]
+* [risk] Il docente deve confermare, prima della lezione, la versione di `docker` e di `docker
+  compose` effettivamente installata sulla macchina di erogazione. Se la versione è precedente a
+  Compose v2 (comando standalone `docker-compose`, senza spazio), la sintassi dei comandi in
+  questa guida resta valida ma il comando cambia da `docker compose` a `docker-compose`.
+* [risk] Le immagini `postgres:16` e `nginx:alpine` devono essere già presenti in locale
+  (`docker pull postgres:16` e `docker pull nginx:alpine` eseguiti prima dell'aula) o comunque
+  raggiungibili in rete durante la demo. Il docente deve pre-scaricare entrambe le immagini prima
+  di entrare in aula, per non dipendere dalla rete della sede durante la demo.
+* Cartella di lavoro vuota e dedicata alla demo, ad esempio `~/demo-compose-shallow/`, senza un
+  `docker-compose.yml` preesistente al suo interno. [inferred]
+* Nessun container, rete o volume con nome che confligga con quelli creati in questa demo
+  (`db`, `app`, volume `db-data`) già in esecuzione sulla macchina. Verificabile con `docker ps -a`
+  e `docker volume ls` prima di iniziare. [inferred]
+* Il pubblico ha appena seguito l'item di sequence 41 (lezione, stessa sessione), sulla sintassi
+  di base di `docker-compose.yml`: conosce già la struttura generale del file (`services:`,
+  chiavi per singolo servizio) ma non l'ha ancora vista scritta ed eseguita dal vivo. [stated,
+  da CURRICULUM]
+* Il pubblico conosce già, dalle sessioni 3-4, la mappatura delle porte (`PRQ-PORT-MAPPING`), il
+  modello di rete Docker (`PRQ-DOCKER-NETWORK`), la meccanica dei volumi (`PRQ-VOLUME-MOUNT`) e il
+  motivo per cui un sistema reale è composto da più servizi collaboranti
+  (`PRQ-MULTI-SERVICE`) — queste conoscenze sono assunte, non re-insegnate in questa demo.
+  [stated, da DESIGN — edges `Requires` di `PRQ-COMPOSE-SHALLOW`]
+* Terminale con editor di testo disponibile (il docente può usare l'editor che preferisce; questa
+  guida non prescrive quale). [inferred]
+
+== Step
+
+=== Step 1 — Mostrare la cartella di lavoro vuota
+
+Trainer-only:: yes
+Timing:: 1 min
+
+Do::
+Il docente apre un terminale già posizionato nella cartella di lavoro dedicata.
+
+[source,bash]
+----
+ls -la
+----
+
+Expect::
+L'output di `ls -la` mostra solo `.` e `..`, nessun file preesistente.
+
+Verify::
+Nessuna riga di output oltre a `.` e `..` (o alle voci equivalenti mostrate dal terminale in
+uso).
+
+Why::
+Mechanical: Stabilisce lo stato di partenza pulito richiesto dalle Precondizioni, davanti alla
+classe.
+Teaches: Introduce il contesto — non ancora contenuto di `PRQ-COMPOSE-SHALLOW` in sé.
+
+If it goes wrong::
+Se compare un `docker-compose.yml` o altri file lasciati da una demo precedente, cancellarli
+(`rm docker-compose.yml`) prima di procedere: uno stato non pulito invalida gli step successivi.
+
+=== Step 2 — Aprire il file e scrivere l'intestazione dei servizi
+
+Trainer-only:: yes
+Timing:: 2 min
+
+Do::
+Azione narrata — il docente crea il file `docker-compose.yml` (YAML — "YAML Ain't Markup
+Language", un formato dichiarativo a indentazione; il nome è un acronimo recorsivo in inglese
+che non si traduce letteralmente in italiano) nell'editor e scrive la prima riga, spiegando a
+voce che un file Compose v2 non richiede più la chiave `version:` (obsoleta a partire da Compose
+v2, confermato eseguendo `docker compose config` su questo file più avanti in questa stessa
+guida). [inferred, verificato localmente con la versione di Compose presente nel sandbox — non
+nell'ambiente di erogazione]
+
+[source,yaml]
+----
+services:
+----
+
+Expect::
+Il file contiene una sola riga, `services:`, senza indentazione.
+
+Verify::
+Il file salvato su disco contiene esattamente il testo `services:` seguito da una nuova riga.
+
+Why::
+Mechanical: `services:` è la chiave di primo livello obbligatoria di ogni file Compose; senza di
+essa nessun servizio può essere dichiarato.
+Teaches: PRQ-COMPOSE-SHALLOW — struttura minima di un `docker-compose.yml`.
+
+If it goes wrong::
+Se il docente digita per abitudine una riga `version: "3"` in testa al file, non è un errore
+bloccante (Compose v2 la ignora con un avviso deprecato) ma va evitata: dire alla classe che è
+un residuo di sintassi non più necessario, non toglierla di corsa a metà demo.
+
+=== Step 3 — Dichiarare il servizio database
+
+Trainer-only:: yes
+Timing:: 3 min
+
+Do::
+Azione narrata — il docente aggiunge il servizio `db`, richiamando a voce che l'immagine e le
+variabili d'ambiente sono le stesse viste nelle sessioni precedenti con `docker run`, solo
+espresse in forma dichiarativa.
+
+[source,yaml]
+----
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: demo
+      POSTGRES_DB: demo
+----
+
+Expect::
+Il file ora ha due livelli di indentazione sotto `services:`: il nome del servizio `db` e le sue
+chiavi `image` e `environment`.
+
+Verify::
+Il blocco `db:` nel file è indentato di due spazi sotto `services:`, e `image`/`environment` di
+altri due spazi sotto `db:`.
+
+Why::
+Mechanical: `image` e `environment` sono le chiavi minime per far partire un container Postgres
+funzionante, equivalenti ai flag `-e` di un `docker run` già visto.
+Teaches: PRQ-COMPOSE-SHALLOW — definizione di un servizio nel file, come traduzione dichiarativa
+di un comando `docker run` già noto.
+
+If it goes wrong::
+Un errore di indentazione YAML (spazi invece di due, o tab) non dà errore visibile finché non si
+esegue `docker compose config` allo Step 6; se la classe nota un'incongruenza di indentazione,
+correggerla subito piuttosto che lasciarla per dopo.
+
+=== Step 4 — Aggiungere il volume per la persistenza del database
+
+Trainer-only:: yes
+Timing:: 2 min
+
+Do::
+Azione narrata — il docente aggiunge la chiave `volumes` al servizio `db` e la dichiarazione del
+volume nominato a livello di file, richiamando `PRQ-VOLUME-MOUNT` (già noto) e mostrando come si
+scrive in Compose invece che con il flag `-v` di `docker run`.
+
+[source,yaml]
+----
+    volumes:
+      - db-data:/var/lib/postgresql/data
+----
+
+e, più in basso nel file, a pari livello di `services:`:
+
+[source,yaml]
+----
+volumes:
+  db-data:
+----
+
+Expect::
+Il servizio `db` ha ora una chiave `volumes` con un elemento; in fondo al file compare una
+sezione `volumes:` di primo livello con il nome `db-data` e nessun valore sotto (dichiarazione
+implicita di volume gestito da Docker).
+
+Verify::
+Il file ha, a indentazione zero, sia `services:` che `volumes:` come chiavi di primo livello
+distinte; `db-data` compare sia nella lista `volumes` di `db` sia come chiave sotto la sezione
+`volumes:` di primo livello.
+
+Why::
+Mechanical: un volume nominato usato da un servizio deve anche essere dichiarato nella sezione
+`volumes:` di primo livello, altrimenti Compose lo tratta come implicito ma senza le opzioni che
+servono nei casi più avanzati (fuori scope di questo pass shallow).
+Teaches: PRQ-COMPOSE-SHALLOW — uso di un volume, già noto da `PRQ-VOLUME-MOUNT`, espresso in
+forma Compose.
+
+If it goes wrong::
+Se il docente dimentica la sezione `volumes:` di primo livello, il file resta comunque valido
+(Compose la crea implicitamente): non è un errore da correggere in emergenza, ma un'occasione per
+far notare la differenza tra dichiarazione esplicita e implicita — a scelta del docente se
+trattarla a voce o lasciarla per dopo.
+
+=== Step 5 — Dichiarare il servizio applicativo con porta e dipendenza
+
+Trainer-only:: yes
+Timing:: 3 min
+
+Do::
+Azione narrata — il docente aggiunge il secondo servizio, `app`, con mappatura di porta
+(`PRQ-PORT-MAPPING`, già noto) e la chiave `depends_on` verso `db`.
+
+[source,yaml]
+----
+  app:
+    image: nginx:alpine
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+----
+
+Expect::
+Il file ha ora due servizi sotto `services:`: `db` e `app`, entrambi allo stesso livello di
+indentazione.
+
+Verify::
+`app:` è indentato allo stesso livello di `db:` (due spazi sotto `services:`), e `depends_on`
+elenca `db` come unico elemento della lista.
+
+Why::
+Mechanical: `ports` espone il servizio verso l'host; `depends_on` in questa forma (lista di nomi)
+dice a Compose in che ordine avviare i container.
+Teaches: PRQ-COMPOSE-SHALLOW — "dipendenze semplici tra due servizi" citate nella descrizione del
+nodo, espresse come `depends_on`.
+
+If it goes wrong::
+Se la classe chiede se `depends_on` aspetta che il database sia pronto e non solo avviato: non
+rispondere subito — è esattamente ciò che l'osservazione dello Step 8 metterà in luce.
+
+=== Step 6 — Validare la sintassi del file senza avviare nulla
+
+Trainer-only:: yes
+Timing:: 2 min
+
+Do::
+[source,bash]
+----
+docker compose config
+----
+
+Expect::
+Compose stampa a schermo il file risolto e normalizzato (stessi due servizi, con valori
+predefiniti espliciti aggiunti da Compose, ad esempio `condition: service_started` sotto
+`depends_on`), senza avviare alcun container. [inferred, verificato localmente con Compose
+v5.1.2 su un file equivalente in sandbox — l'output esatto formattato può variare con la
+versione installata nell'ambiente di erogazione]
+
+Verify::
+Il comando termina senza errori (nessun messaggio `yaml:` o `service ... has neither...`) e
+l'output mostra entrambi i servizi `app` e `db`.
+
+Why::
+Mechanical: `docker compose config` risolve e valida il file senza effetti collaterali — un
+controllo di sintassi prima di eseguire davvero il sistema.
+Teaches: PRQ-COMPOSE-SHALLOW — un solo file descrive l'intero sistema, verificabile prima
+dell'esecuzione.
+
+If it goes wrong::
+Un errore di parsing YAML (indentazione, due punti mancanti) blocca `docker compose config` con
+un messaggio che indica la riga: tornare al punto del file segnalato e correggere
+l'indentazione, non rieseguire l'intero step da zero.
+
+=== Step 7 — Avviare l'intero sistema con un solo comando
+
+Trainer-only:: yes
+Timing:: 3 min
+
+Do::
+[source,bash]
+----
+docker compose up -d
+----
+
+Expect::
+Compose crea una rete dedicata, un volume `db-data`, e avvia entrambi i container (`db` prima di
+`app`, per via di `depends_on`). L'output elenca la creazione della rete, del volume e dei due
+container. [inferred]
+
+Verify::
+`docker compose ps` mostra due righe, una per `db` e una per `app`, entrambe con STATUS che
+inizia per `Up` (o `running`, secondo la versione — il testo esatto va confermato in aula).
+
+Why::
+Mechanical: `up -d` è il "solo comando" che avvia tutto il sistema descritto nel file, in
+background.
+Teaches: PRQ-COMPOSE-SHALLOW — "avvio dell'intero sistema con un solo comando", il punto
+centrale del nodo.
+
+If it goes wrong::
+Se `app` (porta 8080) risulta già occupata sulla macchina del docente, Compose segnala un errore
+di bind della porta: cambiare temporaneamente il valore host in `docker-compose.yml` (es.
+`"8081:80"`) e rilanciare `docker compose up -d`, spiegando alla classe che il numero a sinistra
+dei due punti è quello dell'host.
+
+=== Step 8 — Osservare che `db` può essere più lento di `app` ad essere pronto
+
+Trainer-only:: yes
+Deliberate failure:: no — questo step non produce un errore: `nginx:alpine` (il servizio `app`)
+non contatta mai `db`, quindi nulla si rompe visibilmente. È un'osservazione sui log, non un
+guasto. [invented framing]
+Timing:: 3 min
+
+Do::
+[source,bash]
+----
+docker compose logs app
+docker compose logs db
+----
+
+Narrazione — il docente fa notare, confrontando i timestamp nei due log, che il container `app`
+può risultare avviato (nginx pronto quasi istantaneamente) prima che Postgres in `db` abbia
+finito la propria inizializzazione, anche se `depends_on` lo elenca come dipendenza.
+
+Expect::
+Nel log di `db` compaiono righe di inizializzazione di PostgreSQL (creazione del database,
+messaggi tipo "database system is ready to accept connections" — testo indicativo, dipendente
+dalla versione dell'immagine [inferred]) con timestamp successivo all'avvio di `app` nel log di
+`app`.
+
+Verify::
+Il timestamp della prima riga del log di `app` è anteriore al timestamp della riga
+"ready to accept connections" (o equivalente) nel log di `db`.
+
+Why::
+Mechanical: `depends_on` nella forma breve (lista di nomi) equivale a `condition:
+service_started`, come mostrato dallo Step 6 — Compose aspetta solo che il container sia partito,
+non che il processo al suo interno sia pronto.
+Teaches: PRQ-COMPOSE-SHALLOW — limite pratico di "dipendenze semplici tra due servizi": il
+docente rende visibile una distinzione che il pass "deep" (item 46, sessione stessa) e l'hands-on
+successivo (item 43, DR-COMPOSE) potranno affrontare con soluzioni più robuste (fuori scope di
+questo step).
+
+If it goes wrong::
+Se in questo run particolare Postgres risulta pronto prima che nginx scriva la sua prima riga di
+log (possibile su macchine molto rapide o con l'immagine già "calda"), il contrasto nei timestamp
+può non essere visibile: il docente lo segnala a voce comunque ("qui è stato rapido, ma
+`depends_on` non garantisce l'attesa — lo vedremo di nuovo nell'hands-on") invece di forzare una
+riproduzione del ritardo, che non è controllabile in modo deterministico con questa sola
+demo. [risk] Nessuno store fornisce un valore di timing garantito per questo ritardo; è un
+comportamento osservato in modo indicativo, non una costante misurata.
+
+=== Step 9 — Fermare e rimuovere il sistema con un solo comando
+
+Trainer-only:: yes
+Timing:: 1 min
+
+Do::
+[source,bash]
+----
+docker compose down
+----
+
+Expect::
+Compose ferma ed elimina entrambi i container e la rete dedicata creata allo Step 7. Il volume
+`db-data` resta, perché `down` senza `-v` non rimuove i volumi. [inferred, comportamento standard
+di `compose down`]
+
+Verify::
+`docker compose ps -a` non elenca più alcun container per questo progetto; `docker volume ls`
+mostra ancora il volume `db-data` (o equivalente con prefisso di progetto).
+
+Why::
+Mechanical: chiude la demo riportando containers e rete allo stato precedente, mantenendo il dato
+persistito nel volume.
+Teaches: PRQ-COMPOSE-SHALLOW — anche l'arresto dell'intero sistema avviene con un solo comando,
+simmetrico all'avvio.
+
+If it goes wrong::
+Se `docker compose down` segnala che la rete non può essere rimossa perché ancora in uso da un
+altro container esterno alla demo, aggiungere `--remove-orphans` non risolve questo caso
+specifico: identificare il container esterno con `docker network inspect` e chiuderlo
+separatamente, fuori da questa demo.
+
+== Reset
+
+Per tornare allo stato pulito delle Precondizioni, per un'altra classe:
+
+[source,bash]
+----
+docker compose down -v
+rm docker-compose.yml
+----
+
+`-v` rimuove anche il volume `db-data`, così la prossima esecuzione di Postgres reinizializza il
+database da zero, coerente con lo Step 1. Verificare poi con `ls -la` che la cartella sia di
+nuovo vuota e con `docker volume ls` che `db-data` non compaia più. [inferred]
+
+== Ripresa a metà demo
+
+Se la demo si interrompe dopo uno step, prima di riprendere dallo step successivo:
+
+* Interruzione dopo gli Step 2-6 (file non ancora eseguito): controllare che il file
+  `docker-compose.yml` contenga esattamente le righe scritte fino a quel punto (confrontare con
+  il blocco YAML dello step raggiunto), poi riprendere da lì.
+* Interruzione dopo lo Step 7 o durante lo Step 8 (sistema in esecuzione): eseguire `docker
+  compose ps` per verificare che `db` e `app` siano entrambi ancora `Up`/`running` prima di
+  riprendere; se uno dei due è caduto, eseguire `docker compose up -d` di nuovo (idempotente, non
+  ricrea ciò che è già in esecuzione) invece di ripartire dallo Step 1.
+* Interruzione dopo lo Step 9 (sistema già fermato): il volume `db-data` esiste ancora; per
+  riprendere la demo da capo con dati puliti seguire la procedura di Reset, oppure rilanciare
+  `docker compose up -d` per riprendere con i dati del run precedente se lo scopo è solo mostrare
+  di nuovo l'avvio.
+
+== Fallback in caso di guasto live
+
+[risk] Questa guida non dispone di uno screenshot o di una registrazione reale del run
+riuscito, perché l'agente che scrive questa guida non ha accesso all'ambiente di erogazione né a
+capacità di catturare immagini. Un umano deve catturare, prima della lezione dal vivo (durante la
+sessione di prova richiesta in testa a questo file):
+
+* Uno screenshot o l'output testuale copiato di `docker compose up -d` andato a buon fine.
+* Uno screenshot o l'output testuale copiato di `docker compose ps` con entrambi i servizi `Up`.
+* L'estratto di log usato allo Step 8 che mostra il contrasto di timestamp descritto.
+
+Se la demo si blocca e non si risolve entro un paio di minuti (ad esempio per un problema di rete
+che impedisce il pull delle immagini, non risolvibile pre-scaricando le immagini per un guasto
+imprevisto della sede), il docente mostra il materiale catturato sopra come se il run fosse
+avvenuto in aula, lo commenta a voce riga per riga, e riprende il corso dall'item successivo
+(sequence 43, hands-on, che ripete comunque l'esperienza in prima persona per ogni studente).
+
+== Verifica dei tempi
+
+Somma dei `Timing::` dichiarati: Step 1 (1) + Step 2 (2) + Step 3 (3) + Step 4 (2) + Step 5 (3) +
+Step 6 (2) + Step 7 (3) + Step 8 (3) + Step 9 (1) = 20 minuti.
+
+Il `duration_minutes` dell'item 42 in CURRICULUM è 30 minuti. La somma degli step (20 minuti) non
+coincide con il budget dichiarato; anche aggiungendo margini realistici per domande dal pubblico
+e piccoli imprevisti (stimabili in modo indicativo, non misurato, in altri 5-8 minuti), il totale
+resta sotto i 30 minuti assegnati. Questo scostamento è registrato come voce
+`instructional_decisions` sopra, non corretto riscrivendo in silenzio né la somma degli step né
+il valore di CURRICULUM. [stated + inferred]

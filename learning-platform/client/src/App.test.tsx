@@ -28,4 +28,17 @@ describe('App (home page, HOME-001)', () => {
     expect(button.closest('main')).not.toBeNull()
     expect(button.closest('header')).toBeNull()
   })
+
+  // Covers SIGNUP-EXPEDITE-001: /signup exists but is unreachable from the
+  // UI without a link pointing to it.
+  it('shows a sign-up link pointing to /signup', () => {
+    // given: an unregistered user opens the home page
+    render(<App />)
+
+    // when: the page has rendered
+    // then: a sign-up link is visible and points at /signup
+    const link = screen.getByRole('link', { name: /sign up/i })
+    expect(link).toBeInTheDocument()
+    expect(link).toHaveAttribute('href', '/signup')
+  })
 })

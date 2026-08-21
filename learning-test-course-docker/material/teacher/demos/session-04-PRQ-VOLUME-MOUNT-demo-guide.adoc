@@ -1,0 +1,482 @@
+= Demo guide — Il docente monta un volume e un bind mount e ne mostra la differenza
+:status: draft
+:session: 04
+:node_ref: PRQ-VOLUME-MOUNT
+:item_sequence: 30
+:target_minutes: 25
+:language: it
+
+Copre l'item CURRICULUM `sequence: "30"`, sessione 4 ("Porte, rete tra container e persistenza dei
+dati"), che insegna/verifica il nodo DESIGN `PRQ-VOLUME-MOUNT`. +[stated]+
+
+[NOTE]
+====
+Rehearse this guide once, end to end, exactly as written, before teaching it live. Every command
+and expected output below is a grounded guess from the course design, not a tested fact — flag
+anything that does not match what you see, and update this file once corrected.
+====
+
+[NOTE.instructional-decision]
+====
+Decision: la demo copre solo la sintassi `-v` come "spina dorsale" per volume e bind mount; la
+forma lunga `--mount type=volume,...` viene eseguita una volta (Step 4), come riscrittura
+equivalente dell'ultimo comando `-v` già eseguito; `--mount type=bind,source=...,target=...` viene
+solo mostrata a voce (narrazione), come riscrittura equivalente del comando `-v` del bind mount
+(Step 6), senza un comando eseguito a parte.
+Rationale: il nodo DESIGN nomina entrambe le forme lunghe, ma eseguire ogni passo due volte (una
+per `-v`, una per `--mount`) raddoppia i passi dentro un budget di 25 minuti senza aggiungere un
+concetto nuovo — la differenza insegnata dal nodo è dove risiede il dato, non la sintassi del flag.
+Confidence: inferred
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: questa demo non replica l'esercitazione di persistenza dell'item 31 (`DR-VOLUME`,
+hands_on). Include un solo passo di "persistenza minima" (rimuovo il container, il volume e il suo
+contenuto restano) per chiudere il cerchio della differenza volume/bind mount, ma non introduce
+scenari applicativi (es. un database) che restano di competenza dell'item 31.
+Rationale: evitare di insegnare due volte lo stesso contenuto in due item consecutivi con scopi
+diversi (demo = mostrare la differenza; hands_on = far praticare la persistenza).
+Confidence: inferred
+Awaiting: instructional-designer
+====
+
+[NOTE.instructional-decision]
+====
+Decision: il fallimento deliberato dello Step 8 (`docker volume rm` su un volume ancora in uso da
+un container) è l'unico errore scriptato nella guida. Un bind mount su un percorso host inesistente
+non è incluso come passo scriptato: il comportamento di Docker in quel caso varia per piattaforma e
+versione, quindi è segnalato come `[risk]` nelle Preconditions invece che presentato come un passo
+affidabile.
+Rationale: preferire un solo fallimento deliberato, riproducibile e direttamente legato ai comandi
+di ciclo di vita del volume che il nodo DESIGN nomina esplicitamente (`docker volume create/ls/rm`).
+Confidence: inferred
+Awaiting: instructional-designer
+====
+
+== Contesto
+
+L'item precedente (sequence 29, stesso nodo `PRQ-VOLUME-MOUNT`, lezione di 25 minuti) ha già
+introdotto ai partecipanti la sintassi di `docker volume create/ls/rm`, `-v
+nomevolume:/percorso/nel/container` (o `--mount type=volume,...`) e `-v
+/percorso/host:/percorso/container` (o `--mount type=bind,...`). +[stated]+ Questa demo non
+rispiega quella sintassi: la mette in scena, per rendere visibile la differenza tra "dove vive
+davvero il dato" nei due meccanismi. +[invented framing]+
+
+Il nodo DESIGN richiede `PRQ-FILESYSTEM` (separazione tra filesystem host e filesystem container):
+l'aula ha già visto perché un container, di per sé, non può leggere/scrivere un file dell'host — non
+va ripreso qui. +[stated]+
+
+== Preconditions
+
+- Docker Engine installato e funzionante sulla macchina del docente. Versione verificata in questo
+  sandbox: Docker `29.4.0`, build `9d7ad9f`. +[inferred — versione del sandbox di grounding, non
+  dell'ambiente di erogazione reale]+ `[risk]` Il docente deve verificare la versione di Docker
+  installata sulla macchina usata in aula prima della recita; i comandi usati qui sono stabili su
+  Docker Engine da diverse major version, ma vanno comunque rieseguiti in fase di rehearsal.
+- `[risk]` Il docente deve confermare, prima della recita, **che tipo di installazione Docker** ha
+  sulla macchina che userà in classe: Docker Engine nativo su Linux (il `Mountpoint` di un volume è
+  un percorso realmente navigabile dal terminale del docente, con `sudo`) oppure Docker Desktop
+  (Mac, Windows, o WSL2 con integrazione Desktop), dove il `Mountpoint` riportato da `docker volume
+  inspect` vive dentro una VM interna e **non** è navigabile con un semplice `ls` dal terminale
+  host. Lo Step 5 di questa guida ha un percorso alternativo per il secondo caso — va scelto in
+  rehearsal, non improvvisato a lezione.
+- Terminale con shell bash, working directory scrivibile e senza sottocartelle o file chiamati
+  `bind-demo-day`, `bind-demo.txt`, o volumi Docker chiamati `demo-vol` già presenti (per non
+  confondere l'aula con residui di run precedenti). +[inferred]+
+- Nessuna rete o credenziale esterna richiesta: tutti i comandi lavorano in locale. +[inferred]+
+- Immagine `alpine` scaricabile (o già presente in locale) — la demo la usa come container "leggero"
+  per ispezionare volumi e bind mount. +[inferred]+ `[risk]` Se l'aula non ha accesso di rete al
+  momento della recita, il docente deve aver eseguito `docker pull alpine` in anticipo: la demo non
+  prevede un passo di pull a lezione per non introdurre una dipendenza di rete visibile all'aula.
+- Nessuno stato applicativo da preparare sullo schermo degli studenti: è una demo osservata, non
+  "segui insieme al docente". +[inferred]+
+
+== Steps
+
+=== Step 1 — Creare il volume nominato
+
+Trainer-only:: yes
+Deliberate failure:: no
+Timing:: 2 min
+
+Do::
+[source,bash]
+----
+docker volume create demo-vol
+----
+
+Expect::
+Docker stampa a video il nome del volume appena creato. +[inferred]+
+
+Verify::
+`docker volume ls` elenca una riga con `NAME` uguale a `demo-vol`. +[inferred]+
+
+Why::
+Mechanical: serve un volume nominato esistente prima di poterlo montare in un container.
+Teaches: `PRQ-VOLUME-MOUNT` — ciclo di vita di un volume nominato (`docker volume create`).
+
+If it goes wrong::
+Se il comando risponde che un volume `demo-vol` esiste già (residuo di una run precedente),
+eseguire `docker volume rm demo-vol` e ripetere lo step — vedi anche "Reset" più sotto.
+
+=== Step 2 — Ispezionare il volume appena creato
+
+Trainer-only:: yes
+Deliberate failure:: no
+Timing:: 2 min
+
+Do::
+[source,bash]
+----
+docker volume inspect demo-vol
+----
+
+Expect::
+Docker restituisce un blocco JSON con almeno i campi `Name`, `Driver` e `Mountpoint`. Il valore di
+`Mountpoint` è un percorso gestito da Docker (tipicamente sotto `/var/lib/docker/volumes/...` su
+Docker Engine Linux nativo) — illustrativo, il percorso esatto varia per installazione e versione.
++[inferred]+
+
+Verify::
+Il campo `Mountpoint` nell'output è non vuoto e non corrisponde a nessun percorso che l'aula ha
+scelto: è un'area gestita da Docker, non un percorso arbitrario. +[inferred]+
+
+Why::
+Mechanical: il `Mountpoint` è ciò che rende visibile "dove vive" il dato di un volume, il punto
+centrale della differenza che questa demo deve mostrare.
+Teaches: `PRQ-VOLUME-MOUNT` — dove risiede fisicamente il dato in un volume (area gestita da
+Docker), in contrasto con il bind mount mostrato più avanti.
+
+If it goes wrong::
+Se `Mountpoint` sembra un percorso qualunque dell'host scelto dal docente, non è un bind mount:
+verificare di aver ispezionato `demo-vol` (volume) e non un percorso passato per errore come bind
+mount in un comando precedente.
+
+=== Step 3 — Montare il volume in un container e scrivere un file
+
+Trainer-only:: yes
+Deliberate failure:: no
+Timing:: 3 min
+
+Do::
+[source,bash]
+----
+docker run --rm -v demo-vol:/dati alpine sh -c "echo 'scritto dal container' > /dati/nel-volume.txt"
+----
+
+Expect::
+Il comando termina senza output visibile (il container scrive il file e poi esce, per l'opzione
+`--rm`). +[inferred]+
+
+Verify::
+Un secondo container che monta lo stesso volume vede il file: eseguire
+`docker run --rm -v demo-vol:/dati alpine cat /dati/nel-volume.txt` e verificare che stampi
+`scritto dal container`. +[inferred]+
+
+Why::
+Mechanical: dimostra che il volume nominato sopravvive al container che lo ha scritto — un secondo
+container indipendente lo rilegge.
+Teaches: `PRQ-VOLUME-MOUNT` — sintassi `-v nomevolume:/percorso/nel/container`. +[stated, forma del
+flag]+
+
+If it goes wrong::
+Se il secondo `docker run` non trova il file, verificare di aver scritto `demo-vol` (non un altro
+nome) in entrambi i comandi — un errore di digitazione crea un secondo volume anonimo o un
+bind mount involontario.
+
+=== Step 4 — Mostrare la forma equivalente con `--mount`
+
+Trainer-only:: yes
+Deliberate failure:: no
+Timing:: 2 min
+
+Do::
+[source,bash]
+----
+docker run --rm --mount type=volume,source=demo-vol,target=/dati alpine cat /dati/nel-volume.txt
+----
+
+Expect::
+Stessa uscita dello step precedente: `scritto dal container`. +[inferred]+
+
+Verify::
+L'output è identico a quello del secondo comando dello Step 3, a dimostrazione che `-v
+demo-vol:/dati` e `--mount type=volume,source=demo-vol,target=/dati` sono due sintassi per lo stesso
+montaggio. +[inferred]+
+
+Why::
+Mechanical: nessuna azione nuova sul dato — solo una riscrittura del comando con l'altra sintassi
+nominata dal nodo DESIGN.
+Teaches: `PRQ-VOLUME-MOUNT` — sintassi `--mount type=volume,source=...,target=...` come equivalente
+di `-v`. +[stated, forma del flag]+
+
+If it goes wrong::
+Se l'output differisce, controllare che `source` sia `demo-vol` e `target` sia `/dati`, esattamente
+come nello Step 3: un errore di digitazione qui monta un volume diverso (creato automaticamente,
+vuoto) invece di riusare `demo-vol`.
+
+=== Step 5 — Individuare dove vive fisicamente il dato del volume
+
+Trainer-only:: yes
+Deliberate failure:: no
+Timing:: 3 min
+
+Do::
+Narration + comando, a seconda del tipo di installazione confermato nelle Preconditions.
+
+Percorso A — Docker Engine nativo su Linux:
+[source,bash]
+----
+sudo ls <MOUNTPOINT>/nel-volume.txt
+----
+`<MOUNTPOINT>` è il valore del campo `Mountpoint` letto nello Step 2. +[inferred]+
+
+Percorso B — Docker Desktop (Mac/Windows/WSL2 con integrazione Desktop):
+Narration: "Il valore `Mountpoint` che avete visto nello Step 2 esiste, ma vive dentro la VM interna
+di Docker Desktop: il mio terminale su questa macchina non può navigarci con un `ls` diretto. Per
+questo lo verifico da dentro un container, come nello Step 3." +[invented framing]+
+[source,bash]
+----
+docker run --rm -v demo-vol:/dati alpine ls -la /dati
+----
+
+Expect::
+Percorso A: `ls` elenca `nel-volume.txt` nella directory del Mountpoint sull'host. Percorso B: il
+container elenca `nel-volume.txt` dentro `/dati`. +[inferred]+
+
+Verify::
+Il file `nel-volume.txt` è visibile nel punto scelto (Percorso A: sull'host; Percorso B: da dentro
+il container), senza che il docente abbia mai indicato un percorso arbitrario a piacere — è
+Docker che decide dove sta il dato. +[inferred]+
+
+Why::
+Mechanical: questo è il punto in cui la demo rende visibile "un'area gestita da Docker" come
+concetto concreto, non solo come frase della lezione precedente.
+Teaches: `PRQ-VOLUME-MOUNT` — dove risiede fisicamente il dato in un volume, in contrasto con il
+bind mount del prossimo step.
+
+If it goes wrong::
+Percorso A: se `sudo ls` risponde "Permission denied" o "No such file or directory", il Mountpoint
+letto nello Step 2 potrebbe appartenere a una installazione Docker diversa da quella su cui si sta
+lavorando (es. rootless) — passare al Percorso B senza perdere tempo a debuggare i permessi in
+diretta.
+
+=== Step 6 — Montare un bind mount e mostrare che il dato vive sull'host
+
+Trainer-only:: yes
+Deliberate failure:: no
+Timing:: 4 min
+
+Do::
+[source,bash]
+----
+mkdir -p ./bind-demo-day
+echo 'scritto dall host' > ./bind-demo-day/bind-demo.txt
+docker run --rm -v "$(pwd)/bind-demo-day:/dati" alpine cat /dati/bind-demo.txt
+----
+
+Expect::
+Il container stampa `scritto dall host`: legge un file creato dal terminale del docente, fuori da
+qualunque container, prima ancora che il container esistesse. +[inferred]+
+
+Verify::
+`ls ./bind-demo-day` sul terminale del docente (fuori da Docker) mostra `bind-demo.txt` — un
+percorso scelto dal docente, non un'area gestita da Docker come nello Step 5. +[inferred]+
+
+Narration:: Mostrare a voce, senza eseguirlo, che lo stesso montaggio si scrive anche come
+`--mount type=bind,source="$(pwd)/bind-demo-day",target=/dati` — riscrittura equivalente del `-v`
+appena eseguito, stessa logica dello Step 4 per il volume. +[stated, forma del flag]+
+
+Why::
+Mechanical: `$(pwd)/bind-demo-day` è un percorso arbitrario dell'host, non un nome di volume — è
+questo che rende il bind mount riconoscibile rispetto al volume.
+Teaches: `PRQ-VOLUME-MOUNT` — sintassi `-v /percorso/host:/percorso/container` +[stated, forma del
+flag]+ e differenza "percorso arbitrario dell'host" (bind mount) vs "area gestita da Docker"
+(volume, Step 2 e 5).
+
+If it goes wrong::
+Se il container non trova `/dati/bind-demo.txt`, verificare che il comando sia stato eseguito dalla
+stessa directory in cui è stata creata `./bind-demo-day` (l'espansione di `$(pwd)` cambia se il
+docente ha cambiato directory tra i due comandi).
+
+=== Step 7 — Editare il file dall'host e vederlo cambiare nel container
+
+Trainer-only:: yes
+Deliberate failure:: no
+Timing:: 2 min
+
+Do::
+[source,bash]
+----
+echo 'modificato dall host, in tempo reale' >> ./bind-demo-day/bind-demo.txt
+docker run --rm -v "$(pwd)/bind-demo-day:/dati" alpine cat /dati/bind-demo.txt
+----
+
+Expect::
+Il container stampa entrambe le righe del file (quella dello Step 6 e quella appena aggiunta):
+nessuna azione dentro Docker ha "sincronizzato" nulla — è lo stesso file dell'host, letto di nuovo.
++[inferred]+
+
+Verify::
+L'output del `cat` contiene sia `scritto dall host` sia `modificato dall host, in tempo reale`, in
+quest'ordine. +[inferred]+
+
+Why::
+Mechanical: è la metà affidabile del confronto — un bind mount non ha un passo intermedio di
+sincronizzazione: il container vede il file host così com'è nell'istante in cui lo legge.
+Teaches: `PRQ-VOLUME-MOUNT` — dove risiede fisicamente il dato in un bind mount (percorso arbitrario
+dell'host, sempre visibile e modificabile dall'host stesso), in contrasto con il volume degli Step 2
+e 5.
+
+If it goes wrong::
+Se il container non vede la seconda riga, verificare che l'`echo` sia stato eseguito nella stessa
+directory di lavoro usata per lo Step 6 (lo stesso rischio di `$(pwd)` relativo dello Step 6).
+
+=== Step 8 — Tentare di rimuovere un volume ancora in uso
+
+Trainer-only:: yes
+Deliberate failure:: yes — dimostra che Docker impedisce di rimuovere un volume ancora referenziato
+da un container, per proteggere dati che potrebbero essere ancora in uso.
+Timing:: 2 min
+
+Do::
+[source,bash]
+----
+docker run -d --name demo-writer -v demo-vol:/dati alpine sleep 3600
+docker volume rm demo-vol
+----
+
+Expect::
+Il primo comando avvia un container in background che tiene il volume `demo-vol` montato. Il
+secondo comando (`docker volume rm demo-vol`) fallisce con un errore che segnala che il volume è in
+uso da un container — testo del messaggio illustrativo, cambia tra versioni di Docker. +[inferred]+
+
+Verify::
+Il secondo comando termina con un codice di uscita diverso da zero e un messaggio che contiene la
+parola `in use` (o equivalente localizzato) — il volume `demo-vol` è ancora presente in `docker
+volume ls` dopo il tentativo. +[inferred]+
+
+Why::
+Mechanical: il bind mount (Step 6-7) non ha un "ciclo di vita" gestito da Docker da rimuovere — è
+solo un file host; il volume invece è una risorsa Docker con un proprio ciclo di vita che Docker
+protegge quando è ancora referenziato da un container.
+Teaches: `PRQ-VOLUME-MOUNT` — ciclo di vita di un volume nominato (`docker volume rm`) e perché la
+sua rimozione può essere bloccata, a differenza di un bind mount che non ha un comando di rimozione
+equivalente (è solo un file/directory dell'host).
+
+If it goes wrong::
+Se `docker volume rm demo-vol` **non** fallisce, controllare con `docker ps -a` che `demo-writer`
+esista (Docker blocca la rimozione se un container lo referenzia, anche se non più in esecuzione —
+`[inferred]`, verificare in rehearsal): se il container non è partito o è già stato rimosso, il
+volume si rimuove senza errori e il fallimento deliberato non si verifica — in quel caso, segnalarlo
+a voce all'aula ("normalmente qui Docker si sarebbe opposto") invece di far finta che l'errore sia
+comparso.
+
+=== Step 9 — Confermare la persistenza minima e chiudere il confronto
+
+Trainer-only:: yes
+Deliberate failure:: no
+Timing:: 3 min
+
+Do::
+[source,bash]
+----
+docker stop demo-writer
+docker rm demo-writer
+docker run --rm -v demo-vol:/dati alpine cat /dati/nel-volume.txt
+----
+
+Expect::
+Il container `demo-writer` viene fermato e rimosso; il terzo comando stampa ancora `scritto dal
+container` — il dato del volume `demo-vol` non è mai stato perso, nonostante nessun container che lo
+avesse scritto sia ancora in esecuzione. +[inferred]+
+
+Verify::
+Il terzo comando stampa `scritto dal container` senza errori, con `demo-writer` assente da `docker
+ps -a`. +[inferred]+
+
+Why::
+Mechanical: chiude la dimostrazione mostrando che un volume nominato sopravvive alla rimozione del
+container che lo usava — la persistenza minima richiesta dal nodo, senza anticipare l'esercitazione
+di persistenza dell'item 31.
+Teaches: `PRQ-VOLUME-MOUNT` — quando usare un volume rispetto a un bind mount (dato gestito e
+persistente vs dato che vive comunque sull'host indipendentemente da Docker).
+
+If it goes wrong::
+Se `docker rm demo-writer` risponde che il container è ancora in esecuzione, il `docker stop`
+precedente non ha avuto effetto in tempo: rieseguire `docker stop demo-writer` e attendere l'output
+prima di procedere con `docker rm`.
+
+== Reset
+
+Per tornare allo stato pulito delle Preconditions, in ordine:
+
+[source,bash]
+----
+docker rm -f demo-writer 2>/dev/null
+docker volume rm demo-vol 2>/dev/null
+rm -rf ./bind-demo-day
+----
+
+Verificare poi che `docker volume ls` non elenchi più `demo-vol` e che `./bind-demo-day` non esista
+più nella working directory. +[inferred]+
+
+== Resume mid-demo
+
+Se l'interruzione avviene:
+
+- **Dopo lo Step 3 o 4** (prima dello Step 5): il volume `demo-vol` contiene già
+  `nel-volume.txt`. Riprendere direttamente dallo Step 5 senza rieseguire gli step precedenti.
+- **Dopo lo Step 5** (prima dello Step 6): nessuna azione da annullare; riprendere dallo Step 6.
+  Verificare solo che `./bind-demo-day` non esista già da un tentativo precedente, per evitare un
+  messaggio d'errore inatteso su `mkdir -p` (che comunque non fallisce se la directory esiste già,
+  ma il contenuto potrebbe non essere quello atteso dallo step).
+- **Dopo lo Step 6** (prima dello Step 7): nessuna azione da annullare; riprendere dallo Step 7.
+- **Dopo lo Step 7** (prima dello Step 8): verificare con `docker ps -a` che non esista già un
+  container `demo-writer` da un tentativo precedente interrotto; se esiste, rimuoverlo
+  (`docker rm -f demo-writer`) prima di rieseguire lo Step 8.
+- **Dopo lo Step 8** (prima dello Step 9): verificare con `docker ps -a` che `demo-writer` esista
+  ancora (il fallimento della `rm` del volume non tocca il container) prima di procedere allo
+  Step 9.
+
+== Live-failure fallback
+
+`[risk]` Questa guida non può includere una cattura reale (screenshot o registrazione) dell'output
+atteso, perché l'agente che l'ha scritta non ha accesso all'ambiente di erogazione. Un umano deve
+catturare, durante la rehearsal, almeno questi due momenti prima della prima erogazione in aula:
+
+1. L'output completo di `docker volume inspect demo-vol` (Step 2), con il campo `Mountpoint` ben
+   visibile, e — se l'installazione è Docker Engine nativo — l'output di `sudo ls
+   <MOUNTPOINT>/nel-volume.txt` (Step 5, Percorso A) che mostra il file dentro l'area gestita da
+   Docker.
+2. La sequenza completa degli Step 7-8: le due righe di `cat` che mostrano il contenuto del bind
+   mount aggiornato dall'host (Step 7), seguite dal messaggio di errore reale di `docker volume rm`
+   su un volume in uso (Step 8).
+
+Se la demo si interrompe e non è recuperabile in diretta, il docente mostra queste due catture al
+posto dell'esecuzione live, dicendo esplicitamente che si tratta di un'esecuzione registrata in
+precedenza, poi riprende dal debrief conclusivo (la differenza "area gestita da Docker" vs
+"percorso arbitrario dell'host") come se la demo fosse stata eseguita, e passa all'item 31.
+
+== Timing cross-check
+
+Somma dei `Timing::` degli step: 2 + 2 + 3 + 2 + 3 + 4 + 2 + 2 + 3 = 23 min. +[inferred]+ Non è
+previsto un tempo di setup separato perché le Preconditions sono eseguite prima dell'inizio della
+sessione (creazione volumi/directory non è un'azione osservata dall'aula). Totale: 23 minuti contro
+i 25 minuti di `duration_minutes` dell'item CURRICULUM — differenza di 2 minuti, entro il margine
+per la narrazione tra i comandi e le domande dell'aula. Non corretto qui: registrato come voce
+`instructional_decisions` sotto, in attesa di conferma umana su come usare il margine (narrazione
+più estesa, o unificare due step per liberare tempo, o considerare il margine sufficiente com'è).
+
+[NOTE.instructional-decision]
+====
+Decision: la somma dei tempi per-step (23 min) non è stata forzata a coincidere con i 25 minuti di
+`duration_minutes` dell'item.
+Rationale: il file non deve correggere silenziosamente né i tempi per-step né il budget
+`duration_minutes` — la differenza di 2 minuti è probabilmente assorbita da narrazione e domande
+dell'aula, ma la decisione su come usare il margine spetta a un revisore umano.
+Confidence: inferred
+Awaiting: instructional-designer
+====
