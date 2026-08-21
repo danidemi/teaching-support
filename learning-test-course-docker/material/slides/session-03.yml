@@ -1,0 +1,482 @@
+deck: 1
+status: approved
+language: it
+course: "Docker: dai container ai sistemi multi-servizio (corso ITS, primo anno)"
+session: 3
+title: "Distribuire un'immagine e collegare i container in rete"
+subtitle: "Registry, indirizzo IP/porta e rete Docker"
+
+sources:
+  curriculum: design/curriculum.json
+  design: design/knowledge_goals_graph.json
+  goals: specifications/goals.md
+  logistics: specifications/logistics.md
+  editorial_guidelines: specifications/editorial_guidelines.md
+  read_at: 2026-08-21
+
+budget:
+  session_minutes: 240   # LOGISTICS: 8 lezioni da 4 ore. curriculum.json riporta usable_minutes 210 /
+                          # total_minutes 205 per la sessione 3, comprensivi di item non a slide
+                          # (demo, hands-on, discussione, quiz) — si veda instructional_decisions.
+  slide_budget: [12, 24]
+
+instructional_decisions:
+  - decision: >
+      Segmentare la sessione 3 in tre archi: Segmento A (item 17-18, PRQ-REGISTRY),
+      Segmento B (item 20-21, PRQ-NETWORK-BASICS), Segmento C (item 22-23,
+      PRQ-DOCKER-NETWORK). Ogni arco apre con una slide "problem" non citata
+      letteralmente in alcuno store, per motivare il concetto prima di presentarlo.
+    rationale: >
+      CURRICULUM raggruppa naturalmente lezione+demo o lezione+discussione per ciascun
+      node_ref della sessione; l'apertura con una domanda/problema segue il principio
+      andragogico "il compito prima della teoria" richiamato nelle regole di design delle
+      slide, applicato per giudizio dell'autore.
+    confidence: inferred
+    awaiting: instructional-designer
+  - decision: >
+      L'item 19 (DR-IMAGE-DISTRIBUTE, hands_on, checkpoint su GOAL_003) non ha un
+      segmento né slide proprie in questo mazzo.
+    rationale: >
+      È pratica già pianificata come proprio item CURRICULUM con relativo debrief; il
+      modello di slide presenta solo concetti e la regola di controllo degli accessi
+      impedisce di mostrare in aula i criteri di superamento di un checkpoint su uno
+      schermo condiviso studenti+docente.
+    confidence: stated
+    awaiting: instructional-designer
+  - decision: >
+      L'item 24 (quiz di verifica "rete di base e rete Docker", nessun node_ref) non ha
+      un segmento né slide proprie in questo mazzo.
+    rationale: >
+      È un item di verifica (feedback_assessment_quiz): mostrare le domande o le risposte
+      su uno schermo condiviso violerebbe la stessa regola di controllo degli accessi
+      applicata ai checkpoint.
+    confidence: stated
+    awaiting: instructional-designer
+  - decision: >
+      La slide S3-18 (Segmento A) usa un nome di registry di comodo
+      ("registry-esempio") per illustrare la sintassi di tag/push, invece di un registry
+      reale.
+    rationale: >
+      Nessuno store (LOGISTICS, CURRICULUM, DESIGN) indica quale registry la classe
+      userà davvero nell'esercitazione dell'item 19 (Docker Hub, registry privato,
+      credenziali). La scelta va confermata prima che l'item 19 vada in aula.
+    confidence: invented
+    awaiting: instructional-designer
+  - decision: >
+      La somma dei `timing_min` delle slide di questo mazzo (~150 minuti) resta ben sotto
+      i 240 minuti di `budget.session_minutes`.
+    rationale: >
+      La differenza è attesa: le demo (item 18, 23), l'hands-on (item 19), la
+      discussione a gruppi (item 21) e il quiz (item 24) occupano tempo d'aula sostanziale
+      ma non sono restaged come slide in questo modello, per costruzione
+      (deck_model_spec.md). Segnalato qui perché il cross-check timing/budget del
+      revisore non legga la differenza come una lacuna.
+    confidence: inferred
+    awaiting: instructional-designer
+  - decision: >
+      Nessuna slide affronta EQ_4 (sicurezza dei container) in questo mazzo, anche se la
+      slide sull'isolamento di rete (S12-23) la rende una domanda naturale in aula.
+    rationale: >
+      GOALS segnala esplicitamente EQ_4 come "awaiting: instructional-designer" — quanto
+      approfondire il tema non è ancora deciso. La domanda è gestita come possibile
+      intervento a voce del docente (`watch_for`), non come contenuto da slide.
+    confidence: stated
+    awaiting: instructional-designer
+
+segments:
+  - covers:
+      - sequence: "17"
+        node_ref: PRQ-REGISTRY
+      - sequence: "18"
+        node_ref: PRQ-REGISTRY
+    title: "Distribuire un'immagine tramite un registry"
+    minutes: 45
+    note: >
+      Copre PRQ-REGISTRY (item 17 lezione, item 18 demo dal vivo). L'item 19 (checkpoint
+      GOAL_003) non ha slide proprie: si veda instructional_decisions.
+    slides:
+      - id: S1-17
+        role: problem
+        goals: [GOAL_003_IMAGE_DISTRIBUTE]
+        provenance: inferred
+        headline: "Un'immagine appena costruita gira solo sulla macchina che l'ha costruita."
+        body:
+          kind: callout
+          text: "L'immagine costruita in sessione 2 non esiste ancora da nessun'altra parte."
+        notes:
+          talk: |
+            Richiamare che la sessione 2 ha già costruito un'immagine funzionante
+            (item 15-16): il problema aperto ora è come farla arrivare, identica, su
+            un'altra macchina. [inferred]
+          why_here: |
+            Apre l'arco di PRQ-REGISTRY: prima di introdurre nome/tag/push/pull serve
+            motivare perché serve un intermediario tra due macchine. Serve
+            GOAL_003_IMAGE_DISTRIBUTE. [stated]
+          links: |
+            Costruisce su sessione 2, item 14-16 (sintassi Dockerfile e build dal vivo) e
+            su sessione 1, item 7 (l'immagine come artefatto distribuibile, EU_3). Non
+            introduce ancora la sessione 4. [stated]
+          watch_for: |
+            Alcuni studenti pensano che un'immagine si copi automaticamente tra macchine
+            sulla stessa rete locale, senza un passaggio esplicito. [inferred]
+          timing_min: 8
+
+      - id: S2-17
+        role: concept
+        goals: [GOAL_003_IMAGE_DISTRIBUTE]
+        provenance: stated
+        headline: "Un registry Docker conserva le immagini con nome e tag, pronte per essere prelevate da un'altra macchina."
+        body:
+          kind: diagram
+          caption: "Percorso di un'immagine dal build alla macchina di destinazione"
+          mermaid: |
+            flowchart LR
+              B["Macchina di build<br/>docker build"] --> T["Tag: nome/immagine:versione"]
+              T --> P["docker push"]
+              P --> R[("Registry")]
+              R --> Pu["docker pull"]
+              Pu --> M["Altra macchina"]
+        notes:
+          talk: |
+            Il registry è l'intermediario che risolve il problema appena posto: non serve
+            copiare manualmente il file dell'immagine, basta pubblicarla una volta e
+            prelevarla da chiunque abbia accesso al registry. [inferred]
+          why_here: |
+            Introduce PRQ-REGISTRY: nome, tag, push/pull, come richiesto da
+            GOAL_003_IMAGE_DISTRIBUTE. [stated]
+          links: |
+            Riprende l'immagine come artefatto distribuibile vista in sessione 1 (item 7,
+            EU_3). [stated]
+          watch_for: |
+            Non confondere il registry con la macchina di destinazione: il registry è solo
+            il deposito intermedio, non esegue il container. [inferred]
+          timing_min: 15
+
+      - id: S3-18
+        role: concept
+        goals: [GOAL_003_IMAGE_DISTRIBUTE]
+        provenance: stated
+        headline: "Un'immagine si nomina come [registry/]repository:tag prima di poterla pubblicare."
+        body:
+          kind: code
+          lang: bash
+          caption: "Esempio illustrativo di tag e pubblicazione [invented framing]"
+          text: |
+            docker tag app-server registry-esempio/app-server:1.0
+            docker push registry-esempio/app-server:1.0
+        notes:
+          talk: |
+            "registry-esempio" è un nome di comodo per illustrare la sintassi: quale
+            registry la classe userà davvero nell'esercitazione (item 19) non è deciso in
+            alcuno store. [invented framing]
+          why_here: |
+            Rende concreta la sintassi di nome e tag descritta in PRQ-REGISTRY, prima
+            della demo dal vivo (item 18) che userà un registry reale. [stated]
+          links: |
+            Si appoggia sulla sintassi Dockerfile e sul comando di build già visti in
+            sessione 2 (item 14-15). [stated]
+          watch_for: |
+            Il tag di default "latest", se omesso, può sembrare "nessun tag": va detto
+            esplicitamente che latest è comunque un tag. [inferred]
+          timing_min: 12
+
+      - id: S4-18
+        role: concept
+        goals: [GOAL_003_IMAGE_DISTRIBUTE]
+        provenance: stated
+        headline: "Push e pull sono le due operazioni simmetriche che collegano una macchina al registry."
+        body:
+          kind: list
+          ordered: false
+          justification: "Le due operazioni sono intrinsecamente una coppia enumerabile e contrapposta"
+          items:
+            - "docker push carica l'immagine nel registry"
+            - "docker pull scarica l'immagine dal registry"
+        notes:
+          talk: |
+            Sottolineare che pull richiama il comando FROM già usato implicitamente per
+            scaricare un'immagine base in sessione 2 (item 14): qui si applica a
+            un'immagine pubblicata dalla classe stessa, non a un'immagine pubblica
+            preesistente. [inferred]
+          why_here: |
+            Chiude l'arco di PRQ-REGISTRY prima del checkpoint pratico (item 19, non
+            presente in questo mazzo). [stated]
+          links: |
+            Precede l'esercitazione hands-on dell'item 19 (GOAL_003_IMAGE_DISTRIBUTE), già
+            pianificata come proprio item CURRICULUM e non ripresa qui. [stated]
+          watch_for: |
+            Alcuni studenti confondono push/pull con un generico upload/download di file:
+            va ribadito che si applica a un'immagine Docker nominata e taggata. [inferred]
+          timing_min: 10
+
+  - covers:
+      - sequence: "20"
+        node_ref: PRQ-NETWORK-BASICS
+      - sequence: "21"
+        node_ref: PRQ-NETWORK-BASICS
+    title: "Concetti di rete di base: indirizzo IP e porta"
+    minutes: 45
+    note: >
+      Copre PRQ-NETWORK-BASICS (item 20 lezione, item 21 discussione a gruppi).
+      Contenuto dichiarato non-prerequisito da LOGISTICS: trattato per intero, senza
+      assumere familiarità pregressa.
+    slides:
+      - id: S5-20
+        role: problem
+        goals: [GOAL_004_NETWORK]
+        provenance: inferred
+        headline: "Due programmi che devono parlarsi hanno bisogno di indicare a chi e su quale canale mandare i dati."
+        body:
+          kind: callout
+          text: "Prima di collegare container in rete, serve un vocabolario di base: indirizzo IP e porta."
+        notes:
+          talk: |
+            Prima occorrenza di IP nel mazzo: Internet Protocol, si può tradurre come
+            protocollo Internet. Il modello dei processi visto in sessione 1 (item 9) ha
+            già introdotto input/output di un programma: qui si aggiunge la dimensione di
+            rete, cioè come un programma comunica con un altro programma su una macchina
+            diversa. [inferred, coerente con l'edge DR-NETWORK → PRQ-PROCESS-MODEL in
+            DESIGN]
+          why_here: |
+            Apre PRQ-NETWORK-BASICS: LOGISTICS segnala questo contenuto come storicamente
+            critico e non assumibile come prerequisito, va insegnato esplicitamente prima
+            della rete Docker. [stated]
+          links: |
+            Si appoggia sul modello dei processi di sessione 1 (item 9). Prepara
+            PRQ-DOCKER-NETWORK (item 22, più avanti in questa stessa sessione). [stated]
+          watch_for: |
+            Non assumere familiarità pregressa: LOGISTICS dichiara esplicitamente che
+            questi concetti non sono prerequisiti acquisiti. [stated]
+          timing_min: 8
+
+      - id: S6-20
+        role: concept
+        goals: [GOAL_004_NETWORK]
+        provenance: stated
+        headline: "Un indirizzo IP identifica un dispositivo; una porta identifica il programma su quel dispositivo."
+        body:
+          kind: diagram
+          caption: "Indirizzo IP e porte su un dispositivo"
+          mermaid: |
+            flowchart TB
+              Host["Dispositivo — indirizzo IP 192.0.2.10"]
+              Host --> P1["Porta 80 — server web"]
+              Host --> P2["Porta 22 — accesso SSH"]
+        notes:
+          talk: |
+            L'indirizzo IP e la porta sono numeri che i programmi già usano ogni giorno
+            senza nominarli esplicitamente, ad esempio digitando un sito nel browser.
+            [inferred]
+          why_here: |
+            Fornisce il vocabolario minimo richiesto da PRQ-NETWORK-BASICS, prerequisito
+            diretto di DR-NETWORK insieme al modello dei processi. [stated]
+          links: |
+            Nessun collegamento a sessioni precedenti su questo contenuto specifico,
+            essendo dichiarato non-prerequisito da LOGISTICS. [stated]
+          watch_for: |
+            192.0.2.10 e le porte 80/22 sono valori di esempio, non specifici di alcun
+            laptop della classe: va chiarito che l'indirizzo reale del proprio laptop
+            sarà diverso. [invented framing]
+          timing_min: 12
+
+      - id: S7-20
+        role: vocab
+        goals: [GOAL_004_NETWORK]
+        provenance: stated
+        headline: "Indirizzo IP e porta insieme individuano un servizio preciso su una macchina precisa."
+        body:
+          kind: list
+          ordered: true
+          justification: "Definizioni composte in ordine crescente di precisione, intrinsecamente enumerabili"
+          items:
+            - "Indirizzo IP: identifica il dispositivo in rete"
+            - "Porta: identifica il programma sul dispositivo"
+            - "IP più porta: individuano un servizio preciso"
+        notes:
+          talk: |
+            Il passaggio da "dispositivo" a "programma sul dispositivo" a "servizio
+            preciso" è la stessa logica che si ritroverà nella rete Docker (item 22), dove
+            il nome del container gioca lo stesso ruolo che qui gioca la coppia IP+porta.
+            [inferred]
+          why_here: |
+            Consolida PRQ-NETWORK-BASICS con una definizione componibile, prima della
+            discussione (item 21) che ne chiede un uso pratico. [stated]
+          links: |
+            Si collega avanti a PRQ-DOCKER-NETWORK (item 22, questa stessa sessione), dove
+            il nome del container sostituirà IP e porta come modo per raggiungere un
+            servizio. [inferred]
+          watch_for: |
+            Non anticipare come si rende un servizio raggiungibile dall'host: quel
+            collegamento non è ancora stato insegnato a questo punto della sessione.
+            [stated]
+          timing_min: 12
+
+      - id: S8-21
+        role: menu
+        goals: [GOAL_004_NETWORK]
+        provenance: inferred
+        headline: "Indirizzo IP e porta si usano già, senza nominarli, ogni volta che si visita un sito."
+        body:
+          kind: list
+          ordered: false
+          justification: "Tre domande guida per la discussione, intrinsecamente enumerabili"
+          items:
+            - "Indirizzo IP del proprio laptop in rete"
+            - "Porta usata dal browser per HTTPS"
+            - "Conflitto tra due programmi sulla stessa porta"
+        notes:
+          talk: |
+            Non fornire le risposte prima della discussione: il valore dell'attività (item
+            21) è che gli studenti le formulino a partire dalla propria esperienza
+            quotidiana con internet. [inferred]
+          why_here: |
+            Fa da innesco per la discussione a gruppi dell'item 21, rielaborazione attiva
+            subito dopo la lezione teorica per fissare concetti dichiarati fragili da
+            LOGISTICS. [stated]
+          links: |
+            Riprende la definizione di IP e porta appena data in questo stesso segmento
+            (item 20). Nessun collegamento a sessioni successive su questo punto
+            specifico. [stated]
+          watch_for: |
+            Prima occorrenza di HTTPS nel mazzo: HyperText Transfer Protocol Secure, si
+            può tradurre come protocollo di trasferimento di ipertesti sicuro; non serve
+            approfondirlo, basta come esempio quotidiano. [inferred]
+          timing_min: 13
+
+  - covers:
+      - sequence: "22"
+        node_ref: PRQ-DOCKER-NETWORK
+      - sequence: "23"
+        node_ref: PRQ-DOCKER-NETWORK
+    title: "Il modello di rete Docker"
+    minutes: 60
+    note: >
+      Copre PRQ-DOCKER-NETWORK (item 22 lezione, item 23 demo dal vivo). Il quiz di
+      verifica (item 24) non ha slide proprie: è una verifica, non un contenuto da
+      mostrare in aula secondo la regola di controllo degli accessi.
+    slides:
+      - id: S9-22
+        role: problem
+        goals: [GOAL_004_NETWORK]
+        provenance: inferred
+        headline: "Due container avviati sulla stessa macchina non si vedono automaticamente: serve collegarli in rete esplicitamente."
+        body:
+          kind: callout
+          text: "L'isolamento che rende sicuro un container è lo stesso isolamento che, di default, lo rende irraggiungibile da un altro container."
+        notes:
+          talk: |
+            Richiamare l'isolamento del container visto in sessione 1 (item 5-6): qui si
+            applica quello stesso isolamento alla dimensione di rete, non solo a
+            filesystem e processi. [inferred]
+          why_here: |
+            Apre PRQ-DOCKER-NETWORK, motivando perché serve un modello di rete Docker
+            dedicato e non basta l'IP della macchina host. [stated]
+          links: |
+            Si appoggia su PRQ-CONTAINER (sessione 1, item 5-6) e sul vocabolario IP/porta
+            appena introdotto in questo stesso segmento (item 20). [stated]
+          watch_for: |
+            Non anticipare la mappatura delle porte (sessione 4, item 25): qui
+            l'isolamento riguarda container-container, non ancora container-host.
+            [stated]
+          timing_min: 10
+
+      - id: S10-22
+        role: concept
+        goals: [GOAL_004_NETWORK]
+        provenance: stated
+        headline: "Docker isola i container per rete: due container in reti Docker diverse non si raggiungono tra loro."
+        body:
+          kind: diagram
+          caption: "Due reti Docker isolate"
+          mermaid: |
+            flowchart TB
+              subgraph NA["Rete Docker: rete-app"]
+                X["Container: app"]
+                Y["Container: database"]
+              end
+              subgraph NB["Rete Docker: rete-altra"]
+                Z["Container: altro-servizio"]
+              end
+              X -->|"si raggiungono"| Y
+              Y -->|"si raggiungono"| X
+              X -.->|"non si raggiungono"| Z
+        notes:
+          talk: |
+            "rete-app" e "rete-altra" sono nomi di esempio per le reti Docker create con
+            docker network create; i nomi reali dipenderanno dall'esercitazione.
+            [invented framing]
+          why_here: |
+            Presenta il cuore di PRQ-DOCKER-NETWORK: le reti Docker sono isolate per
+            costruzione, risposta diretta a EQ_3. [stated]
+          links: |
+            Riprende l'isolamento del container (sessione 1, item 5) applicandolo ora
+            alla rete. [inferred]
+          watch_for: |
+            Isolata non significa che il container non abbia comunque un proprio
+            indirizzo IP interno: ne ha uno, solo che non è raggiungibile da fuori la sua
+            rete. [inferred]
+          timing_min: 15
+
+      - id: S11-23
+        role: concept
+        goals: [GOAL_004_NETWORK]
+        provenance: stated
+        headline: "Dentro la stessa rete Docker, un container ne raggiunge un altro chiamandolo per nome, non per indirizzo IP."
+        body:
+          kind: diagram
+          caption: "Una richiesta REST risolta per nome tra due container"
+          mermaid: |
+            sequenceDiagram
+              participant App as Container app
+              participant DB as Container database
+              App->>DB: richiesta REST a http://database:5432
+              Note over App,DB: Docker risolve "database" nell'indirizzo IP interno del container (DNS)
+        notes:
+          talk: |
+            Prima occorrenza di REST e DNS nel mazzo: REST è l'acronimo di
+            REpresentational State Transfer, si può tradurre come trasferimento di stato
+            rappresentativo, uno stile comune per scambiare richieste tra servizi; DNS è
+            l'acronimo di Domain Name System, si può tradurre come sistema dei nomi di
+            dominio, qui interno a Docker e non quello di internet pubblico. [stated per
+            EQ_2, invented framing per la spiegazione degli acronimi]
+          why_here: |
+            Risponde a EQ_2 (come un container invia una richiesta REST a un altro
+            container): il nome del container sostituisce l'indirizzo IP che lo studente
+            dovrebbe altrimenti scoprire manualmente. [stated]
+          links: |
+            Riprende IP e porta di questo stesso segmento (item 20) e l'isolamento di
+            rete appena visto (item 22). Prepara la demo dal vivo (item 23) in cui il
+            docente crea la rete e collega i container. [stated]
+          watch_for: |
+            Il nome usato per la risoluzione è il nome del servizio/container nella rete
+            Docker, non un nome di dominio internet: va distinto esplicitamente dal DNS
+            pubblico. [inferred]
+          timing_min: 15
+
+      - id: S12-23
+        role: concept
+        goals: [GOAL_004_NETWORK]
+        provenance: inferred
+        headline: "Isolata vuol dire raggiungibile solo da chi condivide la stessa rete Docker, non invisibile in assoluto."
+        body:
+          kind: callout
+          text: "Un container fuori dalla rete Docker di app e database non può raggiungerli, con gli strumenti visti finora."
+        notes:
+          talk: |
+            Questa è la risposta pratica a EQ_3: isolamento non è un concetto di
+            sicurezza assoluta, è un confine di raggiungibilità di rete definito dal
+            comando docker network usato nella demo (item 23). [inferred]
+          why_here: |
+            Chiude l'arco di PRQ-DOCKER-NETWORK prima del quiz di verifica (item 24, non
+            presente in questo mazzo) e prepara concettualmente la mappatura delle porte
+            di sessione 4 (item 25). [stated]
+          links: |
+            Si appoggia su tutto il segmento (item 22-23). Punta avanti, solo per nome,
+            alla mappatura delle porte di sessione 4 (item 25) e alla sicurezza dei
+            container (EQ_4), entrambe non trattate qui. [stated]
+          watch_for: |
+            Se qualcuno chiede se un container può essere attaccato dall'esterno (EQ_4),
+            non rispondere qui: GOALS segnala EQ_4 come argomento ancora da tarare
+            (awaiting: instructional-designer) e questa sessione non lo approfondisce.
+            [stated]
+          timing_min: 20

@@ -4,6 +4,9 @@ Status: DRAFT
 
 Priority: Medium
 
+Effort: 8 (added during grooming, 2026-08-21: full CRUD-ish screen — list, sort, create
+modal, selection, breadcrumb — even with the wireframe already drawn)
+
 As:
 a `trainer`
 
@@ -58,8 +61,12 @@ Notes:
   (`COURSE-MANAGEMENT`) — merging removed the ID collision
 * depends on TENANT-001 (tenancy-before-courses, decided during grooming 2026-08-20): course
   rows are tenant-scoped from the start, per `adr/ADR-0002-persistence-and-iam.md`
+* shares the header component (`client/src/App.tsx`) with LOGIN-001 and TENANT-001 — this
+  story's wireframe draws the same `[Tenant: Acme] [👤]` block those stories build; no new
+  header work is expected here (noted during grooming, 2026-08-21, per
+  `references/do_and_donts.md`'s rule to check shared components across stories)
 * QTI-22-IMPORT (uploading a quiz) depends on a course existing to upload into — see
-  `story.upload-qti-22-quiz.md`
+  `story_upload_qti_22_quiz.md`
 
 Open questions:
 * pagination/empty-state (no courses yet) behavior is not specified — needs grooming before

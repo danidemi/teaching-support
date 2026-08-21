@@ -1,0 +1,301 @@
+deck: 1
+status: approved
+language: it
+course: "Docker: dai container ai sistemi multi-servizio (corso ITS, primo anno)"
+session: 8
+title: "Completamento del progetto finale ed esame"
+
+sources:
+  curriculum: design/curriculum.json
+  design: design/knowledge_goals_graph.json
+  goals: specifications/goals.md
+  logistics: specifications/logistics.md
+  editorial_guidelines: specifications/editorial_guidelines.md
+  read_at: 2026-08-21
+
+budget:
+  session_minutes: 210   # [stated] usable_minutes di design/curriculum.json, session 8
+  slide_budget: [5, 9]    # [invented framing] guideline, non verificato da tool: sessione a contenuto concettuale minimo (45' di rifinitura progetto + 160' di esame orale), non una lezione tradizionale
+
+instructional_decisions:
+  - decision: >
+      Due segmenti, uno per ciascun item della sessione (item 54 completamento progetto,
+      item 55 esame orale), senza restage dell'attività pratica del progetto né del contenuto
+      dell'esame come quiz scritto.
+    rationale: >
+      L'item 54 è "project": l'esercizio e il debrief sono già pianificati come attività
+      d'aula, quindi il segmento porta solo una cornice concettuale (cosa significa "finito"
+      per il progetto) senza restage. L'item 55 è una valutazione sommativa orale/demo, non
+      un quiz scritto: le slide annunciano struttura e scopo delle prove, mai le risposte o
+      le soglie di superamento.
+    confidence: inferred
+    awaiting: instructional-designer
+  - decision: >
+      I quattro gradini del progetto finale (da GOALS, sezione Verifica) sono presentati sulle
+      slide come livelli di completezza funzionale del sistema, non come scala di voto.
+      Il range di voto 18-30, il fatto che la prova di manualità sia condizione bloccante per
+      superare l'esame, e la stima di tempo per studente (~8 minuti) restano fuori da ogni slide
+      e vengono spostati nelle note del trainer (talk/watch_for), non mostrate in aula.
+    rationale: >
+      La regola di controllo-accessi del ruolo impone di non mostrare in aula soglie di
+      superamento o criteri di voto quando trainer e studenti condividono lo stesso schermo.
+      Gli studenti hanno però bisogno di conoscere in anticipo la struttura dell'esame (tre
+      componenti, due individuali) per prepararsi: questo resta sulle slide.
+    confidence: inferred
+    awaiting: instructional-designer
+  - decision: >
+      I ruoli di slide usati sono limitati all'elenco autorizzato in reference/deck_model_spec.md
+      (vocab, problem, concept, menu, homework, recap). Non è stato seguito lo schema a stadi
+      Kolb (problem → lab-brief → debrief → concept → apply) descritto in
+      reference/slide_design_rules.md §7, perché quel documento è in conflitto con
+      deck_model_spec.md e con le istruzioni del ruolo su questo punto (nessun ruolo di
+      ciclo esperienziale, l'attività pratica non viene restage nel deck).
+    rationale: >
+      deck_model_spec.md è la fonte più recente e specifica per la forma del file che questo
+      ruolo scrive; slide_design_rules.md §7 e §8 (cohort "Teams, 4 persone") descrivono un
+      contesto diverso da questo corso (15 studenti, in presenza, da LOGISTICS) e sembrano non
+      aggiornati. Segnalato qui perché possa essere corretto alla fonte.
+    confidence: inferred
+    awaiting: instructional-designer
+  - decision: >
+      Nessun rimando in avanti (notes.links) è stato aggiunto: la sessione 8 è l'ultima del
+      corso in CURRICULUM, quindi non esiste alcun punto successivo da citare.
+    rationale: "Conseguenza diretta della posizione della sessione nella sequenza."
+    confidence: stated
+    awaiting: instructional-designer
+  - decision: >
+      I campi `goals` delle slide usano gli id reali di specifications/goals.md
+      (es. GOAL_007_COMPLEX_SYSTEM) invece del placeholder di esempio "G1/G5a" mostrato in
+      reference/deck_model_spec.md, perché quello è solo un esempio di forma e non un ID
+      realmente presente in nessuno store di questo corso.
+    rationale: "reference/deck_model_spec.md dice esplicitamente 'ids from specifications/goals.md'."
+    confidence: stated
+    awaiting: instructional-designer
+
+segments:
+  - covers:
+      - sequence: "54"
+        node_ref: DR-COMPLEX-SYSTEM
+    title: "Completamento e messa a punto del progetto finale di gruppo"
+    minutes: 45
+    note: >
+      [stated] item 54 in CURRICULUM è "project": la maggior parte dei 45 minuti è lavoro
+      autonomo dei gruppi, non slide. Il tempo di parola (`timing_min`) delle slide qui sotto è
+      quindi molto inferiore ai 45 minuti totali dell'item, per costruzione.
+    slides:
+      - id: S8-01
+        role: menu
+        goals: [GOAL_007_COMPLEX_SYSTEM]
+        provenance: stated
+        headline: "Questa lezione chiude il progetto e poi lo verifica con un esame orale individuale."
+        body:
+          kind: list
+          ordered: true
+          justification: "Scaletta della sessione: due fasi in sequenza temporale fissa."
+          items:
+            - "Ultime rifiniture al progetto in aula"
+            - "Esame orale: presentazione, manualità, troubleshooting"
+        notes:
+          talk: |
+            [inferred] Il grosso del completamento del progetto è già stato fatto extra-aula
+            (fino a 20 ore previste da LOGISTICS per l'intero corso): questi 45 minuti sono
+            per rifiniture, non per iniziare da zero.
+          why_here: |
+            [stated] Apre la sessione conclusiva del corso: chiarisce da subito che oggi si
+            passa dal lavoro di gruppo alla verifica individuale, per gestire l'ansia da esame.
+          links: |
+            [stated] Il progetto è stato avviato in sessione 7, item 52 ("Avvio del progetto
+            finale di gruppo") e proseguito extra-aula; qui si conclude. Nessun rimando in
+            avanti: sessione 8 è l'ultima del corso.
+          watch_for: |
+            [inferred] Alcuni gruppi potrebbero non aver completato il lavoro extra-aula: il
+            trainer valuta in apertura chi ha bisogno di più tempo per le rifiniture rispetto a
+            chi è già pronto per l'esame.
+          timing_min: 3
+
+      - id: S8-02
+        role: recap
+        goals: [GOAL_005_VOLUME, GOAL_006_COMPOSE, GOAL_007_COMPLEX_SYSTEM]
+        provenance: stated
+        headline: "Il progetto finale riunisce applicazione, database e servizio mock in un'unica topologia con repliche."
+        body:
+          kind: diagram
+          caption: >
+            Topologia tipo del progetto finale (esempio generico) — SMTP: Simple Mail Transfer
+            Protocol, protocollo per l'invio di email
+          mermaid: |
+            flowchart LR
+              A1["App - replica 1"] --> DB[("Database")]
+              A2["App - replica 2"] --> DB
+              A1 --> SMTP["Servizio mock SMTP"]
+              A2 --> SMTP
+        notes:
+          talk: |
+            [inferred] Questo è lo schema generico, non necessariamente la topologia esatta di
+            ogni gruppo: ogni progetto ha scelto i propri servizi in base al requisito assegnato
+            in sessione 5, item 40.
+          why_here: |
+            [stated] Richiama la topologia già progettata (sessione 5) e già costruita in forma
+            guidata (sessione 7, item 50) prima di chiedere ai gruppi di completarla e
+            rifinirla oggi, senza re-insegnare Compose o le reti Docker.
+          links: |
+            [stated] Costruisce su: progettazione della topologia (sessione 5, item 40),
+            sintassi Compose avanzata (sessione 6, item 45-46), laboratorio guidato multi-servizio
+            con repliche (sessione 7, item 48-50). Nessun rimando in avanti: sessione 8 è
+            l'ultima del corso.
+          watch_for: |
+            [inferred] Un errore tipico a questo punto è confondere "il sistema parte" con "il
+            sistema funziona secondo la topologia richiesta": verificare che ogni servizio
+            comunichi con quello giusto, non solo che nessun container sia in errore.
+          timing_min: 5
+
+      - id: S8-03
+        role: concept
+        goals: [GOAL_005_VOLUME, GOAL_006_COMPOSE, GOAL_007_COMPLEX_SYSTEM]
+        provenance: inferred
+        headline: "Un progetto è tanto più completo quanti più di questi comportamenti copre, in ordine crescente."
+        body:
+          kind: list
+          ordered: true
+          justification: "GOALS descrive questi come gradini cumulativi: ognuno presuppone il precedente."
+          items:
+            - "Funziona, senza persistenza dei dati"
+            - "Funziona, con persistenza (es. volume su database)"
+            - "Funziona, con servizio aggiuntivo (es. mock SMTP)"
+            - "Funziona, con più repliche di un servizio"
+        notes:
+          talk: |
+            [invented framing] La slide presenta la scala come "quanto è completo il sistema",
+            non come voto — questa reformulazione è una scelta di questo autore, non un dato dello
+            store. [stated] Per il trainer: GOALS lega questi quattro gradini, insieme alle due
+            prove orali, alla determinazione del voto finale (18-30); questo collegamento va
+            detto a voce se utile, non scritto su una slide condivisa con gli studenti.
+          why_here: |
+            [stated] Dà ai gruppi un criterio concreto per capire dove si trova il proprio
+            progetto e cosa rifinire prima dell'esame, senza rivelare come questo si traduce nel
+            voto finale.
+          links: |
+            [stated] Riprende direttamente GOALS (sezione Verifica) e i contenuti già insegnati:
+            persistenza (sessione 4), Compose base e avanzato (sessioni 6-7), repliche
+            (sessione 7, item 48-49).
+          watch_for: |
+            [inferred] Fraintendimento tipico a questo punto: leggere la scala come "livello 4 o
+            fallito", scoraggiandosi, oppure assumere che il livello 1 (minimo funzionante)
+            basti già a superare l'esame.
+          timing_min: 4
+
+  - covers:
+      - sequence: "55"
+    title: "Esame orale finale: presentazione, prova di manualità, prova di troubleshooting"
+    minutes: 160
+    note: >
+      [stated] item 55 in CURRICULUM dura 160 minuti perché è l'esame orale/demo individuale
+      di 15 studenti più le presentazioni di gruppo: quasi tutto quel tempo è interrogazione
+      dal vivo, non tempo di slide. Il `timing_min` delle slide qui sotto copre solo la
+      presentazione della struttura dell'esame, non lo svolgimento delle prove.
+    slides:
+      - id: S8-04
+        role: menu
+        goals:
+          - GOAL_001_LIFECYCLE
+          - GOAL_002_IMAGE_BUILD
+          - GOAL_003_IMAGE_DISTRIBUTE
+          - GOAL_004_NETWORK
+          - GOAL_005_VOLUME
+          - GOAL_006_COMPOSE
+          - GOAL_007_COMPLEX_SYSTEM
+          - GOAL_008_TROUBLESHOOTING
+        provenance: stated
+        headline: "L'esame ha tre parti in questo ordine: presentazione, prova di manualità, prova di troubleshooting."
+        body:
+          kind: list
+          ordered: true
+          justification: "Ordine di svolgimento fisso dell'esame, dichiarato in GOALS."
+          items:
+            - "Presentazione di gruppo del progetto"
+            - "Prova individuale di manualità"
+            - "Prova individuale di troubleshooting"
+        notes:
+          talk: |
+            [stated] Le prime due prove sono per ciascuno dei 15 studenti singolarmente, anche
+            se il progetto è di gruppo: ognuno deve dimostrare la propria comprensione, non solo
+            quella del gruppo. [risk] Per il trainer, non per lo schermo: con 15 studenti e ~8
+            minuti a testa per le due prove individuali, il tempo d'aula stimato è stretto
+            (~160 minuti totali); se le prove richiedono più tempo l'esame può sforare l'orario
+            previsto da LOGISTICS.
+          why_here: |
+            [stated] Capstone finale su tutti gli obiettivi del corso (GOAL_001-GOAL_008):
+            questa slide annuncia il formato prima di iniziare, così ogni studente sa cosa
+            aspettarsi.
+          links: |
+            [stated] Le due prove individuali sono preparate da tutto il corso: il ciclo di
+            vita del container e la costruzione dell'immagine (sessioni 1-2), rete e volumi
+            (sessioni 3-4), il ragionamento diagnostico per ipotesi già esercitato in sessione 5
+            (item 35-37) e in sessione 7 (item 51) su un sistema multi-servizio realistico.
+            Nessun rimando in avanti: sessione 8 è l'ultima del corso.
+          watch_for: |
+            [inferred] Fraintendimento tipico: aspettarsi che una presentazione di gruppo forte
+            "copra" anche uno studente che non sa rispondere individualmente — le due prove
+            successive sono strettamente individuali, non mediate dal gruppo.
+          timing_min: 3
+
+      - id: S8-05
+        role: concept
+        goals:
+          - GOAL_001_LIFECYCLE
+          - GOAL_002_IMAGE_BUILD
+          - GOAL_006_COMPOSE
+          - GOAL_007_COMPLEX_SYSTEM
+        provenance: stated
+        headline: "La prova di manualità verifica che tu sappia modificare dal vivo il tuo progetto, non solo eseguirlo."
+        body:
+          kind: callout
+          text: "La modifica richiesta è sul tuo progetto specifico, individualmente: non su un esempio generico condiviso."
+        notes:
+          talk: |
+            [stated] Questa prova esiste per distinguere chi ha davvero capito il proprio
+            sistema da chi ha seguito un tutorial senza comprenderlo: la modifica richiesta
+            userà comandi e concetti già visti nel corso, non contenuto nuovo. [risk] Per il
+            trainer, non per lo schermo: GOALS dichiara questa prova condizione per superare
+            l'esame indipendentemente dagli altri criteri — dirlo a voce se utile, non scriverlo
+            su una slide condivisa con gli studenti.
+          why_here: |
+            [stated] GOALS descrive questa prova come condizione dichiarata per superare
+            l'esame: la slide annuncia cosa viene verificato, non la soglia di superamento né
+            le conseguenze di un esito negativo, che restano riservate al trainer.
+          links: |
+            [stated] Richiama tutte le competenze pratiche del corso: comandi CLI (sessione 2),
+            costruzione immagine (sessione 2), Compose (sessioni 6-7). Nessun rimando in avanti:
+            sessione 8 è l'ultima del corso.
+          watch_for: |
+            [inferred] Fraintendimento tipico: aspettarsi una modifica del tutto nuova o non
+            vista nel corso, invece di una ricombinazione di comandi e concetti già praticati.
+          timing_min: 4
+
+      - id: S8-06
+        role: concept
+        goals: [GOAL_008_TROUBLESHOOTING]
+        provenance: stated
+        headline: "La prova di troubleshooting verifica che tu sappia formulare un'ipotesi plausibile su un malfunzionamento."
+        body:
+          kind: callout
+          text: "Ti verrà presentata una situazione teorica di malfunzionamento da diagnosticare."
+        notes:
+          talk: |
+            [stated] Non è richiesto riprodurre il malfunzionamento dal vivo: basta indicare
+            almeno un'ipotesi plausibile sulla causa e come la verificheresti, lo stesso schema
+            già esercitato in sessione 5 e in sessione 7. [risk] Per il trainer, non per lo
+            schermo: non anticipare qui né a voce il tipo di malfunzionamento usato in sede
+            d'esame, vanificherebbe la prova per tutta la classe.
+          why_here: |
+            [stated] Ultima verifica del corso su GOAL_008: la slide annuncia il formato della
+            prova (situazione teorica, non live) senza rivelare la situazione stessa né i
+            criteri con cui l'ipotesi verrà giudicata plausibile.
+          links: |
+            [stated] Costruisce su: strumenti di diagnosi e ragionamento per ipotesi (sessione
+            5, item 33-37) e sul rinforzo su un sistema multi-servizio realistico (sessione 7,
+            item 51). Nessun rimando in avanti: sessione 8 è l'ultima del corso.
+          watch_for: |
+            [inferred] Fraintendimento tipico: aspettarsi di dover riprodurre e risolvere il
+            malfunzionamento dal vivo, invece di limitarsi a formulare e argomentare un'ipotesi.
+          timing_min: 3

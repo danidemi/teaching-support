@@ -4,6 +4,10 @@ Status: DRAFT
 
 Priority: High
 
+Effort: 5 (added during grooming, 2026-08-21: first story to touch Postgres in earnest —
+schema, membership check/creation logic, header UI — on top of whatever ORM-SELECTION-001
+already settled)
+
 As:
 an `registered user`
 
@@ -31,4 +35,11 @@ Notes:
   story re-touching the header independently
 * persistence: `tenants` and `users` tables in PostgreSQL, per
   `adr/ADR-0002-persistence-and-iam.md`
+* depends on ORM-SELECTION-001 (added during grooming, 2026-08-21): this story is the
+  first to read/write Postgres, so it needs the ORM/query-builder choice settled first,
+  and depends on DB-MIGRATIONS-001 for how its `tenants`/`users` schema gets created
+* shares the header component (`client/src/App.tsx`) with COURSE-001 too, not only
+  LOGIN-001 — COURSE-001's wireframe shows the same `[Tenant: Acme] [👤]` header block
+  (noted during grooming, 2026-08-21, per `references/do_and_donts.md`'s rule to check
+  shared components across stories)
 

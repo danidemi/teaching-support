@@ -1,0 +1,244 @@
+deck: 1
+status: approved
+language: it
+course: "Docker: dai container ai sistemi multi-servizio (corso ITS, primo anno)"
+session: 7
+title: "Repliche e avvio del progetto finale"
+subtitle: "Scalare un servizio con Compose, prima del progetto di gruppo"
+
+sources:
+  curriculum: design/curriculum.json
+  design: design/knowledge_goals_graph.json
+  goals: specifications/goals.md
+  logistics: specifications/logistics.md
+  editorial_guidelines: specifications/editorial_guidelines.md
+  read_at: 2026-08-21
+
+budget:
+  session_minutes: 240   # [stated] LOGISTICS: 8 lezioni da 4 ore. CURRICULUM per la sessione 7
+                          # dichiara usable_minutes: 210 / total_minutes: 210 — le due cifre
+                          # coincidono qui (a differenza della sessione 1), ma restano diverse dai
+                          # 240 di LOGISTICS: si segue LOGISTICS come richiesto dalla spec del deck.
+  slide_budget: [12, 24]
+
+instructional_decisions:
+  - decision: "Il deck di questa sessione è molto più corto del range slide_budget [12, 24]: tre segmenti, 5 slide, per un totale di ~33 minuti di timing_min sui 210 minuti della sessione."
+    rationale: "Solo sequence 48-49 (PRQ-COMPOSE-REPLICAS) è un vero arco concettuale nuovo, con 3 slide. Sequence 51 (scenario diagnostico, secondo passaggio su DR-TROUBLESHOOTING) e sequence 52 (avvio del progetto finale) ricevono ciascuna una sola slide di inquadramento/annuncio, non un arco concettuale pieno, perché il concetto sottostante è già insegnato altrove (sessione 5 per il troubleshooting; sessioni 2/4/5/6 per i componenti del progetto). Sequence 50 (laboratorio guidato) e sequence 53 (quiz di richiamo, altro owner) non ricevono nessuna slide. La spec del deck ('la deck presenta solo concetti... non restage-a pratica già schedulata altrove') vieta di trasformare in slide aggiuntive i 170 minuti di sequence 50-53, che sono hands_on/project/quiz già scheduled come propri item CURRICULUM con propria esecuzione/debrief. Il sottodimensionamento rispetto al range è quindi corretto per costruzione, non un difetto da correggere con padding — inventare contenuto concettuale sulle repliche oltre a quanto DESIGN dichiara (una riga, provenance inferred) o restage-are il laboratorio/progetto/quiz sarebbe peggio di un deck corto."
+    confidence: stated
+    awaiting: instructional-designer
+  - decision: "I tre segmenti dichiarano minutes: 40, 30 e 70 (somma dei duration_minutes degli item coperti in CURRICULUM), ma la somma dei timing_min delle loro slide è molto inferiore (23, 4 e 6 rispettivamente)."
+    rationale: "Stesso scarto già segnalato in session-01.yml per il segmento C (sequence 5-6), qui più ampio perché sequence 51 e 52 coprono soprattutto tempo di pratica/hands_on/project, non tempo di proiezione slide: il segmento sulle repliche (40 minuti CURRICULUM) include una demo dal vivo oltre alla lezione; il segmento sul troubleshooting (30 minuti) e quello sul progetto (70 minuti) sono quasi interamente item hands_on/project con una sola slide di inquadramento ciascuno. Evitare di gonfiare artificialmente i timing_min solo per far quadrare la somma con minutes: la discrepanza è reale e va segnalata a chi revisiona, non nascosta."
+    confidence: stated
+    awaiting: instructional-designer
+  - decision: "Sequence 48 (lezione) e 49 (demo) sono state accorpate in un unico segmento, invece di due segmenti separati."
+    rationale: "Stesso node_ref (PRQ-COMPOSE-REPLICAS): la lezione introduce il concetto di scalare un servizio, la demo lo rende concreto. Stessa logica già applicata e registrata in session-01.yml per sequence 5-6 (PRQ-CONTAINER): riuso il precedente invece di re-litigare la scelta."
+    confidence: inferred
+    awaiting: instructional-designer
+  - decision: "Sequence 50 (laboratorio guidato, checkpoint su GOAL_007) non riceve un segmento/slide proprio."
+    rationale: "È un item hands_on_practical: la spec vieta di restage-are come slide un'attività di pratica già schedulata come proprio item CURRICULUM. Il concetto che il laboratorio applica (repliche + sistema multi-servizio) è già coperto dal segmento sulle repliche (sequence 48-49) e dalla sessione 6 (Compose avanzato); non c'è nulla di concettuale nuovo da introdurre solo per questo checkpoint. Il checkpoint stesso non viene descritto in dettaglio sul deck, per la regola di controllo-accesso (non è un item con rubric esplicito in CURRICULUM, ma resta un checkpoint valutativo)."
+    confidence: stated
+    awaiting: instructional-designer
+  - decision: "Sequence 51 (scenario diagnostico su sistema multi-servizio, rinforzo di GOAL_008) riceve una sola slide 'problem', senza ripetere la teoria di PRQ-DIAG-TOOLS o PRQ-HYPOTHESIS."
+    rationale: "Lo stesso nodo DR-TROUBLESHOOTING è già stato insegnato in sessione 5 (sequence 33-37): qui è un secondo passaggio su un contesto più realistico, non un nuovo concetto. Ripetere la teoria violerebbe la regola 'un item di una sessione precedente è già insegnato, mai da ri-spiegare'. Una sola slide di inquadramento, senza soluzione o esito, rispetta anche la regola di controllo-accesso (l'item è un hands_on con funzione di verifica, quindi niente causa/ipotesi corretta va mostrata)."
+    confidence: inferred
+    awaiting: instructional-designer
+  - decision: "Sequence 52 (avvio del progetto finale di gruppo, 70 minuti) riceve una sola slide di ruolo 'homework', che annuncia lo scopo e i componenti del sistema richiesto, senza menzionare i gradini di verifica 1-4, il voto 18-30 o l'obbligatorietà delle prove di manualità/troubleshooting."
+    rationale: "GOALS descrive i gradini di verifica, il voto e l'obbligatorietà delle due prove come criteri di valutazione dell'esame finale: sono soglie di rubric/voto, non contenuto da mostrare su uno schermo condiviso con gli studenti, per la regola di controllo-accesso di questo ruolo (slide legate a un item di verifica non devono rivelare soglie di superamento). Cosa il progetto deve contenere (applicazione + database + servizio mock + repliche, tutti nodi già insegnati) resta invece informazione rivolta allo studente, quindi lecita sulla slide. Un'alternativa più prudente sarebbe nessuna slide affatto (il project è comunque già uno scheduled item CURRICULUM); ho scelto la slide di annuncio perché CURRICULUM segnala esplicitamente che il tempo extra-aula rientra nel monte ore LOGISTICS, un'informazione logistica utile da rendere visibile prima di iniziare."
+    confidence: inferred
+    awaiting: instructional-designer
+  - decision: "Sequence 53 (quiz di richiamo finale, nessun node_ref) non riceve un segmento/slide propria in questo deck."
+    rationale: "Il catalogo materiali (.claude/reference/material_catalog.md, Material 3 - quiz) assegna la produzione dei quiz a un altro owner ('currently generated by hand by human'), non a questo subagent. Non ho contenuto proprio del quiz da mostrare, e non posso nominare il file che lo conterrà (regola: il deck non deve puntare a un file di un altro material type). Nessuna slide è quindi più coerente di una slide vuota o di un rimando a un file inesistente."
+    confidence: stated
+    awaiting: instructional-designer
+
+segments:
+  - covers:
+      - sequence: "48"
+        node_ref: PRQ-COMPOSE-REPLICAS
+      - sequence: "49"
+        node_ref: PRQ-COMPOSE-REPLICAS
+    title: "Più repliche di uno stesso servizio con Compose"
+    minutes: 40
+    note: "Copre sia la lezione (sequence 48) sia la demo dal vivo (sequence 49, scalare un servizio); vedi instructional_decisions per l'accorpamento, ripreso dal precedente registrato in session-01.yml."
+    slides:
+      - id: S7-01
+        role: concept
+        goals: [GOAL_007_COMPLEX_SYSTEM]
+        provenance: inferred
+        headline: "Un singolo servizio può girare come più copie identiche (repliche) invece di una sola."
+        body:
+          kind: diagram
+          caption: "Da un servizio a più repliche"
+          mermaid: |
+            flowchart LR
+              S[Servizio] --> R1[Replica 1]
+              S --> R2[Replica 2]
+              S --> R3[Replica 3]
+        notes:
+          talk: |
+            Parti da un caso concreto già visibile agli studenti: il servizio applicazione della
+            sessione 6 (sequence 41-46) girava sempre come una sola copia. Qui introduci l'idea che
+            la stessa immagine può girare più volte in parallelo, dietro lo stesso nome di servizio.
+          why_here: |
+            DR-COMPLEX-SYSTEM (GOAL_007) dichiara le repliche come il gradino più alto della scala
+            di verifica del progetto finale (edge DR-COMPLEX-SYSTEM → PRQ-COMPOSE-REPLICAS in
+            DESIGN). [stated] Il nodo PRQ-COMPOSE-REPLICAS stesso è marcato [inferred] in DESIGN:
+            non è descritto in GOALS parola per parola, ma dedotto dal requisito sulle repliche.
+          links: |
+            Si appoggia su PRQ-COMPOSE-DEEP (sessione 6, sequence 45-46, sintassi Compose per
+            topologie a 3+ servizi) e su PRQ-COMPOSE-SHALLOW (sessione 6, sequence 41-42). Prepara
+            direttamente il laboratorio guidato di questa stessa sessione (sequence 50), che chiede
+            di applicare le repliche a un sistema multi-servizio reale.
+          watch_for: |
+            Il termine "replica" può essere confuso con "backup" o "copia di sicurezza": chiarisci
+            che le repliche girano contemporaneamente e attive, non come riserva spenta.
+            [inferred]
+          timing_min: 9
+      - id: S7-02
+        role: concept
+        goals: [GOAL_007_COMPLEX_SYSTEM]
+        provenance: invented
+        headline: "Con Compose si può indicare quante repliche di un servizio eseguire, senza duplicare la definizione."
+        body:
+          kind: code
+          lang: yaml
+          caption: "Frammento illustrativo — YAML: linguaggio di serializzazione dati (YAML Ain't Markup Language) usato per docker-compose.yml"
+          text: |
+            services:
+              app:
+                image: app:1.0
+                deploy:
+                  replicas: 3
+        notes:
+          talk: |
+            Il frammento è a scopo illustrativo [invented framing]: nessuno store fornisce un
+            esempio reale di sintassi delle repliche, solo la descrizione concettuale del nodo
+            PRQ-COMPOSE-REPLICAS. Verifica la sintassi esatta contro la versione di Compose
+            installata sui laptop degli studenti prima di mostrarla in aula.
+          why_here: |
+            Rende concreta la slide precedente (S7-01) con una sintassi plausibile, coerente con la
+            forma già vista in sessione 6 per `docker-compose.yml` (PRQ-COMPOSE-SHALLOW,
+            PRQ-COMPOSE-DEEP). [inferred]
+          links: |
+            Riprende direttamente la sintassi Compose a più servizi vista in sessione 6 (sequence
+            45-46, il docente scrive e avvia un docker-compose.yml a 3+ servizi). Prepara la demo
+            dal vivo (sequence 49) e il laboratorio guidato (sequence 50) di questa stessa sessione.
+          watch_for: |
+            Non affermare che questa sia l'unica sintassi possibile per le repliche: diverse versioni
+            di Compose/Docker possono variare la chiave esatta. Verifica sul terminale prima della
+            demo dal vivo, non fidarti solo di questa slide. [invented framing, risk]
+          timing_min: 8
+      - id: S7-03
+        role: concept
+        goals: [GOAL_007_COMPLEX_SYSTEM]
+        provenance: invented
+        headline: "Un solo comando cambia il numero di repliche in esecuzione, visibile subito nell'elenco dei servizi."
+        body:
+          kind: code
+          lang: shell
+          caption: "Sequenza mostrata dal docente dal vivo"
+          text: |
+            docker compose up --scale app=3 -d
+            docker compose ps
+        notes:
+          talk: |
+            Il comando è una scelta plausibile dell'autore di questo deck per rendere concreta la
+            demo (sequence 49) [invented framing]: verifica che corrisponda esattamente alla
+            versione di Docker Compose installata sui laptop (LOGISTICS: laptop scuola, per lo più
+            Windows) prima di eseguirlo in aula.
+          why_here: |
+            Corrisponde a sequence 49, dichiarata in CURRICULUM come demo dal vivo ("il docente scala
+            un servizio a più repliche con Compose"). [stated]
+          links: |
+            Richiama direttamente la demo di sessione 2 (sequence 15, il docente costruisce
+            un'immagine dal vivo) e di sessione 6 (sequence 42 e 46, avvio di un
+            docker-compose.yml con un solo comando) come stesso stile didattico: dimostrazione dal
+            vivo dopo la teoria. Prepara il laboratorio guidato di questa stessa sessione
+            (sequence 50).
+          watch_for: |
+            Non lasciare che la demo scivoli in una spiegazione di tutti i flag di `docker compose
+            up`: qui il concetto di replica deve restare protagonista, non la sintassi completa del
+            comando, seguendo lo stesso principio già applicato alla demo di sessione 1. [inferred]
+          timing_min: 6
+
+  - covers:
+      - sequence: "51"
+        node_ref: DR-TROUBLESHOOTING
+    title: "Diagnosi su un sistema multi-servizio più realistico"
+    minutes: 30
+    note: "Copre solo l'inquadramento del secondo passaggio su DR-TROUBLESHOOTING (sequence 51); l'esecuzione dello scenario diagnostico resta un item hands_on proprio, non restage-ata come slide."
+    slides:
+      - id: S7-04
+        role: problem
+        goals: [GOAL_008_TROUBLESHOOTING]
+        provenance: inferred
+        headline: "Un sistema con più servizi collegati può guastarsi in più punti insieme, non in uno solo."
+        body:
+          kind: callout
+          text: "Stesso ragionamento per ipotesi, applicato a un sistema più complesso."
+        notes:
+          talk: |
+            Non introdurre di nuovo gli strumenti di ispezione (logs, inspect, network, exec) né il
+            ragionamento per ipotesi: sono stati insegnati in sessione 5 (sequence 33-37) e qui vanno
+            solo richiamati per nome, mai ri-spiegati.
+          why_here: |
+            CURRICULUM annota esplicitamente che sequence 51 è "rinforzo di GOAL_008 nel contesto più
+            realistico del sistema multi-servizio, dopo la prima diagnosi guidata in sessione 5, come
+            preparazione alla prova di troubleshooting dell'esame finale". [stated]
+          links: |
+            Richiama esplicitamente sessione 5 (sequence 33-37: PRQ-DIAG-TOOLS, PRQ-HYPOTHESIS,
+            DR-TROUBLESHOOTING) senza ripeterne la teoria. Prepara la sessione 8, dove una prova di
+            troubleshooting individuale fa parte dell'esame finale — nominata qui solo per titolo,
+            senza descriverne il contenuto o i criteri.
+          watch_for: |
+            Il rischio più probabile è che gli studenti assumano la stessa causa vista nel caso di
+            sessione 5 (due container che non si collegano) e saltino subito a un tentativo di
+            correzione, senza prima raccogliere evidenza con gli strumenti di ispezione: LOGISTICS
+            segnala rete/porte come storicamente critici per questa cohort. [risk]
+          timing_min: 4
+
+  - covers:
+      - sequence: "52"
+        node_ref: DR-COMPLEX-SYSTEM
+    title: "Avvio del progetto finale di gruppo"
+    minutes: 70
+    note: "Una sola slide di annuncio, non un restage dell'attività project (già uno scheduled item CURRICULUM); vedi instructional_decisions per l'esclusione di gradini di verifica, voto e obbligatorietà delle prove."
+    slides:
+      - id: S7-05
+        role: homework
+        goals: [GOAL_007_COMPLEX_SYSTEM]
+        provenance: stated
+        headline: "Il progetto finale di gruppo mette insieme tutti i concetti del corso in un sistema che gira con Docker Compose."
+        body:
+          kind: list
+          ordered: false
+          justification: "Elenco dei componenti richiesti dal sistema, dichiarati in CURRICULUM/DESIGN come esempio del requisito, non una sequenza di passi."
+          items:
+            - "Applicazione"
+            - "Database"
+            - "Servizio mock (es. SMTP, Simple Mail Transfer Protocol)"
+            - "Più repliche di un servizio"
+        notes:
+          talk: |
+            Il tempo che eccede le ore in aula rientra nel monte ore extra-aula previsto per l'intero
+            corso (LOGISTICS: fino a 20 ore), non nella durata di questo singolo item: rendilo
+            esplicito in aula, perché gli studenti pianifichino il lavoro di gruppo di conseguenza.
+            SMTP: Simple Mail Transfer Protocol, protocollo semplice di trasferimento della posta.
+            [inferred] Il servizio mock non deve essere reale: un container che riceve la
+            connessione e risponde in modo minimo basta a soddisfare il requisito di topologia.
+          why_here: |
+            Sequence 52 è "attività aperta, volta a integrare tutti i nodi acquisiti (GOAL_001-
+            GOAL_007)... corrispondente ai gradini 1-4 della scala di verifica in GOALS. Prosegue in
+            sessione 8". [stated] I gradini stessi, il voto e l'obbligatorietà delle prove d'esame
+            non sono mostrati su questa slide per la regola di controllo-accesso: sono soglie di
+            valutazione, non contenuto rivolto allo studente in aula.
+          links: |
+            Integra sessioni 2 (immagine/Dockerfile), 4 (volumi), 5 (topologia multi-servizio,
+            sequence 38-40) e 6 (Compose, sequence 41-47), oltre al segmento sulle repliche di questa
+            stessa sessione. Prosegue in sessione 8 (completamento del progetto ed esame), nominata
+            qui solo per titolo.
+          watch_for: |
+            Non elencare qui i criteri di valutazione o il peso di ciascun componente sul voto: sono
+            soglie di rubric riservate alla valutazione d'esame, non informazione da condividere sullo
+            schermo comune di aula in questa fase di avvio. [risk]
+          timing_min: 6

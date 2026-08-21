@@ -33,12 +33,32 @@ contains the ADR. They are always read and obeyed for each new development to gu
 
 ## 1. Backlog Grooming
 
-Analize all the stories in backlog. help human better define them in order each of them to be detailed enough to be used to implement the story it describes. You can add whatever info or field you need, just don't invent anything. Discuss with the human, grill the story, propose alteranite ways to describe the same story, collect needed details, be sure to have a definition of done that can be tested automatically by you or at least by the human. Check for inconsistencies among other stories already developed.
+The goal is to help the human prepare upcoming `Sprint Backlog Items` so they are clear, manageable, and actionable prior to Sprint Planning. You can add whatever info or field you need, just don't invent anything. 
+
+In other words, the goal is to try to make each `Sprint Backlog Items` to comply with the `The Definition of Ready` (DoR), an agreed-upon set of criteria that a Product Backlog Item (PBI) must satisfy before a Scrum team will accept it into an upcoming Sprint. It acts as a quality filter during backlog refinement to prevent vague, blocked, or oversized work from entering Sprint Planning.
+
+* Clear User Value: The item clearly states who the change is for, what is being built, and why it matters.
+* Defined Acceptance Criteria: explicit, testable conditions that outline exactly how the feature must behave to be considered finished.
+* Estimated Effort: The Developers have analyzed the item and assigned an effort estimate (e.g., Story Points).
+* Appropriate Sizing: The item is small enough to be completed comfortably within a single Sprint.
+* Cleared Dependencies: External blockers, third-party API access, design assets, or technical approvals are secured in advance.
+* Testable: The criteria allow Quality Assurance (QA) and Developers to write unit, integration, or manual test cases.
+
+Discuss with the human, grill the content of the `Sprint Backlog Items`, propose alternative ways to describe the same story, collect needed details, be sure to include a definition of done that can be tested automatically by you or at least by the human. Check for inconsistencies among other stories already developed.
+
 You can modify the stories and the tasks directly. They stay there in the backlog until explicitly moved into current sprint.
+
+It is perfectly acceptable that at the enf of the grooming not all `Sprint Backlog Items` comply with a DoR, that just mean that PBI won't be selected to be part of the next sprint.
 
 ## 2. Sprint Planning
 
-Decide with the human which stories and tasks to work on. Chose the smalles possible subset. 1 only story in the current sprint is not a bad choice, of the story is complex.
+Decide with the human which PBIs to work on. Chose the smalles possible subset. 1 only story in the current sprint is not a bad choice, of the story is complex.
+
+For the selected PBIs, help the human in define how the PBI will be done. Several technical questions and choices may arise from that analysis. Help the human proposing several possible sensible choices that are coherent with the existing ADRs.
+
+Update the PBI with a plan about how to implement it.
+
+When the technical and infrastructural overhead is sensible and/or complex and/or potentially impactful, a new dedicated PBI can be created in the sprint which content is being defined.
 
 ## 3. Development
 

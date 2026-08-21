@@ -1,0 +1,307 @@
+deck: 1
+status: approved
+language: it
+course: "Docker: dai container ai sistemi multi-servizio (corso ITS, primo anno)"
+session: 2
+title: "Ciclo di vita del container e costruzione di un'immagine"
+subtitle: "Dall'interpretare lo stato di un container al costruire l'immagine che lo fa nascere"
+
+sources:
+  curriculum: design/curriculum.json
+  design: design/knowledge_goals_graph.json
+  goals: specifications/goals.md
+  logistics: specifications/logistics.md
+  editorial_guidelines: specifications/editorial_guidelines.md
+  read_at: 2026-08-21
+
+budget:
+  session_minutes: 240   # [stated] LOGISTICS: 8 lezioni da 4 ore. CURRICULUM per la sessione 2 dichiara
+                          # usable_minutes: 210 / total_minutes: 205 — le sequence 11 (esercitazione) e 13
+                          # (quiz senza node_ref) non ricevono slide proprie (vedi instructional_decisions),
+                          # quindi il tempo effettivamente coperto da questo deck (150 minuti) è inferiore
+                          # a total_minutes: scarto reale, non errore di somma.
+  slide_budget: [12, 24]
+
+instructional_decisions:
+  - decision: "Sequence 11 (esercitazione sui comandi Docker standard) non riceve un segmento/slide proprio in questo deck."
+    rationale: "Condivide lo stesso node_ref (PRQ-CLI-BASICS) della demo di sequence 10, già presentata nel Segmento A. Sequence 11 è didactic_activity hands_on: la sua pratica ed eventuale debrief sono già pianificate come proprio item CURRICULUM, e la spec del deck vieta di restage-are come slide un esercizio già schedulato altrove."
+    confidence: stated
+    awaiting: instructional-designer
+  - decision: "Sequence 13 (quiz di verifica, feedback_assessment_quiz) non riceve un segmento/slide proprio in questo deck."
+    rationale: "Non ha node_ref, esattamente come sequence 1 nella sessione 1: non insegna un nodo DESIGN. Inoltre è un quiz — proiettarne le domande sullo schermo condiviso di aula (docente e studenti vedono lo stesso schermo) rischierebbe di anticipare le risposte o il criterio di verifica, in violazione della regola di controllo-accesso di questo ruolo."
+    confidence: stated
+    awaiting: instructional-designer
+  - decision: "I due checkpoint della sessione (sequence 12, DR-LIFECYCLE; sequence 16, DR-IMAGE-BUILD) sono trattati come parte del segmento che li precede (embedded checkpoint), con una sola slide di inquadramento ciascuno (S2-03, S2-07), invece di un segmento proprio o di nessuna slide."
+    rationale: "Il modello di deck definisce un segmento come 'tipicamente un item di lezione insieme a qualunque checkpoint incorporato in esso'. Le due slide di inquadramento non restage-ano l'esercizio: elencano solo cosa lo studente dovrà determinare da solo durante l'esercitazione hands-on già schedulata come proprio item CURRICULUM (sequence 12 e 16), senza indicare la risposta corretta né la soglia di superamento, per rispettare la regola di controllo-accesso (slide condivisa con gli studenti in aula)."
+    confidence: inferred
+    awaiting: instructional-designer
+  - decision: "Le slide di inquadramento dei checkpoint (S2-03, S2-07) usano role: problem, non un ruolo dedicato al checkpoint."
+    rationale: "`reference/slide_design_rules.md` (§7) descrive ruoli in stile Kolb (lab-brief, debrief, apply) che `reference/deck_model_spec.md` esclude esplicitamente ('non c'è un ruolo per il ciclo hands-on'). Lo spec della forma del file prevale sulla nota di design più generale: role: problem è il ruolo autorizzabile più vicino a una domanda aperta ancora da verificare sul campo, coerente con l'uso già fatto in S1-10 della sessione 1."
+    confidence: inferred
+    awaiting: instructional-designer
+  - decision: "Il Dockerfile mostrato in S2-05 (FROM node:20 / COPY / RUN npm install / CMD) è un esempio generico scelto dall'autore di questo deck, non un artefatto reale del corso."
+    rationale: "Nessuno store fornisce un'applicazione target specifica per questa sessione: CURRICULUM parla solo di 'un'applicazione target' senza dettagliarla, e DESIGN non specifica un linguaggio. Un esempio Node.js minimale è scelto solo per avere una sintassi FROM/COPY/RUN/CMD leggibile; qualunque altro stack sarebbe altrettanto valido, e il docente può sostituirlo con l'applicazione reale usata in aula."
+    confidence: invented
+    awaiting: instructional-designer
+  - decision: "Il deck conta 7 slide, sotto il minimo della fascia slide_budget [12, 24]."
+    rationale: "Dei 205 minuti totali della sessione, 150 sono lezione/demo concettuale e coperti da questo deck (sequence 10, 12, 14, 15, 16); i restanti 55 minuti (sequence 11, 40 minuti di esercitazione; sequence 13, 15 minuti di quiz) sono volutamente esclusi (vedi decisioni sopra). Il deck presenta solo concetti, non pratica già schedulata altrove: un numero di slide ridotto rispetto alla fascia indicativa è coerente con il contenuto reale della sessione, non un gap da riempire artificialmente."
+    confidence: stated
+    awaiting: instructional-designer
+  - decision: "Entrambi i segmenti di questa sessione aprono con role: concept e chiudono con role: problem, invertendo l'ordine raccomandato da reference/slide_design_rules.md (§7: 'il compito apre l'unità', un concept prima di un problem 'inverte il design')."
+    rationale: "Le due slide role: problem di questa sessione (S2-03, S2-07) non pongono un problema nuovo da cui far partire l'unità: sono un'inquadratura del checkpoint hands-on già schedulato come proprio item CURRICULUM, e chiudono coerentemente l'arco concettuale che le precede invece di aprirlo. Il problema motivazionale dell'intero corso è già stato posto in sessione 1 (S1-01, nodo radice PRQ-WHY-DOCKER); i due segmenti di questa sessione estendono prerequisiti procedurali (comandi CLI, sintassi Dockerfile) che non hanno un proprio problema motivazionale distinto da riproporre. Scelta di instructional design, non un fatto dichiarato in alcuno store: va segnalata a chi presidia la fase 3 invece di restare implicita nella sola sequenza delle slide."
+    confidence: inferred
+    awaiting: instructional-designer
+  - decision: "Il Segmento A dichiara minutes: 60 (somma di sequence 10 e 12) e il Segmento B dichiara minutes: 90 (somma di sequence 14, 15 e 16), ma la somma dei timing_min delle rispettive slide è inferiore in entrambi i casi."
+    rationale: "Come già segnalato nella sessione 1, gran parte del tempo dichiarato in CURRICULUM per demo e checkpoint è pratica dal vivo al terminale (docente o studenti), non tempo di proiezione slide: la discrepanza va segnalata a chi revisiona, non nascosta gonfiando artificialmente i timing_min."
+    confidence: stated
+    awaiting: instructional-designer
+
+segments:
+  - covers:
+      - sequence: "10"
+        node_ref: PRQ-CLI-BASICS
+      - sequence: "12"
+        node_ref: DR-LIFECYCLE
+    title: "Interpretare lo stato di un container dai comandi standard"
+    minutes: 60
+    note: "Copre la demo dal vivo di sequence 10 (run/ps/stop/logs/exec) e il checkpoint di sequence 12 (DR-LIFECYCLE, GOAL_001_LIFECYCLE); sequence 11 (esercitazione) è esclusa, vedi instructional_decisions."
+    slides:
+      - id: S2-01
+        role: concept
+        goals: [GOAL_001_LIFECYCLE]
+        provenance: stated
+        headline: "Un container passa da creato a in esecuzione a fermato; run e stop guidano queste transizioni."
+        body:
+          kind: diagram
+          caption: "Il ciclo di vita di un container"
+          mermaid: |
+            stateDiagram-v2
+              [*] --> InEsecuzione: docker run
+              InEsecuzione --> Fermato: docker stop
+              Fermato --> [*]
+        notes:
+          talk: |
+            `docker run`, `docker ps` e `docker stop` sono già stati eseguiti dal vivo nella sessione 1
+            (demo S1-06) [stated, da CURRICULUM sequence 6]: qui non si insegnano da zero, si nominano
+            come le due transizioni del ciclo di vita, per dare loro una cornice esplicita che prima non
+            avevano. La novità di questa sessione è la lettura e l'interpretazione dell'esito di questi
+            comandi (PRQ-CLI-BASICS: "capire cosa restituisce ciascun comando e come interpretarlo"),
+            non l'esecuzione in sé. [stated, da DESIGN]
+          why_here: |
+            Apre la sessione richiamando ciò che la sessione 1 ha già mostrato in demo, prima di
+            aggiungere logs ed exec come strumenti di osservazione (S2-02). [stated]
+          links: |
+            Richiama esplicitamente la demo S1-06 (sessione 1, sequence 6): "run/ps/stop" non sono
+            contenuto nuovo qui. Si appoggia anche su S1-14 (il segnale che `docker stop` invia al
+            processo) [stated, da DESIGN, edge PRQ-CLI-BASICS → PRQ-PROCESS-MODEL].
+          watch_for: |
+            Chi ha già usato Docker (BSL-DOCKER-PRIOR [risk]) potrebbe considerare questo diagramma
+            banale: sposta l'attenzione sul fatto che il diagramma da solo non basta a diagnosticare
+            un container — serve interpretare l'esito dei comandi, competenza verificata nel checkpoint
+            di questo stesso segmento. [inferred]
+          timing_min: 6
+      - id: S2-02
+        role: concept
+        goals: [GOAL_001_LIFECYCLE]
+        provenance: stated
+        headline: "ps, logs ed exec permettono di osservare un container in esecuzione senza fermarlo."
+        body:
+          kind: diagram
+          caption: "Tre modi di osservare un container in esecuzione"
+          mermaid: |
+            flowchart LR
+              C["Container in esecuzione"]
+              C --> PS["docker ps — stato e identificativo"]
+              C --> LOGS["docker logs — cosa ha scritto sullo standard output"]
+              C --> EXEC["docker exec — esegue un comando al suo interno"]
+        notes:
+          talk: |
+            `docker logs` restituisce lo standard output (stdout, canale di uscita standard) del
+            processo del container: il
+            collegamento con il modello dei processi visto in sessione 1 (S1-11) va reso esplicito qui,
+            non è ovvio per chi vede questi comandi per la prima volta. `docker exec` è invece un
+            comando nuovo rispetto alla demo di sessione 1: apre un secondo processo dentro lo stesso
+            container.
+          why_here: |
+            Nodo PRQ-CLI-BASICS dichiarato [stated] in DESIGN; questa slide copre la parte
+            dell'interpretazione dell'esito dei comandi, complemento diretto della slide precedente
+            che copre solo le due transizioni di stato.
+          links: |
+            Si appoggia su S1-11 (stdout) e S1-14 (segnale di `docker stop`), entrambe della sessione 1
+            [stated, da DESIGN, edge PRQ-CLI-BASICS → PRQ-PROCESS-MODEL]. Logs ed exec ricompaiono in
+            sessione 5, dedicata alla diagnosi di un malfunzionamento, senza anticiparne qui il
+            contenuto.
+          watch_for: |
+            Un errore comune è confondere `docker logs` (l'output già scritto) con `docker exec`
+            (un'azione nuova, eseguita ora): rendi esplicita la differenza tra "guardare cosa è già
+            successo" e "fare succedere qualcosa in più". [inferred]
+          timing_min: 7
+      - id: S2-03
+        role: problem
+        goals: [GOAL_001_LIFECYCLE]
+        provenance: stated
+        headline: "L'esercitazione seguente chiede di determinare da solo, non di eseguire a memoria, lo stato di un container."
+        body:
+          kind: list
+          ordered: false
+          justification: "Enumera le domande a cui il checkpoint seguente richiede di rispondere autonomamente: contenuto intrinsecamente enumerabile, non una procedura sequenziale."
+          items:
+            - "Il container è in esecuzione o fermato?"
+            - "Perché si è fermato?"
+            - "Cosa ha scritto in output finora?"
+            - "Come eseguire un comando al suo interno?"
+        notes:
+          talk: |
+            Non anticipare la risposta a nessuna delle quattro domande: sono esattamente ciò che il
+            checkpoint di sequence 12 (DR-LIFECYCLE) verifica. Ricorda solo quali comandi delle due
+            slide precedenti servono a rispondere a ciascuna, senza applicarli qui a un caso concreto.
+          why_here: |
+            Corrisponde a sequence 12, checkpoint su GOAL_001_LIFECYCLE: CURRICULUM annota
+            esplicitamente che verifica "che lo studente sappia usare run/ps/stop/logs/exec per capire
+            lo stato di un container, non solo eseguirli meccanicamente". [stated]
+          links: |
+            Chiude l'arco apertosi con S2-01/S2-02. L'esercitazione stessa (sequence 12) è già
+            schedulata come proprio item CURRICULUM: questa slide la introduce, non la sostituisce.
+          watch_for: |
+            Non indicare qui la soglia di superamento del checkpoint né un esempio di risposta corretta
+            — regola di controllo-accesso di questo ruolo, slide condivisa con la classe. [stated, da
+            material_authoring_rules.md]
+          timing_min: 3
+
+  - covers:
+      - sequence: "14"
+        node_ref: PRQ-DOCKERFILE
+      - sequence: "15"
+        node_ref: PRQ-DOCKERFILE
+      - sequence: "16"
+        node_ref: DR-IMAGE-BUILD
+    title: "Scrivere un Dockerfile e costruire un'immagine"
+    minutes: 90
+    note: "Copre la lezione di sequence 14 e la demo di sequence 15 (stesso node_ref, arco unitario come in S1-04/S1-06), più il checkpoint di sequence 16 (DR-IMAGE-BUILD, GOAL_002_IMAGE_BUILD)."
+    slides:
+      - id: S2-04
+        role: concept
+        goals: [GOAL_002_IMAGE_BUILD, EU_3]
+        provenance: stated
+        headline: "Un Dockerfile è la ricetta testuale da cui si costruisce un'immagine."
+        body:
+          kind: diagram
+          caption: "Dal Dockerfile all'immagine, all'esecuzione"
+          mermaid: |
+            flowchart LR
+              D["Dockerfile — ricetta testuale"] -->|docker build| Im["Immagine"]
+              Im -->|docker run| Co["Container"]
+        notes:
+          talk: |
+            Collega esplicitamente a S1-07 (sessione 1): lì "immagine" era solo un concetto ("si crea, si
+            versiona, si distribuisce"), qui si mostra finalmente con cosa si crea per davvero — un
+            Dockerfile. Non introdurre ancora la sintassi delle singole istruzioni: questa slide resta
+            sul rapporto ricetta → immagine → container.
+          why_here: |
+            Nodo PRQ-DOCKERFILE dichiarato [stated] in DESIGN, con edge esplicito verso
+            PRQ-IMAGE-CONCEPT ("un Dockerfile è la ricetta per produrre un'immagine, quindi presuppone
+            di sapere cos'è un'immagine").
+          links: |
+            Richiama S1-07 e S1-08 (sessione 1, concetto di immagine) senza re-insegnarli. Prepara
+            PRQ-REGISTRY (sessione 3), dove l'immagine appena costruita verrà pubblicata — nome della
+            sessione richiamato senza anticiparne il contenuto.
+          watch_for: |
+            Non lasciare l'impressione che "immagine" e "Dockerfile" siano sinonimi: il Dockerfile è il
+            sorgente testuale, l'immagine è il prodotto della build. [inferred]
+          timing_min: 6
+      - id: S2-05
+        role: concept
+        goals: [GOAL_002_IMAGE_BUILD]
+        provenance: stated
+        headline: "Quattro istruzioni bastano per descrivere come costruire un'immagine funzionante."
+        body:
+          kind: code
+          lang: dockerfile
+          caption: "Esempio minimale [invented framing]: applicazione Node.js generica, vedi instructional_decisions"
+          text: |
+            FROM node:20
+            COPY . /app
+            RUN npm install
+            CMD ["node", "index.js"]
+        notes:
+          talk: |
+            Spiega ciascuna riga collegandola a un'idea già vista: FROM parte da un'immagine di base
+            (S1-08: un'immagine può essere il punto di partenza per crearne un'altra); COPY porta file
+            dal filesystem dell'host dentro quello del container (richiama S1-09, sessione 1, la
+            separazione tra i due filesystem, senza risolvere qui la domanda EQ_1 lasciata aperta in
+            S1-10); RUN esegue un comando durante la build; CMD è il comando che parte quando nasce il
+            container.
+          why_here: |
+            Sintassi dichiarata in CURRICULUM per sequence 14 (FROM, COPY, RUN, CMD) e in DESIGN come
+            "sintassi e istruzioni standard di un Dockerfile ... necessarie per costruire un'immagine
+            che esegua correttamente l'applicazione target". [stated]
+          links: |
+            L'esempio concreto (Node.js) è una scelta di questo deck, non del corso: nessuno store
+            specifica l'applicazione target di questa sessione, vedi instructional_decisions.
+            [invented framing]
+          watch_for: |
+            COPY presuppone che gli studenti sappiano già navigare il filesystem da shell (BSL-SHELL):
+            se qualcuno fatica ancora con percorsi relativi, è il momento di richiamarlo esplicitamente,
+            non di darlo per scontato. [inferred]
+          timing_min: 8
+      - id: S2-06
+        role: concept
+        goals: [GOAL_002_IMAGE_BUILD]
+        provenance: stated
+        headline: "Il docente costruisce l'immagine dal Dockerfile e la esegue per verificare che funzioni."
+        body:
+          kind: code
+          lang: shell
+          caption: "Sequenza mostrata dal docente dal vivo"
+          text: |
+            docker build -t app .
+            docker run app
+        notes:
+          talk: |
+            Introduce la demo dal vivo di sequence 15: il docente costruisce davvero un'immagine dal
+            Dockerfile della slide precedente e la esegue, commentando l'output della build e ciò che
+            succede se manca un file o un comando. `app` è un nome scelto solo per l'esempio
+            [invented framing], nessuno store ne prescrive uno specifico, come già per `web`/`nginx`
+            nella demo di sessione 1 (S1-06).
+          why_here: |
+            Corrisponde a sequence 15, dichiarata in CURRICULUM come "il docente scrive e costruisce
+            un'immagine da un Dockerfile dal vivo". [stated]
+          links: |
+            Richiama esplicitamente S2-05 (lo stesso Dockerfile, ora costruito per davvero) e S1-06
+            (stessa forma di demo dal vivo, sessione 1).
+          watch_for: |
+            Mostra almeno un errore di build realistico (es. un file mancante) e come si legge il
+            messaggio d'errore: è un'occasione a basso costo per introdurre l'idea che un errore di
+            build va letto, non temuto — utile prima del checkpoint che segue. [inferred]
+          timing_min: 6
+      - id: S2-07
+        role: problem
+        goals: [GOAL_002_IMAGE_BUILD]
+        provenance: stated
+        headline: "L'esercitazione seguente chiede di costruire un'immagine che esegua davvero l'applicazione richiesta, non solo un Dockerfile che compila."
+        body:
+          kind: list
+          ordered: false
+          justification: "Enumera cosa verrà verificato nell'esercitazione seguente: contenuto intrinsecamente enumerabile, non una procedura sequenziale."
+          items:
+            - "Build dell'immagine senza errori"
+            - "Applicazione target in esecuzione nel container"
+            - "Errore di build interpretato correttamente"
+        notes:
+          talk: |
+            Non indicare qui la soluzione a un Dockerfile che non compila: è esattamente ciò che il
+            checkpoint di sequence 16 (DR-IMAGE-BUILD) chiede di risolvere in autonomia.
+          why_here: |
+            Corrisponde a sequence 16, checkpoint su GOAL_002_IMAGE_BUILD: CURRICULUM lo annota come
+            "Checkpoint su GOAL_002". [stated]
+          links: |
+            Chiude l'arco apertosi con S2-04/S2-05/S2-06. L'esercitazione stessa (sequence 16) è già
+            schedulata come proprio item CURRICULUM: questa slide la introduce, non la sostituisce.
+            Prepara concettualmente PRQ-REGISTRY (sessione 3): l'immagine costruita qui è la stessa che
+            verrà distribuita più avanti, senza anticiparne il meccanismo.
+          watch_for: |
+            Non indicare qui la soglia di superamento del checkpoint né un esempio di Dockerfile
+            corretto — regola di controllo-accesso di questo ruolo, slide condivisa con la classe.
+            [stated, da material_authoring_rules.md]
+          timing_min: 3
+

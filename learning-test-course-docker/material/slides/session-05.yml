@@ -1,0 +1,412 @@
+deck: 1
+status: approved
+language: it
+course: "Docker: dai container ai sistemi multi-servizio (corso ITS, primo anno)"
+session: 5
+title: "Diagnosi di un malfunzionamento e progettazione di un sistema multi-servizio"
+subtitle: "Dagli strumenti di ispezione al ragionamento per ipotesi, dal container singolo alla topologia"
+
+sources:
+  curriculum: design/curriculum.json
+  design: design/knowledge_goals_graph.json
+  goals: specifications/goals.md
+  logistics: specifications/logistics.md
+  editorial_guidelines: specifications/editorial_guidelines.md
+  read_at: 2026-08-21
+
+budget:
+  session_minutes: 240   # [stated] LOGISTICS: 8 lezioni da 4 ore. CURRICULUM per la sessione 5 dichiara
+                          # usable_minutes: 210 / total_minutes: 200. Le due cifre non coincidono per
+                          # costruzione (vedi anche session-01): qui si segue LOGISTICS come richiesto
+                          # dalla spec del deck.
+  slide_budget: [12, 24]
+
+instructional_decisions:
+  - decision: "Sequence 37 (checkpoint hands-on 'Diagnosi guidata di un malfunzionamento') non riceve nessun segmento/slide in questo deck."
+    rationale: "Doppio motivo, non uno solo. Primo: è un item hands_on_practical già schedulato come proprio item in CURRICULUM, con esercizio e debrief propri — la spec del deck vieta di restage-arlo come slide. Secondo, più stringente: è il checkpoint su GOAL_008 (formulare almeno un'ipotesi plausibile e indicare come verificarla), e GOALS lo rende anche una prova d'esame obbligatoria sullo stesso scenario ('due container che non si collegano'). Qualunque slide che elenchi le cause tipiche di un mancato collegamento tra container pre-risponderebbe sia alla discussione di sequence 36 sia al checkpoint di sequence 37 su uno schermo condiviso con gli studenti — esattamente la violazione che la regola di controllo-accesso vieta. Per questo i segmenti A e B insegnano solo il metodo (quale strumento restituisce quale evidenza; evidenza → ipotesi → verifica), mai un elenco di cause plausibili."
+    confidence: stated
+    awaiting: instructional-designer
+  - decision: "Sequence 36 e sequence 40 (group_discussion) ricevono ciascuna una slide con role: problem che pone la domanda della discussione, senza risolverla."
+    rationale: "group_discussion non è hands_on_practical né project_based, quindi non rientra nel divieto di restage-are pratica già schedulata altrove — stesso ragionamento già applicato in session-01 alla demo di sequence 6. Una slide che fissa la domanda sullo schermo condiviso aiuta la discussione a partire da un punto comune, senza mostrare nessuna risposta: per sequence 36 la domanda resta aperta sul 'quali ipotesi', mai su 'quali cause' (vedi decisione precedente); per sequence 40 la domanda resta sul 'quali collegamenti servono', senza anticipare la sintassi Compose che li implementerà."
+    confidence: inferred
+    awaiting: instructional-designer
+  - decision: "Il segmento A apre con una slide role: problem (S5-01) che pone lo scenario del sistema in avaria, invece di aprire su una slide concept come fa la maggior parte dei segmenti di session-01."
+    rationale: "Qui il problema non è un framing motivazionale generico ma il compito reale di sequence 34 ('il docente ispeziona un sistema a container in avaria'): aprire sul compito prima del metodo è coerente con l'andragogia (adulti si impegnano prima su un bisogno riconosciuto) ed evita di dover giustificare, come in session-01, perché un segmento apra sulla teoria invece che sul problema. I segmenti C e D, che introducono invece un prerequisito dichiarativo/contestuale non ancora legato a un compito concreto, aprono su concept per lo stesso motivo già registrato in session-01."
+    confidence: inferred
+    awaiting: instructional-designer
+  - decision: "Nessuna slide di questa sessione elenca cause tipiche di malfunzionamento (es. rete sbagliata, container fermo, porta non in ascolto, nome non risolto)."
+    rationale: "Vedi la prima decisione: un elenco di cause tipiche pre-risponderebbe al checkpoint di sequence 37 e alla prova d'esame di troubleshooting dichiarata obbligatoria in GOALS. Le slide di questa sessione restano sul metodo (strumenti → evidenza; evidenza → ipotesi → verifica), mai sul contenuto della diagnosi stessa."
+    confidence: stated
+    awaiting: instructional-designer
+  - decision: "Il deck conta 11 slide, sotto il minimo della guideline slide_budget [12, 24]."
+    rationale: "Non è un vuoto involontario: due degli otto item della sessione (sequence 36 e 40, group_discussion) e uno (sequence 37, hands_on) spostano deliberatamente tempo e attenzione dalla slide alla discussione/pratica in aula, per una sessione che LOGISTICS non segnala come a rischio di sovraccarico di teoria. I quattro item lecture (33, 35, 38, 39) sono comunque suddivisi in più slide ciascuno (mai una sola slide per 20+ minuti di teoria), per non comprimere il carico cognitivo intrinseco su una slide sola."
+    confidence: inferred
+    awaiting: instructional-designer
+  - decision: "Cross-check dei minuti: la somma di 'minutes' dei quattro segmenti (55 + 45 + 20 + 45 = 165) più i 35 minuti di sequence 37 (esclusa da ogni segmento) fa 200, pari a total_minutes della sessione 5 in CURRICULUM."
+    rationale: "Riportato qui per il revisore, sullo stesso principio già applicato in session-01: la somma dei timing_min delle singole slide resta invece inferiore alla somma dei 'minutes' di segmento, perché parte del tempo di sequence 34 (demo dal vivo) e delle due discussioni a gruppi (sequence 36, 40) non è tempo di proiezione slide."
+    confidence: stated
+    awaiting: instructional-designer
+
+segments:
+  - covers:
+      - sequence: "33"
+        node_ref: PRQ-DIAG-TOOLS
+      - sequence: "34"
+        node_ref: PRQ-DIAG-TOOLS
+    title: "Diagnosticare un sistema a container in avaria"
+    minutes: 55
+    note: "Copre sia la lezione (sequence 33) sia la demo dal vivo (sequence 34, ispezione di un sistema in avaria con logs/inspect/network/exec); vedi instructional_decisions per l'apertura su problem e per lo scarto tra minutes e timing_min."
+    slides:
+      - id: S5-01
+        role: problem
+        goals: [GOAL_008_TROUBLESHOOTING]
+        provenance: stated
+        headline: "Un sistema a container in avaria non dice da solo dove sta il problema: serve raccogliere evidenza."
+        body:
+          kind: callout
+          text: "Due container che dovrebbero parlarsi non si parlano. Da dove si comincia?"
+        notes:
+          talk: |
+            Lo scenario concreto ("due container che non si collegano") è quello dichiarato in
+            DR-TROUBLESHOOTING [stated]; la formulazione della domanda di apertura è la mia scelta di
+            framing [invented framing]. Non risolvere nulla qui: l'obiettivo è far emergere che senza
+            uno strumento di ispezione non si sa nemmeno da dove guardare.
+          why_here: |
+            Apre il segmento sul compito reale della demo (sequence 34), coerente con l'andragogia
+            (bisogno riconosciuto prima della teoria) — vedi instructional_decisions per la scelta di
+            apertura su problem invece che su concept.
+          links: |
+            Si appoggia su PRQ-CLI-BASICS (sessione 2) e PRQ-DOCKER-NETWORK (sessione 3): il sistema
+            "in avaria" qui è lo stesso tipo di sistema a container in rete già collegato in quelle
+            sessioni, solo che ora qualcosa non funziona. Prepara direttamente la mappatura
+            strumento-evidenza della prossima slide.
+          watch_for: |
+            Non lasciare che qualcuno in aula proponga già una causa specifica: se succede, accoglila
+            come domanda aperta ("come lo verificheresti?") e rimandala alla discussione di sequence 36,
+            senza confermarla o smentirla. [inferred]
+          timing_min: 5
+      - id: S5-02
+        role: concept
+        goals: [GOAL_008_TROUBLESHOOTING]
+        provenance: stated
+        headline: "Il tipo di evidenza da raccogliere determina quale strumento usare: logs, inspect, network o exec."
+        body:
+          kind: diagram
+          caption: "Dal sintomo allo strumento giusto"
+          mermaid: |
+            flowchart TB
+              D{"Che evidenza serve?"}
+              D -->|Output del processo| L["docker logs"]
+              D -->|Configurazione del container| I["docker inspect"]
+              D -->|Topologia di rete| N["docker network"]
+              D -->|Stato interno dal vivo| E["docker exec"]
+        notes:
+          talk: |
+            La mappatura strumento-evidenza è dichiarata esplicitamente nella descrizione del nodo
+            PRQ-DIAG-TOOLS in DESIGN ("quale strumento usare per quale tipo di sintomo") [stated]. Non
+            elencare ancora sintomi o cause concrete: qui la domanda resta "che tipo di informazione ti
+            manca", non "cosa è rotto".
+          why_here: |
+            Primo passo del metodo di diagnosi richiesto da DR-TROUBLESHOOTING: prima di formulare
+            un'ipotesi (sequence 35-36) serve sapere come raccogliere evidenza. [stated]
+          links: |
+            network qui riprende un comando già visto in sessione 3 (sequence 23, creare/collegare una
+            rete Docker), usato ora in modo diagnostico invece che costruttivo; logs ed exec riprendono
+            PRQ-CLI-BASICS (sessione 2); inspect è nuovo in questa sessione.
+          watch_for: |
+            Il rischio è che gli studenti trattino i quattro strumenti come intercambiabili: sottolinea
+            che ciascuno risponde a una domanda diversa, non che uno "sia meglio" degli altri. [inferred]
+          timing_min: 10
+      - id: S5-03
+        role: concept
+        goals: [GOAL_008_TROUBLESHOOTING]
+        provenance: stated
+        headline: "Ciascuno strumento restituisce un tipo di evidenza diverso: output, configurazione, topologia di rete o stato interno."
+        body:
+          kind: list
+          ordered: false
+          justification: "Repertorio finito di quattro strumenti standard, ciascuno associato a un solo tipo di evidenza: enumerazione, non prosa."
+          items:
+            - "logs → output stampato dal processo"
+            - "inspect → configurazione e stato del container"
+            - "network → topologia della rete Docker"
+            - "exec → stato interno osservato dal vivo"
+        notes:
+          talk: |
+            Questa slide completa la mappatura precedente specificando cosa restituisce concretamente
+            ciascun comando, non solo quando usarlo. [stated, da descrizione nodo PRQ-DIAG-TOOLS]
+          why_here: |
+            Chunking deliberato: separare "quale strumento" (S5-02) da "cosa restituisce" (questa slide)
+            evita di comprimere due informazioni distinte su una sola slide. [inferred, scelta di
+            instructional design applicata senza essere registrata separatamente in instructional_decisions
+            perché è la normale applicazione del chunking già motivato lì per l'intera sessione]
+          links: |
+            "output stampato dal processo" richiama esplicitamente il modello dei processi (stdout)
+            insegnato in sessione 1 (PRQ-PROCESS-MODEL, sequence 9).
+          watch_for: |
+            "stato interno osservato dal vivo" (exec) è il più concettualmente diverso dagli altri tre
+            (che leggono evidenza già raccolta da Docker): sottolinea che exec fa succedere qualcosa nel
+            container, non solo osservare. [inferred]
+          timing_min: 8
+      - id: S5-04
+        role: concept
+        goals: [GOAL_008_TROUBLESHOOTING]
+        provenance: invented
+        headline: "Il docente applica in sequenza questi quattro strumenti a un sistema realmente in avaria."
+        body:
+          kind: code
+          lang: shell
+          caption: "Sequenza mostrata dal docente dal vivo, ordine indicativo"
+          text: |
+            docker logs <container>
+            docker inspect <container>
+            docker network inspect <rete>
+            docker exec -it <container> sh
+        notes:
+          talk: |
+            I nomi dei comandi sono standard e dichiarati in DESIGN [stated]; l'ordine e l'uso dei
+            segnaposto <container>/<rete> sono una scelta di presentazione dell'autore di questo deck,
+            non un output reale di un sistema specifico [invented framing] — coerente con l'assenza,
+            in nessuno store, di un caso concreto da riprodurre esattamente.
+          why_here: |
+            Corrisponde a sequence 34, dichiarata in CURRICULUM come dimostrazione dal vivo di
+            ispezione di "un sistema a container in avaria" con questi quattro strumenti. [stated]
+          links: |
+            Richiama la demo di docker run/ps/stop (sessione 1, sequence 6): stessa logica di "slide
+            che introduce la demo, non la sostituisce" già usata lì.
+          watch_for: |
+            Non lasciare che la demo scivoli in una spiegazione di flag e opzioni: l'obiettivo è che gli
+            studenti vedano il metodo (quale strumento, in quale ordine, per quale domanda), non che
+            memorizzino la sintassi esatta qui. [inferred, dallo stesso principio applicato in S1-06]
+          timing_min: 6
+
+  - covers:
+      - sequence: "35"
+        node_ref: PRQ-HYPOTHESIS
+      - sequence: "36"
+        node_ref: PRQ-HYPOTHESIS
+    title: "Ragionamento per ipotesi applicato alla diagnosi"
+    minutes: 45
+    note: "Copre la lezione (sequence 35) e la discussione a gruppi (sequence 36); vedi instructional_decisions sul perché nessuna slide elenca cause plausibili concrete."
+    slides:
+      - id: S5-05
+        role: concept
+        goals: [GOAL_008_TROUBLESHOOTING]
+        provenance: inferred
+        headline: "Un'ipotesi plausibile nasce dall'evidenza raccolta e si accompagna sempre a un modo per verificarla."
+        body:
+          kind: diagram
+          caption: "Dall'evidenza alla verifica"
+          mermaid: |
+            flowchart LR
+              E[Evidenza raccolta] --> I[Ipotesi plausibile]
+              I --> V[Modo per verificarla]
+        notes:
+          talk: |
+            DESIGN registra PRQ-HYPOTHESIS come [inferred]: il ragionamento per ipotesi non è un
+            comando Docker, è un metodo generale applicato qui alla diagnosi. Insisti sul fatto che
+            un'ipotesi senza un modo per verificarla non è ancora un'ipotesi utile — è solo un'idea.
+          why_here: |
+            Corrisponde a GOAL_008: formulare "almeno un'ipotesi plausibile" e "indicare come
+            verificarla" sono due parti dello stesso obiettivo dichiarato in GOALS, non due passi
+            indipendenti. [stated]
+          links: |
+            Si appoggia direttamente sui quattro strumenti della slide precedente (S5-02, S5-03):
+            l'evidenza di cui parla questa slide è quella che quegli strumenti restituiscono. Prepara
+            la discussione della prossima slide e, più avanti, il checkpoint di sequence 37 (senza
+            anticiparne il contenuto).
+          watch_for: |
+            Un errore comune è fermarsi alla prima ipotesi che viene in mente, trattandola come
+            certezza: sottolinea che "plausibile" non vuol dire "sicura", ed è per questo che serve un
+            modo per verificarla. [inferred]
+          timing_min: 8
+      - id: S5-06
+        role: problem
+        goals: [GOAL_008_TROUBLESHOOTING]
+        provenance: stated
+        headline: "La stessa evidenza può generare più ipotesi plausibili, non una sola."
+        body:
+          kind: callout
+          text: "Discussione a gruppi: quali ipotesi plausibili spiegano l'evidenza raccolta, e come si verifica ciascuna?"
+        notes:
+          talk: |
+            Non guidare verso una risposta specifica: l'obiettivo dichiarato in CURRICULUM per
+            sequence 36 è far emergere quali ipotesi plausibili si possono formulare a partire da
+            un'evidenza data, in gruppo. [stated] Se un gruppo propone una sola ipotesi, chiedi se ce
+            ne sono altre compatibili con la stessa evidenza.
+          why_here: |
+            È l'attività di elaborazione attiva subito dopo la teoria (sequence 35), sullo stesso
+            schema già visto in sessione 3 per la discussione su IP e porta (sequence 21). [stated]
+          links: |
+            Costruisce su S5-05 (metodo evidenza → ipotesi → verifica). Prepara concettualmente il
+            checkpoint di sequence 37 (diagnosi guidata) e, più avanti, la sessione 7 (scenario
+            diagnostico su un sistema multi-servizio più realistico) — senza anticiparne il contenuto.
+          watch_for: |
+            Vedi instructional_decisions: questa slide non deve mai evolvere, nella conduzione in aula,
+            in un elenco di cause tipiche proiettato sullo schermo condiviso — quell'elenco appartiene
+            al debrief del checkpoint, non a questa slide. [stated]
+          timing_min: 6
+
+  - covers:
+      - sequence: "38"
+        node_ref: PRQ-MULTI-SERVICE
+    title: "Un sistema reale è composto da più servizi"
+    minutes: 20
+    slides:
+      - id: S5-07
+        role: concept
+        goals: [EU_2, GOAL_006_COMPOSE, GOAL_007_COMPLEX_SYSTEM]
+        provenance: stated
+        headline: "Un sistema reale è quasi sempre composto da più servizi che collaborano tra loro, non da un solo programma."
+        body:
+          kind: diagram
+          caption: "Tre servizi che collaborano — SMTP: Simple Mail Transfer Protocol, protocollo per l'invio di posta elettronica"
+          mermaid: |
+            flowchart LR
+              App[Applicazione] --> DB[(Database)]
+              App --> SMTP[Servizio mock SMTP]
+        notes:
+          talk: |
+            Prima occorrenza dell'acronimo SMTP in questo documento, già espanso in caption
+            (EDITORIAL_GUIDELINES: forma estesa alla prima occorrenza) [stated]. Qui il servizio SMTP è
+            "mock", cioè finto/simulato: fa vedere l'invio di una email senza doverla davvero spedire.
+            Da qui in poi l'acronimo si può usare liberamente.
+          why_here: |
+            Introduce EU_2, enduring understanding dichiarata in GOALS. [stated] CURRICULUM annota
+            esplicitamente che questa lezione "introduce EU_2".
+          links: |
+            Si appoggia su PRQ-CONTAINER (sessione 1) e PRQ-DOCKER-NETWORK (sessione 3): ogni servizio
+            di questo disegno è, in pratica, uno o più container già collegati in rete come visto
+            allora. Prepara sequence 39-40 (progettare la topologia) e, più avanti, Docker Compose
+            (sessione 6), senza anticiparne la sintassi.
+          watch_for: |
+            Il termine "servizio" può essere confuso con "container": chiarisci che un servizio può
+            essere realizzato da uno o più container (lo si vedrà con le repliche in sessione 7), non è
+            sinonimo di container singolo. [inferred]
+          timing_min: 8
+      - id: S5-08
+        role: concept
+        goals: [EU_2, GOAL_006_COMPOSE, GOAL_007_COMPLEX_SYSTEM]
+        provenance: stated
+        headline: "Ogni servizio è realizzato da uno o più container che comunicano tra loro attraverso la rete Docker."
+        body:
+          kind: diagram
+          caption: "Due servizi collegati in rete"
+          mermaid: |
+            flowchart LR
+              S1[Servizio applicazione] -->|rete Docker| S2[Servizio database]
+        notes:
+          talk: |
+            Questa è la stessa rete Docker già vista in sessione 3 (PRQ-DOCKER-NETWORK), qui applicata
+            a due servizi invece che a due container generici: il meccanismo non cambia, cambia
+            l'inquadramento (servizio, non solo container). [stated, dalla descrizione del nodo
+            PRQ-MULTI-SERVICE]
+          why_here: |
+            Chiude l'arco aperto da S5-07 collegando il concetto di "servizio" al meccanismo di rete già
+            noto, prima di passare alla progettazione della topologia (sequence 39-40).
+          links: |
+            Richiama esplicitamente PRQ-DOCKER-NETWORK (sessione 3, sequence 22-23). Prepara la
+            progettazione della topologia (prossimo segmento) e nomina, senza spiegarlo, lo strumento
+            che comporrà questi servizi in un solo comando: Docker Compose, sessione 6.
+          watch_for: |
+            Non introdurre qui la sintassi di Compose né il termine "docker-compose.yml": resta
+            contenuto della sessione 6. [stated, da CURRICULUM]
+          timing_min: 6
+
+  - covers:
+      - sequence: "39"
+        node_ref: PRQ-TOPOLOGY
+      - sequence: "40"
+        node_ref: PRQ-TOPOLOGY
+    title: "Progettare la topologia prima di scrivere il codice"
+    minutes: 45
+    note: "Copre la lezione (sequence 39) e la discussione a gruppi (sequence 40, progettazione della topologia applicazione + database + mock SMTP)."
+    slides:
+      - id: S5-09
+        role: concept
+        goals: [GOAL_007_COMPLEX_SYSTEM]
+        provenance: inferred
+        headline: "La topologia di un sistema multi-servizio si progetta prima di scrivere qualunque file di configurazione."
+        body:
+          kind: diagram
+          caption: "Prima la topologia, poi la sintassi"
+          mermaid: |
+            flowchart LR
+              R["Requisito: Applicazione + database + mock SMTP"] --> T["Topologia: chi parla con chi"]
+              T --> C["Poi: sintassi Compose"]
+        notes:
+          talk: |
+            DESIGN registra PRQ-TOPOLOGY come [inferred]: non è un comando o una sintassi, è la
+            capacità di ragionare sui servizi necessari e sulle loro dipendenze prima ancora di aprire
+            un editor di testo.
+          why_here: |
+            CURRICULUM annota esplicitamente che sequence 40 "prepara concettualmente la topologia a
+            3+ servizi richiesta da DR-COMPLEX-SYSTEM, prima di introdurre la sintassi Compose
+            avanzata": questa slide è il ponte tra i due. [stated]
+          links: |
+            Si appoggia su S5-07/S5-08 (un sistema è composto da più servizi collegati in rete).
+            Prepara, senza descriverne il contenuto, la sintassi Compose avanzata della sessione 6
+            (sequence 45) e il laboratorio guidato della sessione 7 (DR-COMPLEX-SYSTEM).
+          watch_for: |
+            Il rischio è che qualcuno voglia già scrivere codice Compose in questa discussione: riporta
+            l'attenzione su "quali servizi e quali collegamenti", non su come si scrivono nel file.
+            [inferred]
+          timing_min: 8
+      - id: S5-10
+        role: concept
+        goals: [GOAL_007_COMPLEX_SYSTEM]
+        provenance: inferred
+        headline: "Decidere una topologia vuol dire scegliere quali servizi servono, quali si parlano e cosa è raggiungibile dall'esterno."
+        body:
+          kind: list
+          ordered: false
+          justification: "Tre decisioni distinte e intrinsecamente enumerabili che compongono una progettazione di topologia, non una sequenza di passi né prosa continua."
+          items:
+            - "Quali servizi sono necessari"
+            - "Quali servizi si parlano tra loro"
+            - "Cosa è raggiungibile dall'host o dall'esterno"
+        notes:
+          talk: |
+            Le tre decisioni riprendono, applicate alla topologia, elementi già visti separatamente:
+            "quali servizi" richiama S5-07/S5-08, "cosa è raggiungibile dall'esterno" richiama la
+            mappatura delle porte (sessione 4, PRQ-PORT-MAPPING). [inferred, collegamento fatto
+            dall'autore di questo deck, non dichiarato esplicitamente in DESIGN per questa slide]
+          why_here: |
+            Rende concreta la descrizione del nodo PRQ-TOPOLOGY ("quali servizi servono, quali
+            dipendenze e comunicazioni tra loro sono necessarie"). [stated]
+          links: |
+            Richiama PRQ-PORT-MAPPING (sessione 4) per "raggiungibile dall'esterno" e PRQ-DOCKER-NETWORK
+            (sessione 3) per "si parlano tra loro". Prepara direttamente la discussione della prossima
+            slide.
+          watch_for: |
+            "Cosa è raggiungibile dall'esterno" tende a essere la decisione più trascurata dagli
+            studenti (si concentrano su "quali servizi" e dimenticano l'esposizione verso l'host):
+            sottolineala esplicitamente. [inferred]
+          timing_min: 7
+      - id: S5-11
+        role: problem
+        goals: [GOAL_007_COMPLEX_SYSTEM]
+        provenance: stated
+        headline: "Applicazione, database e mock SMTP: la topologia richiede scelte esplicite su chi parla con chi."
+        body:
+          kind: callout
+          text: "Discussione a gruppi: progettare la topologia di applicazione + database + servizio mock SMTP, prima di scrivere il file Compose."
+        notes:
+          talk: |
+            Corrisponde esattamente a sequence 40 in CURRICULUM. [stated] Fai emergere dai gruppi le
+            tre decisioni di S5-10 applicate a questo caso specifico, senza però validare o correggere
+            una topologia come "quella giusta": l'obiettivo è l'esercizio del ragionamento, non una
+            soluzione unica da approvare qui.
+          why_here: |
+            Chiude il segmento e la sessione sull'attività dichiarata in CURRICULUM come preparazione
+            concettuale a DR-COMPLEX-SYSTEM, prima della sintassi Compose avanzata. [stated]
+          links: |
+            Costruisce su S5-07, S5-08, S5-09, S5-10. Rimando in avanti: la sintassi che tradurrà questa
+            topologia in un file eseguibile è contenuto della sessione 6 (Compose avanzato) e del
+            laboratorio guidato della sessione 7 — nominati qui solo per titolo, senza anticiparne il
+            contenuto.
+          watch_for: |
+            Alcuni gruppi proporranno già nomi di servizio o porte specifiche: è positivo, ma riportali
+            al livello di topologia (chi parla con chi) se scivolano nella sintassi Compose, che non è
+            ancora stata insegnata. [inferred]
+          timing_min: 6

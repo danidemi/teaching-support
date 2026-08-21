@@ -4,6 +4,8 @@ Status: DRAFT
 
 Priority: [High | Medium | Low]
 
+Effort: [story points, Fibonacci scale: 1, 2, 3, 5, 8, 13 — relative size, not hours]
+
 As:
 [the role of the person, e.g. an `unregistered user`]
 
@@ -27,6 +29,8 @@ ID: LOGIN-001
 Status: DRAFT
 
 Priority: High
+
+Effort: 5
 
 As:
 an `unregistered user`

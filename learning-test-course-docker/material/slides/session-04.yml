@@ -1,0 +1,302 @@
+deck: 1
+status: approved
+language: it
+course: "Docker: dai container ai sistemi multi-servizio (corso ITS, primo anno)"
+session: 4
+title: "Porte, rete tra container e persistenza dei dati"
+
+sources:
+  curriculum: design/curriculum.json
+  design: design/knowledge_goals_graph.json
+  goals: specifications/goals.md
+  logistics: specifications/logistics.md
+  read_at: 2026-08-21
+
+budget:
+  session_minutes: 210
+  slide_budget: [6, 12]   # [inferred] più basso del range generico della spec: la sessione è
+                            # dominata da hands-on e quiz (item 26-28, 30-32 in gran parte senza
+                            # slide di concetto), non da lezione frontale — vedi
+                            # instructional_decisions
+
+instructional_decisions:
+  - decision: "Item 26 (esercitazione sulla mappatura delle porte) escluso da ogni segmento."
+    rationale: "È già pianificato come proprio item hands_on in CURRICULUM; il deck presenta solo concetti, non restaging della pratica."
+    confidence: stated
+    awaiting: instructional-designer
+  - decision: "Item 27 (checkpoint DR-NETWORK) non riceve un segmento proprio, ma una singola slide di ruolo 'problem' che dichiara cosa viene verificato senza indicare la soluzione."
+    rationale: "Il checkpoint chiude l'arco didattico rete Docker (sessione 3) + mappatura porte (item 25 di questa sessione); lasciarlo del tutto fuori dal deck avrebbe reso l'arco un vicolo cieco senza chiusura visibile in aula."
+    confidence: inferred
+    awaiting: instructional-designer
+  - decision: "Item 28 (quiz di richiamo) escluso interamente dal deck."
+    rationale: "Il quiz è un tipo di materiale diverso (non slide) e la sua nota in CURRICULUM dichiara che è deliberatamente incentrato su sessioni 1-2, non sul contenuto di questa sessione."
+    confidence: stated
+    awaiting: instructional-designer
+  - decision: "Item 30 (demo del docente su volumi/bind mount) accorpato nello stesso segmento dell'item 29 (lezione), non trattato come segmento indipendente."
+    rationale: "La demo illustra dal vivo lo stesso concetto appena spiegato a lezione (meccanica di volume e bind mount), non è una pratica autonoma dello studente: è un'unica arco didattico."
+    confidence: inferred
+    awaiting: instructional-designer
+  - decision: "Item 31 (checkpoint DR-VOLUME) trattato come l'item 27: una sola slide 'problem' che dichiara cosa viene verificato, senza soluzione."
+    rationale: "Stessa logica del checkpoint di rete: chiude l'arco didattico su persistenza dati aperto da EQ_1 in sessione 1, senza restare un vicolo cieco silenzioso."
+    confidence: inferred
+    awaiting: instructional-designer
+  - decision: "Item 32 (quiz di verifica) escluso interamente dal deck."
+    rationale: "Stesso motivo dell'item 28: materiale di tipo quiz, non slide di concetto."
+    confidence: stated
+    awaiting: instructional-designer
+  - decision: "budget.session_minutes impostato a 210 (usable_minutes di CURRICULUM per questa sessione) invece delle 240 minuti/lezione dichiarate in LOGISTICS."
+    rationale: "usable_minutes è il valore già scontato per questa sessione specifica (LOGISTICS dà solo la durata lorda per lezione); usarlo dà un cross-check di budget più realistico rispetto alle 240 minuti lorde."
+    confidence: inferred
+    awaiting: instructional-designer
+
+segments:
+  - covers:
+      - sequence: "25"
+        node_ref: PRQ-PORT-MAPPING
+      - sequence: "27"
+        node_ref: DR-NETWORK
+    title: "Mappatura delle porte e chiusura dell'arco di rete"
+    minutes: 60   # 20 (item 25) + 40 (item 27); il tempo di slide (S4-00..S4-03: 20 min) copre
+                   # solo la parte di concetto — l'esercitazione (item 26, non in covers) e la
+                   # pratica del checkpoint (item 27) restano tempo non-slide, come da CURRICULUM
+    note: "L'item 26 (hands_on) non compare in covers: è pratica già pianificata, senza contenuto di concetto proprio (vedi instructional_decisions). Il tempo di questo segmento (60') somma item 25+27; solo una parte è tempo di slide, il resto è pratica guidata dal trainer."
+    slides:
+      - id: S4-00
+        role: problem
+        goals: [GOAL_004_NETWORK]
+        provenance: inferred
+        headline: "Un container in esecuzione non risponde se lo si contatta dal browser dell'host."
+        body:
+          kind: callout
+          text: "Il container è in ascolto, ma dall'host la richiesta non arriva."
+        notes:
+          talk: |
+            Il container gira dentro la rete Docker isolata già vista in sessione 3
+            [links]: da lì deriva il bisogno di oggi, non ancora la soluzione.
+          why_here: |
+            Apre l'arco con il bisogno concreto, prima della sintassi: coerente con
+            l'approccio "hands-on first" richiesto da EDITORIAL_GUIDELINES.
+          links: |
+            Nasce dall'isolamento di rete già insegnato in sessione 3 (item 22-23,
+            PRQ-DOCKER-NETWORK).
+          watch_for: |
+            Pensare che il problema sia nel container (es. crash), quando è invece un
+            confine di rete non ancora attraversato. [inferred]
+          timing_min: 3
+      - id: S4-01
+        role: concept
+        goals: [GOAL_004_NETWORK]
+        provenance: stated
+        headline: "Il flag `-p host:container` pubblica una porta del container sull'host."
+        body:
+          kind: code
+          lang: shell
+          caption: "Sintassi `-p host:container` [stated]; valori 8080/80 e immagine nginx sono un esempio [invented framing]"
+          text: |
+            docker run -d -p 8080:80 nginx
+        notes:
+          talk: |
+            Senza `-p` il container resta raggiungibile solo dentro la rete Docker isolata
+            già vista in sessione 3 [links]: `-p` è il meccanismo che attraversa quel confine
+            verso l'host. [inferred]
+          why_here: |
+            Chiarisce PRQ-PORT-MAPPING, prerequisito diretto di GOAL_004, prima
+            dell'esercitazione (item 26) e del checkpoint (item 27).
+          links: |
+            Si basa sulla rete Docker isolata insegnata in sessione 3 (item 22-23,
+            PRQ-DOCKER-NETWORK). Prepara l'esercitazione item 26 e il checkpoint item 27.
+          watch_for: |
+            Interpretare `host:container` al contrario, o pensare che la mappatura cambi
+            la porta interna su cui l'applicazione resta in ascolto nel container. [inferred]
+          timing_min: 6
+      - id: S4-02
+        role: concept
+        goals: [GOAL_004_NETWORK]
+        provenance: inferred
+        headline: "La richiesta del client raggiunge la porta host, che Docker traduce nella porta del container."
+        body:
+          kind: diagram
+          caption: "Percorso di una richiesta attraverso la mappatura delle porte"
+          mermaid: |
+            flowchart LR
+              Client -->|"8080"| Host["Host: porta 8080"]
+              Host -->|"80"| Container["Container: porta 80"]
+        notes:
+          talk: |
+            Il container non sa su quale porta host sia stato pubblicato: resta isolato
+            esattamente come già mostrato con PRQ-CONTAINER e PRQ-ISOLATION in sessione 1
+            [links]. È il daemon Docker, non un componente mostrato in figura, a fare la
+            traduzione — il meccanismo interno esatto non è nella nostra evidenza. [inferred]
+          why_here: |
+            Rende visibile la meccanica dietro il flag `-p` appena introdotto, prima di
+            passare alla verifica pratica.
+          links: |
+            Si appoggia sull'isolamento del container (sessione 1, item 5) e sulla rete
+            Docker (sessione 3, item 22-23).
+          watch_for: |
+            Credere che porta host e porta container debbano avere lo stesso numero. [inferred]
+          timing_min: 5
+      - id: S4-03
+        role: problem
+        goals: [GOAL_004_NETWORK]
+        provenance: stated
+        headline: "L'esercitazione verifica se sai collegare due container in rete e renderne uno raggiungibile dall'host."
+        body:
+          kind: callout
+          text: "Collegare due container in rete e rendere un servizio raggiungibile dall'host."
+        notes:
+          talk: |
+            Non anticipare la soluzione: il compito unisce due cose già viste separatamente
+            — la rete Docker (sessione 3) e la mappatura delle porte (questa slide, poco
+            fa) — la difficoltà tipica è capire quale delle due serve per quale metà del
+            problema.
+          why_here: |
+            È il checkpoint di DR-NETWORK/GOAL_004: chiude l'arco di rete apertosi in
+            sessione 3 e completato oggi con la mappatura delle porte.
+          links: |
+            Riunisce PRQ-DOCKER-NETWORK (sessione 3, item 22-23) e PRQ-PORT-MAPPING (item 25
+            di questa sessione); l'esercitazione guidata dell'item 26 precede questo
+            checkpoint.
+          watch_for: |
+            Confondere la raggiungibilità container-container (rete Docker) con la
+            raggiungibilità host-container (mappatura porte): sono due meccanismi diversi
+            richiesti entrambi dal compito. [inferred]
+          timing_min: 4
+
+  - covers:
+      - sequence: "29"
+        node_ref: PRQ-VOLUME-MOUNT
+      - sequence: "30"
+        node_ref: PRQ-VOLUME-MOUNT
+      - sequence: "31"
+        node_ref: DR-VOLUME
+    title: "Volumi e bind mount: persistenza dei dati"
+    minutes: 85   # 25 (item 29) + 25 (item 30) + 35 (item 31); il tempo di slide (20 min) copre
+                   # solo la parte di concetto — la demo (item 30) e la pratica del checkpoint
+                   # (item 31) restano tempo non-slide, condotto dal trainer
+    note: "Item 29 (lezione) e item 30 (demo) accorpati come unico arco (vedi instructional_decisions); item 31 chiuso da una sola slide 'problem', senza soluzione. Il tempo del segmento (85') somma item 29+30+31; solo una parte è tempo di slide."
+    slides:
+      - id: S4-03b
+        role: problem
+        goals: [GOAL_005_VOLUME]
+        provenance: inferred
+        headline: "I dati scritti da un container spariscono quando lo si ricrea."
+        body:
+          kind: callout
+          text: "Il container viene distrutto e ricreato: dov'è finito il dato scritto prima?"
+        notes:
+          talk: |
+            Questo è lo stesso confine di filesystem già aperto in sessione 1 (EQ_1,
+            item 8) [links], mai chiuso finora: oggi lo si chiude con i volumi.
+          why_here: |
+            Apre l'arco con il bisogno concreto prima della sintassi, coerente con
+            l'approccio "hands-on first" di EDITORIAL_GUIDELINES.
+          links: |
+            Riprende la separazione filesystem host/container insegnata in sessione 1
+            (item 8, PRQ-FILESYSTEM), rimasta senza soluzione fino a oggi (EQ_1).
+          watch_for: |
+            Pensare che il dato sia "nel container" e quindi inevitabilmente perso, invece
+            che recuperabile spostandolo fuori dal container stesso. [inferred]
+          timing_min: 3
+      - id: S4-04
+        role: concept
+        goals: [GOAL_005_VOLUME]
+        provenance: stated
+        headline: "Un volume è gestito da Docker; un bind mount punta a un percorso arbitrario dell'host."
+        body:
+          kind: list
+          ordered: false
+          justification: "Confronto tra due meccanismi di persistenza, intrinsecamente enumerabile e non narrativo."
+          items:
+            - "Volume: area gestita da Docker"
+            - "Bind mount: percorso arbitrario dell'host"
+        notes:
+          talk: |
+            Questa distinzione risponde infine a EQ_1, la domanda aperta in sessione 1
+            (item 8, PRQ-FILESYSTEM) su come far leggere/scrivere a un container un file
+            che sta sul computer host [links].
+          why_here: |
+            Chiarisce PRQ-VOLUME-MOUNT, prerequisito di GOAL_005, prima di mostrarne la
+            sintassi concreta.
+          links: |
+            Risponde alla domanda EQ_1 aperta in sessione 1 (item 8, separazione tra
+            filesystem host e container).
+          watch_for: |
+            Pensare che uno dei due meccanismi sia sempre "meglio" dell'altro, invece di
+            una scelta legata a dove deve vivere il dato. [inferred]
+          timing_min: 5
+      - id: S4-05
+        role: concept
+        goals: [GOAL_005_VOLUME]
+        provenance: stated
+        headline: "La sintassi `-v` collega un percorso nel container a un volume o a una cartella host."
+        body:
+          kind: code
+          lang: shell
+          caption: "Sintassi `-v nomevolume:/percorso` e bind mount su percorso host [stated]; nomi di volume, percorsi e immagine sono un esempio [invented framing]"
+          text: |
+            docker volume create dati
+            docker run -v dati:/var/lib/app/data nginx
+            docker run -v /home/utente/dati:/var/lib/app/data nginx
+        notes:
+          talk: |
+            L'unica differenza sintattica tra le ultime due righe è cosa sta a sinistra dei
+            due punti: un nome di volume o un percorso assoluto dell'host — tutto il resto
+            del comando resta identico.
+          why_here: |
+            Dà l'evidenza concreta dietro il confronto appena presentato (slide precedente).
+          links: |
+            Si basa sulla sintassi da riga di comando già usata per costruire immagini
+            (sessione 2, item 14-15).
+          watch_for: |
+            Dimenticare che un volume anonimo può essere creato implicitamente al primo
+            `docker run -v`, senza un `docker volume create` esplicito. [inferred]
+          timing_min: 6
+      - id: S4-06
+        role: concept
+        goals: [GOAL_005_VOLUME]
+        provenance: inferred
+        headline: "Volume e bind mount collegano lo stesso punto del container a due posizioni diverse sull'host."
+        body:
+          kind: diagram
+          caption: "Stesso punto di mount nel container, due destinazioni diverse sull'host"
+          mermaid: |
+            flowchart LR
+              C["Container: /var/lib/app/data"] --> V["Volume Docker: area gestita"]
+              C -.->|"bind mount"| H["Cartella host: /home/utente/dati"]
+        notes:
+          talk: |
+            Questa è la stessa distinzione che il docente mostra dal vivo nella demo
+            (item 30 di questa sessione): non la si ri-mette in scena qui, la si fissa in
+            un'immagine.
+          why_here: |
+            Fa da evidenza visiva prima del checkpoint sulla persistenza dei dati.
+          links: |
+            Illustra la demo del docente (item 30 di questa sessione).
+          watch_for: |
+            Credere che il volume "viva dentro" il container, invece che in un'area gestita
+            da Docker esterna al filesystem del container. [inferred]
+          timing_min: 5
+      - id: S4-07
+        role: problem
+        goals: [GOAL_005_VOLUME]
+        provenance: stated
+        headline: "L'esercitazione verifica se i dati di un container sopravvivono al suo riavvio."
+        body:
+          kind: callout
+          text: "Rendere persistenti i dati di un container attraverso un volume."
+        notes:
+          talk: |
+            Non anticipare la procedura: il compito richiede di scegliere il meccanismo
+            giusto tra quelli appena visti e dimostrare che il dato resta dopo un riavvio.
+          why_here: |
+            È il checkpoint di DR-VOLUME/GOAL_005: chiude la domanda EQ_1 aperta in
+            sessione 1 e la meccanica vista in questa sessione.
+          links: |
+            Chiude la domanda EQ_1 (sessione 1, item 8). Volumi e mappatura delle porte di
+            questa sessione torneranno nella sintassi di Docker Compose (sessione 6), senza
+            bisogno di essere ri-spiegati da capo.
+          watch_for: |
+            Risolvere con un bind mount quando un volume nominato è la scelta più diretta,
+            o viceversa — chiarire che entrambi contano se il dato persiste al riavvio. [inferred]
+          timing_min: 4

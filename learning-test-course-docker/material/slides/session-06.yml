@@ -1,0 +1,504 @@
+deck: 1
+status: approved
+language: it
+course: "Docker: dai container ai sistemi multi-servizio (corso ITS, primo anno)"
+session: 6
+title: "Comporre ed eseguire un sistema multi-servizio con Docker Compose"
+subtitle: "Da due servizi a topologie complesse" # [invented framing] titolo di sintesi, non citazione letterale di uno store
+
+sources:
+  curriculum: design/curriculum.json
+  design: design/knowledge_goals_graph.json
+  goals: specifications/goals.md
+  logistics: specifications/logistics.md
+  read_at: 2026-08-21
+
+budget:
+  session_minutes: 240   # LOGISTICS: 8 lezioni da 4 ore ciascuna [stated]. CURRICULUM riporta usable_minutes 210/total_minutes 200 per la sessione 6: vedi instructional_decisions.
+  slide_budget: [12, 24]
+
+instructional_decisions:
+  - decision: >
+      L'item di sequence "43" (hands_on, checkpoint su GOAL_006_COMPOSE, "Comporre ed eseguire
+      un sistema applicazione + database con un solo comando") non ha un proprio segmento in
+      questo deck.
+    rationale: >
+      Per `deck_model_spec.md`, "il deck presenta solo concetti": l'esercizio pratico e il suo
+      debrief sono già pianificati come item CURRICULUM a sé (sequence 43), non
+      da restare in slide. I concetti che l'esercizio richiede sono già coperti dal Segmento A
+      (sequence 41-42).
+    confidence: stated
+    awaiting: instructional-designer
+  - decision: >
+      Gli item di sequence "44" (quiz di richiamo, senza node_ref) e "47" (quiz di verifica,
+      senza node_ref) ricevono ciascuno un segmento di una sola slide `recap`, che nomina cosa
+      viene ripreso senza mai indicare una risposta corretta o una soglia di superamento.
+    rationale: >
+      Un quiz condiviso in aula (trainer e studenti vedono lo stesso schermo) non può esporre
+      risposte o soglie — vedi la regola di controllo-accesso di questo agente. Una slide di
+      solo annuncio ("ora ricolleghiamo rete e volumi al contesto Compose") non viola questa
+      regola e aiuta a inquadrare il quiz senza restarne il contenuto.
+    confidence: inferred
+    awaiting: instructional-designer
+  - decision: >
+      `budget.session_minutes` usa il valore LOGISTICS (240, da "8 lezioni da 4 ore ciascuna"),
+      non `usable_minutes` (210) o `total_minutes` (200) riportati per la sessione 6 in
+      CURRICULUM. La differenza (30-40 minuti) non è un difetto di questo file: è la differenza
+      già esistente tra il monte-ore lezione e il tempo effettivamente allocato agli item di quella
+      sessione.
+    confidence: stated
+    awaiting: instructional-designer
+  - decision: >
+      Il margine di approfondimento opzionale per gli studenti con background informatico più
+      solido (LOGISTICS, "Livelli misti nella classe", già `awaiting: instructional-designer` in
+      quello store) non è modellato come slide aggiuntive in questo deck, ma come spunti nel
+      campo `notes.talk` che il docente può scegliere di sviluppare o saltare a voce.
+    rationale: >
+      Nessuna slide di questo deck deve dipendere da un percorso a doppia velocità non ancora
+      deciso da un responsabile di fase 3; il campo `talk` resta la sede più sicura per un
+      contenuto opzionale non stabilizzato.
+    confidence: inferred
+    awaiting: instructional-designer
+  - decision: >
+      Gli artefatti `docker-compose.yml` mostrati (nomi di servizio "applicazione", "database",
+      "mock-smtp"; immagini come "postgres:16" o "mailhog/mailhog") sono esempi strutturali
+      inventati per illustrare la sintassi: nessuno store fissa un'applicazione, un'immagine o
+      una versione concreta per questo corso. Sono marcati `provenance: invented` e
+      `[invented framing]` inline.
+    confidence: invented
+    awaiting: instructional-designer
+  - decision: >
+      Le sezioni 7 e 8 di `slide_design_rules.md` (ruoli `lab-brief`/`debrief`/`apply` e cohort
+      "Teams, 4 persone, remoto") non sono state applicate: `deck_model_spec.md` elenca solo i
+      ruoli `vocab`, `problem`, `concept`, `menu`, `homework`, `recap`, e LOGISTICS descrive
+      questa cohort come 15 studenti in presenza, non da remoto. Il principio di igiene visiva di
+      §8 (pochi elementi, niente decorazioni) resta applicato; il framing "remoto" no.
+    confidence: stated
+    awaiting: instructional-designer
+
+segments:
+  - covers:
+      - sequence: "41"
+        node_ref: PRQ-COMPOSE-SHALLOW
+      - sequence: "42"
+        node_ref: PRQ-COMPOSE-SHALLOW
+    title: "Sintassi di base di Docker Compose per due servizi"
+    minutes: 55
+    note: >
+      55 minuti copre lezione (25, sequence 41) + demo dal vivo del docente (30, sequence 42).
+      La demo non è restage in slide: il docente scrive e avvia il file `docker-compose.yml` dal
+      vivo sul terminale. I `timing_min` delle slide sotto coprono solo la parte a lezione.
+    slides:
+      - id: S6-01
+        role: problem
+        goals: [GOAL_006_COMPOSE]
+        provenance: stated
+        headline: "Avviare applicazione e database a mano richiede più comandi coordinati manualmente."
+        body:
+          kind: list
+          ordered: true
+          justification: "Procedura sequenziale oggi manuale: ogni passo dipende dal precedente."
+          items:
+            - "docker run del database"
+            - "creare la rete Docker"
+            - "collegare il database alla rete"
+            - "docker run dell'applicazione sulla stessa rete"
+        notes:
+          talk: |
+            Questi passi (rete, avvio, collegamento) sono gli stessi che gli studenti hanno già
+            fatto a mano nella sessione 3 (creazione di una rete Docker e collegamento di due
+            container per nome). Oggi introduciamo uno strumento che li descrive in un solo posto
+            invece di eseguirli uno a uno. [inferred: collegamento didattico tra le due sessioni]
+          why_here: >
+            Apre il segmento con il problema, non con la sintassi (andragogia: un adulto
+            si impegna prima su un bisogno riconosciuto). Il bisogno è già stato vissuto in prima
+            persona nella sessione 3.
+          links: |
+            Costruisce su: rete Docker e risoluzione dei nomi tra container (sessione 3, item 22-23).
+            Anticipa: la sintassi che risolve questo problema, nella prossima slide.
+          watch_for: >
+            Alcuni studenti penseranno che Compose sia "un altro comando Docker" invece di uno
+            strumento che descrive più comandi insieme: va chiarita la differenza a voce.
+            [inferred]
+          timing_min: 4
+
+      - id: S6-02
+        role: vocab
+        goals: [GOAL_006_COMPOSE]
+        provenance: stated
+        headline: "Docker Compose descrive un sistema con un piccolo vocabolario di parole chiave."
+        body:
+          kind: list
+          ordered: false
+          justification: "Vocabolario enumerabile della sintassi Compose, non una procedura."
+          items:
+            - "services: l'elenco dei servizi"
+            - "build / image: come costruirlo"
+            - "ports: mappatura delle porte"
+            - "volumes: persistenza dei dati"
+            - "depends_on: ordine di avvio"
+        notes:
+          talk: |
+            "ports" e "volumes" non sono concetti nuovi: sono la stessa mappatura delle porte
+            (sessione 4, item 25-26) e lo stesso meccanismo di volumi/bind mount (sessione 4, item
+            29-30), scritti dentro il file invece che come opzione da riga di comando. [inferred:
+            collegamento esplicito tra sintassi CLI e sintassi Compose]
+          why_here: >
+            Introduce il vocabolario prima dell'artefatto completo, per non sovraccaricare la
+            slide successiva con termini mai visti insieme al file intero (carico cognitivo).
+          links: |
+            Costruisce su: mappatura delle porte (sessione 4, item 25) e volumi/bind mount
+            (sessione 4, item 29). Non ancora coperto qui: "depends_on" tra 3+ servizi, che tornerà
+            nel Segmento B di questa stessa sessione.
+          watch_for: >
+            "depends_on" viene spesso letto come garanzia che il servizio dipendente sia "pronto",
+            mentre garantisce solo l'ordine di avvio del processo, non la sua disponibilità
+            effettiva: va segnalato subito per evitare un equivoco che si porterebbero al progetto
+            finale. [inferred] [risk: equivoco che si propaga fino al progetto finale se non
+            corretto qui]
+          timing_min: 5
+
+      - id: S6-03
+        role: concept
+        goals: [GOAL_006_COMPOSE]
+        provenance: invented
+        headline: "Un unico file docker-compose.yml descrive applicazione e database insieme."
+        body:
+          kind: code
+          lang: yaml
+          caption: "Esempio strutturale a due servizi" # [invented framing] nomi di servizio e immagine inventati per illustrazione
+          text: |
+            services:
+              applicazione:
+                build: ./applicazione
+                ports:
+                  - "8080:8080"
+                depends_on:
+                  - database
+              database:
+                image: postgres:16
+                volumes:
+                  - dati-db:/var/lib/postgresql/data
+
+            volumes:
+              dati-db:
+        notes:
+          talk: |
+            "YAML" (Yet Another Markup Language, si può tradurre come: ancora un altro linguaggio
+            di markup) è la stessa sintassi già incontrata nel corso per altri file di
+            configurazione: indentazione con spazi, mai tabulazioni. [inferred] Nessuno store
+            fissa un'applicazione o un'immagine concreta per questo corso: "applicazione",
+            "database" e "postgres:16" sono nomi di esempio. [invented framing]
+          why_here: >
+            Prima immagine concreta e completa del file, dopo aver visto il problema e il
+            vocabolario separatamente: qui i pezzi si compongono.
+          links: |
+            Costruisce su: sintassi Dockerfile (sessione 2, item 14) per l'analogia di formato
+            testuale leggibile; volumi (sessione 4, item 29-31).
+          watch_for: >
+            L'indentazione sbagliata è l'errore più comune alla prima scrittura di un file
+            Compose: va mostrato a voce cosa succede quando un servizio finisce fuori posto.
+            [inferred]
+          timing_min: 6
+
+      - id: S6-04
+        role: concept
+        goals: [GOAL_006_COMPOSE]
+        provenance: stated
+        headline: "docker compose up avvia l'intero sistema descritto nel file con un solo comando."
+        body:
+          kind: code
+          lang: bash
+          caption: "Avvio e arresto del sistema"
+          text: |
+            docker compose up -d
+            docker compose down
+        notes:
+          talk: |
+            "-d" (già visto per altri comandi Docker nel ciclo di vita del container, sessione 2)
+            avvia in background. "down" non solo ferma: rimuove anche la rete che Compose ha
+            creato automaticamente per collegare i servizi. [inferred: comportamento standard di
+            Docker Compose, non riportato testualmente in alcuno store]
+          why_here: >
+            Chiude il segmento con il comando che risolve il problema di apertura (S6-01): da
+            più comandi manuali coordinati a un solo comando.
+          links: |
+            Costruisce su: `docker stop`/ciclo di vita del container (sessione 2, item 10-12).
+            Prepara: l'esercitazione pratica della sequence 43, dove gli studenti eseguiranno
+            questo comando sul proprio sistema.
+          watch_for: >
+            Alcuni studenti si aspettano che "docker compose down" cancelli anche i dati nel
+            volume: non è così di default, e la differenza va verificata dal vivo, non solo
+            affermata. [inferred]
+          timing_min: 4
+
+      - id: S6-05
+        role: concept
+        goals: [GOAL_006_COMPOSE]
+        provenance: stated
+        headline: "Compose collega i servizi sulla stessa rete e riusa il volume già visto separatamente."
+        body:
+          kind: diagram
+          caption: "Cosa crea Compose dietro le quinte per due servizi"
+          mermaid: |
+            flowchart LR
+              A[applicazione] -- rete creata da compose --> D[(database)]
+              D --- V[(volume dati-db)]
+        notes:
+          talk: |
+            Questa rete e questo volume non sono un meccanismo nuovo: sono la stessa rete Docker
+            isolata con risoluzione dei nomi (sessione 3) e lo stesso volume nominato (sessione 4)
+            che gli studenti hanno già creato a mano; qui Compose li crea e li collega da solo a
+            partire dal file.
+          why_here: >
+            Rende esplicito, con un diagramma, cosa il comando della slide precedente fa
+            realmente dietro le quinte — evidenza visiva del "solo comando" invece di un'altra
+            affermazione a parole.
+          links: |
+            Costruisce su: rete Docker (sessione 3, item 22-23), volumi (sessione 4, item 29-31).
+            Anticipa: l'esercitazione della sequence 43, che chiede di verificare questo stesso
+            collegamento sul proprio sistema.
+          watch_for: >
+            Il nome del servizio ("database") è anche il nome con cui l'altro servizio lo
+            raggiunge in rete: chi non ha fissato bene la risoluzione dei nomi in sessione 3 farà
+            fatica qui, va richiamato esplicitamente. [inferred]
+          timing_min: 5
+
+  - covers:
+      - sequence: "44"
+    title: "Richiamo: rete e volumi dentro Compose"
+    minutes: 20
+    note: >
+      Le duration_minutes (20) sono il tempo del quiz stesso, non tempo di slide: una sola slide
+      di annuncio precede la somministrazione del quiz, che non è restato qui (vedi la regola di
+      controllo-accesso di questo agente).
+    slides:
+      - id: S6-06
+        role: recap
+        goals: [GOAL_004_NETWORK, GOAL_005_VOLUME, GOAL_006_COMPOSE]
+        provenance: stated
+        headline: "Rete e volumi già visti tornano ora dentro la sintassi Compose appena introdotta."
+        body:
+          kind: callout
+          text: "Rete tra container e volumi: stesso concetto, nuovo contesto."
+        notes:
+          talk: |
+            Il quiz che segue non introduce contenuto nuovo: chiede di ricollegare rete Docker
+            (sessione 3) e volumi (sessione 4) al file Compose appena visto, per fissarli in
+            memoria a lungo termine prima di passare a topologie più complesse.
+          why_here: >
+            CURRICULUM (item 44) descrive questo quiz come deliberatamente non sui contenuti
+            appena completati, ma come un ponte tra sessioni precedenti e il nuovo contesto
+            Compose: la slide segnala solo questo ponte, senza contenuto valutativo.
+          links: |
+            Costruisce su: rete Docker (sessione 3), volumi (sessione 4), sintassi Compose di base
+            (questa sessione, Segmento A).
+          watch_for: >
+            Alcuni studenti tratteranno questo quiz di richiamo come una verifica sui contenuti
+            appena finiti (Compose) invece che su rete e volumi delle sessioni precedenti, e si
+            bloccheranno aspettandosi domande sulla sintassi appena vista: va chiarito a voce
+            prima di iniziare. [inferred]
+          timing_min: 2
+
+  - covers:
+      - sequence: "45"
+        node_ref: PRQ-COMPOSE-DEEP
+      - sequence: "46"
+        node_ref: PRQ-COMPOSE-DEEP
+    title: "Sintassi Compose avanzata per topologie a 3 o più servizi"
+    minutes: 55
+    note: >
+      55 minuti copre lezione (25, sequence 45) + demo dal vivo del docente (30, sequence 46).
+      Come nel Segmento A, la demo non è restage in slide.
+    slides:
+      - id: S6-07
+        role: problem
+        goals: [GOAL_007_COMPLEX_SYSTEM]
+        provenance: stated
+        headline: "La topologia applicazione + database + mock SMTP progettata in aula va ora scritta in un file Compose."
+        body:
+          kind: none
+        notes:
+          talk: |
+            "SMTP" (Simple Mail Transfer Protocol, si può tradurre come: protocollo di
+            trasferimento della posta) è il servizio che questa topologia usa come esempio di
+            terzo servizio: un "mock" (finto, usato per test) che intercetta le email senza
+            spedirle davvero. [inferred: glossa generale, non riportata testualmente in alcuno
+            store] La topologia stessa è già stata progettata a gruppi nella sessione precedente,
+            non da rispiegare qui.
+          why_here: >
+            Apre il segmento richiamando un lavoro già fatto dagli studenti (discussione a gruppi,
+            sessione 5, item 40), non un problema nuovo: il problema di oggi è solo "come lo
+            traduco in sintassi Compose".
+          links: |
+            Costruisce su: perché un sistema reale ha più servizi collaboranti (sessione 5, item
+            38); progettazione della topologia a gruppi (sessione 5, item 40). Non rispiega quella
+            discussione, la nomina.
+          watch_for: >
+            Alcuni gruppi avranno progettato topologie diverse tra loro in sessione 5: la slide
+            usa lo schema app+database+mock SMTP solo come riferimento comune, non come unica
+            topologia valida. [inferred]
+          timing_min: 3
+
+      - id: S6-08
+        role: concept
+        goals: [GOAL_007_COMPLEX_SYSTEM]
+        provenance: stated
+        headline: "Una topologia a 3 servizi aggiunge collegamenti da progettare, non solo righe da scrivere."
+        body:
+          kind: diagram
+          caption: "Topologia di riferimento: applicazione, database, mock SMTP"
+          mermaid: |
+            flowchart LR
+              A[applicazione] -- rete compose --> D[(database)]
+              A -- rete compose --> M[mock-smtp]
+        notes:
+          talk: |
+            Rispetto al diagramma a due servizi del Segmento A, qui l'applicazione ha due
+            collegamenti da mantenere invece di uno: è questo, più che la lunghezza del file, il
+            salto di complessità da gestire.
+          why_here: >
+            Rende visiva la differenza tra pass 1 (due servizi, Segmento A) e pass 2 (tre o più
+            servizi): il nodo DESIGN descrive esplicitamente questo salto come "spirale di
+            approfondimento" sulla stessa sintassi di base.
+          links: |
+            Costruisce su: la topologia app+database del Segmento A di questa sessione; la
+            progettazione della topologia a gruppi (sessione 5, item 39-40).
+          watch_for: >
+            Il database e il mock SMTP non comunicano tra loro in questo schema: alcuni studenti
+            aggiungeranno un collegamento non necessario per abitudine a "collegare tutto a tutto".
+            [inferred]
+          timing_min: 5
+
+      - id: S6-09
+        role: concept
+        goals: [GOAL_007_COMPLEX_SYSTEM]
+        provenance: invented
+        headline: "Il file Compose per 3 servizi estende lo stesso schema visto per due, con più depends_on."
+        body:
+          kind: code
+          lang: yaml
+          caption: "Esempio strutturale a tre servizi" # [invented framing] nomi di servizio e immagine inventati per illustrazione
+          text: |
+            services:
+              applicazione:
+                build: ./applicazione
+                depends_on:
+                  - database
+                  - mock-smtp
+              database:
+                image: postgres:16
+                volumes:
+                  - dati-db:/var/lib/postgresql/data
+              mock-smtp:
+                image: mailhog/mailhog
+
+            volumes:
+              dati-db:
+        notes:
+          talk: |
+            Confrontare riga per riga con il file a due servizi (S6-03, Segmento A): la struttura
+            di ogni servizio non cambia, cambia solo quanti "depends_on" e servizi ci sono.
+            "mailhog/mailhog" è un esempio di immagine mock SMTP di uso comune, non un vincolo di
+            questo corso. [invented framing]
+          why_here: >
+            Mostra concretamente cosa significa "estendere" la sintassi di base (nodo
+            PRQ-COMPOSE-DEEP: "riprende la sintassi pass 1 aggiungendo la complessità di
+            topologia").
+          links: |
+            Costruisce su: il file a due servizi (questa sessione, Segmento A, S6-03).
+          watch_for: >
+            Con più servizi cresce la tentazione di copiare-incollare senza capire ogni blocco:
+            va incoraggiato un confronto esplicito con il file a due servizi appena richiamato.
+            [inferred]
+          timing_min: 6
+
+      - id: S6-10
+        role: concept
+        goals: [GOAL_007_COMPLEX_SYSTEM]
+        provenance: inferred
+        headline: "Passare da 2 a 3+ servizi cambia il progetto prima ancora della sintassi."
+        body:
+          kind: list
+          ordered: false
+          justification: "Elenco enumerabile delle differenze rispetto al pass 1, non una procedura narrativa."
+          items:
+            - "più servizi da nominare e collegare"
+            - "topologia da progettare prima di scrivere"
+            - "più dipendenze di avvio da dichiarare"
+        notes:
+          talk: |
+            Questo elenco riprende, in forma di lista, la stessa idea già discussa a gruppi in
+            sessione 5 (item 39): progettare la topologia prima del codice, qui applicata
+            direttamente al file Compose appena scritto.
+          why_here: >
+            Chiude il segmento nominando esplicitamente cosa distingue pass 2 da pass 1, invece di
+            lasciarlo implicito nel solo confronto tra i due file YAML.
+          links: |
+            Costruisce su: progettazione della topologia (sessione 5, item 39-40). Anticipa,
+            solo per nome: l'esecuzione di più repliche di un servizio (sessione 7) e il progetto
+            finale di gruppo (sessione 7-8), senza spiegarne il contenuto qui.
+          watch_for: >
+            "Più dipendenze di avvio" non significa "più garanzie di disponibilità": lo stesso
+            equivoco già segnalato su depends_on (S6-02) vale ancora di più con 3+ servizi.
+            [inferred] [risk: stesso equivoco di S6-02, qui più grave per il numero di servizi]
+          timing_min: 4
+
+      - id: S6-11
+        role: concept
+        goals: [GOAL_007_COMPLEX_SYSTEM]
+        provenance: stated
+        headline: "Anche a 3 o più servizi, il sistema si avvia sempre con lo stesso comando singolo."
+        body:
+          kind: callout
+          text: "docker compose up -d avvia applicazione, database e mock-smtp insieme."
+        notes:
+          talk: |
+            Il comando non cambia rispetto al Segmento A: cambia solo cosa il file descrive. È
+            questa invarianza del comando, a fronte di una topologia più ricca, il punto da far
+            passare come acquisizione duratura di questo segmento (EU_2: un sistema reale è
+            composto da più servizi che collaborano).
+          why_here: >
+            Chiude il segmento tornando al comando unico introdotto in S6-04, per mostrare che la
+            complessità aggiunta sta nel file, non nel modo di eseguirlo.
+          links: |
+            Costruisce su: `docker compose up` (questa sessione, Segmento A, S6-04). Anticipa,
+            solo per nome: il laboratorio guidato con più repliche (sessione 7) e il progetto
+            finale di gruppo (sessione 7-8, DR-COMPLEX-SYSTEM), senza spiegarne il contenuto qui.
+          watch_for: >
+            Alcuni studenti collegheranno "più servizi" a "più comandi necessari": va ribadito a
+            voce che non è così, prima di passare al quiz di verifica. [inferred]
+          timing_min: 3
+
+  - covers:
+      - sequence: "47"
+    title: "Verifica: da Compose base a topologie complesse"
+    minutes: 20
+    note: >
+      Le duration_minutes (20) sono il tempo del quiz stesso, non tempo di slide: una sola slide
+      di annuncio precede la somministrazione del quiz.
+    slides:
+      - id: S6-12
+        role: recap
+        goals: [GOAL_006_COMPOSE, GOAL_007_COMPLEX_SYSTEM]
+        provenance: stated
+        headline: "Il quiz di oggi ricopre tutta la sintassi Compose vista, dal file a due servizi a quello a tre o più."
+        body:
+          kind: callout
+          text: "Dalla sintassi di base alle topologie complesse: cosa hai capito, cosa resta da fissare."
+        notes:
+          talk: |
+            CURRICULUM (item 47) elenca esplicitamente cosa copre questo quiz: sintassi di base
+            (PRQ-COMPOSE-SHALLOW), il checkpoint pratico appena svolto (DR-COMPOSE) e la sintassi
+            avanzata (PRQ-COMPOSE-DEEP). La slide nomina l'ambito, non le domande.
+          why_here: >
+            Chiude la sessione con una verifica trasversale a tutto ciò che è stato insegnato
+            oggi, prima di passare, in sessione 7, alle repliche e all'avvio del progetto finale.
+          links: |
+            Ricopre: Segmento A e Segmento B di questa sessione. Anticipa, solo per nome: repliche
+            di un servizio e avvio del progetto finale (sessione 7), senza spiegarne il contenuto.
+          watch_for: >
+            Alcuni studenti penseranno che il file a 3+ servizi richieda un comando diverso da
+            quello a 2 servizi (stesso equivoco già segnalato in S6-11): il quiz può far emergere
+            proprio questo, non solo errori di sintassi. [inferred]
+          timing_min: 2

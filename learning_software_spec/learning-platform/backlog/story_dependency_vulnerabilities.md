@@ -1,8 +1,11 @@
 ID: DEPS-001
 
-Status: DRAFT
+Status: READY
 
 Priority: Low
+
+Effort: 3 (added during grooming, 2026-08-21: mostly running `npm audit fix` and verifying
+tests, with unknown but bounded risk if `--force` is needed)
 
 As:
 a `maintainer` of learning-platform
@@ -27,3 +30,6 @@ Notes:
 * carried over from `past_sprints/sprint_26_08_20/review.md`, which flagged this as a
   "backlog candidate" but did not create a story for it — added during grooming (2026-08-20)
   so it isn't silently dropped between sprints
+* moved to READY during grooming (2026-08-21): clear DoD, no dependencies, no open
+  questions — meets DoR on its own merits. Not selected for the current sprint (see
+  `active_sprint/sprint.md`), kept small and independent for a future sprint slot

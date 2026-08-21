@@ -4,6 +4,10 @@ Status: DRAFT
 
 Priority: Low
 
+Effort: 8 (added during grooming, 2026-08-21: password hashing, confirmation-email
+delivery, and validation are all new — highest-effort auth story; also still has open
+questions blocking DoR)
+
 As:
 a `unregistered user`
 
