@@ -12,8 +12,14 @@ import type { NewQuiz, Quiz, QuizFileUpdate, QuizRepository } from '../db/quizze
 
 // Covers QUIZ-DASHBOARD-001's DoD (active_sprint/story_quiz_dashboard.md):
 // list, delete, and replace-file, all scoped to a course the caller's
-// tenant actually owns. No create route exists here — QTI-22-IMPORT owns
-// that; this suite seeds quizzes directly through the repository fake.
+// tenant actually owns. Also covers QTI-22-IMPORT's DoD
+// (active_sprint/story_upload_qti_22_quiz.md): POST validates the file as
+// QTI 2.2 before creating a row, rejecting an invalid one with
+// line/element-level errors and not creating anything.
+
+const VALID_QTI_ITEM = `<assessmentItem xmlns="http://www.imsglobal.org/xsd/imsqti_v2p2" identifier="q1" title="Sample question">
+  <itemBody><p>What is 2 + 2?</p></itemBody>
+</assessmentItem>`
 
 function createFakeQuizRepository(): QuizRepository & { rows: (Quiz & { courseId: string })[] } {
   const rows: (Quiz & { courseId: string })[] = []
@@ -109,6 +115,84 @@ describe('GET /api/courses/:courseId/quizzes (QUIZ-DASHBOARD-001)', () => {
 
     expect(response.status).toBe(200)
     expect(response.body).toEqual([])
+  })
+})
+
+describe('POST /api/courses/:courseId/quizzes (QTI-22-IMPORT)', () => {
+  it('returns 401 when not signed in', async () => {
+    const { app } = createTestApp()
+    const response = await request(app).post('/api/courses/some-id/quizzes').attach('file', Buffer.from(VALID_QTI_ITEM), 'quiz.xml')
+    expect(response.status).toBe(401)
+  })
+
+  it('returns 404 for a course belonging to a different tenant', async () => {
+    const { app, users } = createTestApp()
+    const agentA = await signInAgent(users, app, 'trainer-a@example.com')
+    const courseId = await createCourse(agentA)
+    const agentB = await signInAgent(users, app, 'trainer-b@example.com')
+
+    const response = await agentB.post(`/api/courses/${courseId}/quizzes`).attach('file', Buffer.from(VALID_QTI_ITEM), 'quiz.xml')
+
+    expect(response.status).toBe(404)
+  })
+
+  it('returns 400 when no file is attached', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const courseId = await createCourse(agent)
+
+    const response = await agent.post(`/api/courses/${courseId}/quizzes`)
+
+    expect(response.status).toBe(400)
+    expect(response.body).toEqual({ error: 'missing_file' })
+  })
+
+  it('creates a quiz from a valid QTI 2.2 file, using its declared title', async () => {
+    // given: a signed-in trainer with a course
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const courseId = await createCourse(agent)
+
+    // when: uploading a well-formed QTI 2.2 item
+    const response = await agent.post(`/api/courses/${courseId}/quizzes`).attach('file', Buffer.from(VALID_QTI_ITEM), 'question1.xml')
+
+    // then: it is created, titled from the file's own "title" attribute
+    expect(response.status).toBe(201)
+    expect(response.body.title).toBe('Sample question')
+    expect(response.body.status).toBe('uploaded')
+    const listResponse = await agent.get(`/api/courses/${courseId}/quizzes`)
+    expect(listResponse.body).toHaveLength(1)
+  })
+
+  it('rejects an invalid QTI file with line/element-level errors, creating nothing', async () => {
+    // given: a file missing the required "identifier" attribute
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const courseId = await createCourse(agent)
+    const invalid = '<assessmentItem xmlns="http://www.imsglobal.org/xsd/imsqti_v2p2" title="No id"><itemBody/></assessmentItem>'
+
+    // when: uploading it
+    const response = await agent.post(`/api/courses/${courseId}/quizzes`).attach('file', Buffer.from(invalid), 'bad.xml')
+
+    // then: it is rejected with structured errors, and no quiz was created
+    expect(response.status).toBe(400)
+    expect(response.body.error).toBe('invalid_format')
+    expect(response.body.errors.length).toBeGreaterThan(0)
+    expect(response.body.errors[0]).toHaveProperty('line')
+    expect(response.body.errors[0]).toHaveProperty('message')
+    const listResponse = await agent.get(`/api/courses/${courseId}/quizzes`)
+    expect(listResponse.body).toEqual([])
+  })
+
+  it('rejects malformed (non-well-formed) XML the same way', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const courseId = await createCourse(agent)
+
+    const response = await agent.post(`/api/courses/${courseId}/quizzes`).attach('file', Buffer.from('<not><valid<xml'), 'broken.xml')
+
+    expect(response.status).toBe(400)
+    expect(response.body.error).toBe('invalid_format')
   })
 })
 

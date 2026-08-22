@@ -22,7 +22,8 @@
     "express-session": "^1.19.0",
     "multer": "^2.2.0",
     "nodemailer": "^9.0.5",
-    "pg": "^8.23.0"
+    "pg": "^8.23.0",
+    "sax": "^1.6.1"
   },
   "devDependencies": {
     "@types/connect-pg-simple": "^7.0.3",
@@ -32,6 +33,7 @@
     "@types/node": "^20.14.15",
     "@types/nodemailer": "^8.0.1",
     "@types/pg": "^8.23.1",
+    "@types/sax": "^1.2.7",
     "@types/supertest": "^6.0.2",
     "drizzle-kit": "^0.31.10",
     "supertest": "^7.0.0",

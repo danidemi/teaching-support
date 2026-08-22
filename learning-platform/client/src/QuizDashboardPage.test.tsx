@@ -25,6 +25,8 @@ function stubFetch(handlers: {
   deleteStatus?: number
   replaceStatus?: number
   replaceBody?: unknown
+  uploadStatus?: number
+  uploadBody?: unknown
 }) {
   vi.stubGlobal(
     'fetch',
@@ -46,9 +48,21 @@ function stubFetch(handlers: {
           json: () => Promise.resolve(handlers.replaceBody ?? {}),
         })
       }
+      if (init?.method === 'POST') {
+        return Promise.resolve({
+          status: handlers.uploadStatus ?? 201,
+          json: () => Promise.resolve(handlers.uploadBody ?? { id: 'new', title: 'New quiz', status: 'uploaded' }),
+        })
+      }
       return Promise.resolve({ status: 404, json: () => Promise.resolve({}) })
     }),
   )
+}
+
+function chooseFile(testId: string, name = 'quiz.xml') {
+  const input = screen.getByTestId(testId) as HTMLInputElement
+  const file = new File(['<xml/>'], name, { type: 'text/xml' })
+  fireEvent.change(input, { target: { files: [file] } })
 }
 
 describe('QuizDashboardPage (QUIZ-DASHBOARD-001)', () => {
@@ -106,5 +120,44 @@ describe('QuizDashboardPage (QUIZ-DASHBOARD-001)', () => {
     fireEvent.click(screen.getByRole('button', { name: /delete/i }))
 
     await waitFor(() => expect(screen.getByText(/could not delete/i)).toBeInTheDocument())
+  })
+
+  it('uploads a quiz and refreshes the list on success (QTI-22-IMPORT)', async () => {
+    stubFetch({ me: SIGNED_IN_USER, quizzes: [] })
+    renderAt('course-1')
+    await waitFor(() => expect(screen.getByText(/no quizzes uploaded/i)).toBeInTheDocument())
+
+    chooseFile('upload-file-input')
+
+    await waitFor(() =>
+      expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/courses/course-1/quizzes', expect.objectContaining({ method: 'POST' })),
+    )
+  })
+
+  it('shows line/element-level errors when the server rejects the file as invalid QTI (QTI-22-IMPORT)', async () => {
+    stubFetch({
+      me: SIGNED_IN_USER,
+      quizzes: [],
+      uploadStatus: 400,
+      uploadBody: { error: 'invalid_format', errors: [{ line: 1, message: '<assessmentItem> is missing the required "identifier" attribute' }] },
+    })
+    renderAt('course-1')
+    await waitFor(() => expect(screen.getByText(/no quizzes uploaded/i)).toBeInTheDocument())
+
+    chooseFile('upload-file-input', 'bad.xml')
+
+    await waitFor(() => expect(screen.getByText(/isn't valid qti 2\.2/i)).toBeInTheDocument())
+    expect(screen.getByText(/missing the required "identifier" attribute/i)).toBeInTheDocument()
+    expect(screen.getByText(/line 1/i)).toBeInTheDocument()
+  })
+
+  it('shows a generic error for an unexpected upload failure', async () => {
+    stubFetch({ me: SIGNED_IN_USER, quizzes: [], uploadStatus: 500, uploadBody: { error: 'internal_error' } })
+    renderAt('course-1')
+    await waitFor(() => expect(screen.getByText(/no quizzes uploaded/i)).toBeInTheDocument())
+
+    chooseFile('upload-file-input')
+
+    await waitFor(() => expect(screen.getByText(/could not upload/i)).toBeInTheDocument())
   })
 })
