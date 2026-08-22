@@ -67,3 +67,33 @@ chose sequential execution instead (2026-08-22), hence the single linear order a
 * QUIZ-DASHBOARD-001: DoD filled in — list (title/upload date/status), delete, re-upload;
   no sort/filter, no assign-to-students (no delivery story exists yet)
 * TENANT-001: stale ORM-SELECTION-001/DB-MIGRATIONS-001 dependency removed — both are DONE
+
+## Sprint status (2026-08-22): all 8 stories developed, in sequence
+
+AUTH-UX-001 → LOGOUT-001 → UI-FOUNDATION-001 → TENANT-001 → COURSE-001 →
+QUIZ-DASHBOARD-001 → QTI-22-IMPORT → DEPS-001 — each committed separately, each with its own
+Verification section in its story file (automated tests + a disposable-server/real-Postgres
+manual check). 78/78 server tests, 41/41 client tests green as of the last commit (DEPS-001).
+
+Two gaps apply to every story, not fixed here — flagging for Sprint Review:
+* **no browser/Playwright click-through anywhere this sprint.** No such tooling exists in
+  this repo; all "reachable without typing a URL" claims were verified via curl following the
+  same request/redirect chain a browser would, or via component tests with mocked `fetch` —
+  never an actual browser rendering the pages end-to-end. Decide at review: accept this as
+  sufficient, or scope a follow-up PBI to add browser-automation infrastructure.
+* **no human visual sign-off on UI-FOUNDATION-001's restyle** (its own DoD requires this
+  explicitly) — no screenshot/browser tool was available to even self-review the rendered
+  result. Please look at `/`, `/signup`, `/login`, `/courses`, and
+  `/courses/:id/quizzes` in a browser before accepting that story.
+
+Story-specific gaps/decisions worth a look at review (each recorded in full in its own file):
+* TENANT-001's tenant-naming/concurrency-handling and AUTH-UX-001's session-store choice were
+  made during development, not specified by the (thin) story text — see those stories'
+  "Technical decisions" sections.
+* QTI-22-IMPORT's format check is structural (well-formed XML, root element, required
+  attributes, itemBody), not full XSD validation against the official QTI 2.2 schema — no
+  network access to fetch that schema. Flagged as a deliberate scope reduction in the story.
+* DEPS-001 left two vulnerability chains as accepted risk with reasons recorded (`react-router-dom`
+  v6 — blocked on ADR-0004's Node-baseline decision; `drizzle-kit`'s `@esbuild-kit/*` chain — no
+  real exposure, fix requires a pre-release). Also fixed an unrelated latent bug found while
+  verifying: `server/tsconfig.json` was compiling test files into `dist/`.
