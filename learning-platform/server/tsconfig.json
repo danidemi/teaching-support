@@ -10,5 +10,12 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  // DEPS-001: test files (and the test-only fakes they share) were being
+  // compiled into dist/ right alongside production code — harmless until
+  // the vitest 4 bump (this story) started discovering both the source
+  // .test.ts files AND their compiled dist/*.test.js duplicates, running
+  // every test twice. Excluding them here fixes both: dist/ no longer
+  // ships test code, and vitest only finds the source ones.
+  "exclude": ["src/**/*.test.ts", "src/testSupport/**"]
 }

@@ -166,7 +166,7 @@ describe('App log-out control (LOGOUT-001)', () => {
     window.history.pushState({}, '', '/')
   })
 
-  function stubSignedInThenLogout(logoutSpy: ReturnType<typeof vi.fn>) {
+  function stubSignedInThenLogout(logoutSpy: (init?: RequestInit) => void) {
     vi.stubGlobal(
       'fetch',
       vi.fn((url: string, init?: RequestInit) => {
