@@ -1,10 +1,14 @@
 import { useState, type FormEvent } from 'react'
-import './App.css'
+import { Button } from './components/ui/button'
+import { Card } from './components/ui/card'
+import { Input } from './components/ui/input'
+import { Label } from './components/ui/label'
 
 /**
- * `/login` screen (AUTH-UX-001). Email + password is the only sign-in
- * method listed for now — Google sign-in (LOGIN-001) is added to this page
- * later, once its OAuth credentials exist.
+ * `/login` screen (AUTH-UX-001, restyled by UI-FOUNDATION-001 — ADR-0006).
+ * Email + password is the only sign-in method listed for now — Google
+ * sign-in (LOGIN-001) is added to this page later, once its OAuth
+ * credentials exist.
  *
  * On success, does a full navigation to `/` (not client-side routing) so
  * the home page's `/api/me` check re-runs against the freshly-issued
@@ -32,28 +36,40 @@ function LoginPage() {
   }
 
   return (
-    <div className="app">
-      <header className="app-header">
-        <a href="/" className="app-header-title">
+    <div className="min-h-screen flex flex-col bg-paper">
+      <header className="flex items-center justify-between border-b-2 border-brass bg-ink px-6 py-4 text-paper">
+        <a href="/" className="font-display text-xl font-semibold tracking-tight text-paper no-underline">
           Learning Platform
         </a>
       </header>
-      <main className="app-body">
-        <form onSubmit={handleLogin}>
-          <label>
-            Email
-            <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
-          </label>
-          <label>
-            Password
-            <input type="password" value={password} onChange={(event) => setPassword(event.target.value)} />
-          </label>
-          <button type="submit">Sign in</button>
-        </form>
-        {message && <p role="status">{message}</p>}
-        <a href="/signup" className="create-account-link">
-          Don&apos;t have an account yet? Create one
-        </a>
+      <main className="flex flex-1 items-center justify-center px-6 py-section-gap">
+        <Card className="w-full max-w-sm">
+          <h1 className="mb-group-gap font-display text-2xl font-semibold text-ink">Sign in</h1>
+          <form onSubmit={handleLogin} className="flex flex-col gap-group-gap">
+            <div>
+              <Label htmlFor="login-email">Email</Label>
+              <Input id="login-email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="login-password">Password</Label>
+              <Input
+                id="login-password"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            </div>
+            <Button type="submit">Sign in</Button>
+          </form>
+          {message && (
+            <p role="status" className="mt-group-gap text-sm text-error">
+              {message}
+            </p>
+          )}
+          <a href="/signup" className="mt-group-gap block text-center text-sm text-ink underline underline-offset-2 hover:text-brass">
+            Don&apos;t have an account yet? Create one
+          </a>
+        </Card>
       </main>
     </div>
   )

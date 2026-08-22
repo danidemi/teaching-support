@@ -1,1 +1,1 @@
-{"root":["./src/App.test.tsx","./src/App.tsx","./src/LoginPage.test.tsx","./src/LoginPage.tsx","./src/SignUpPage.test.tsx","./src/SignUpPage.tsx","./src/main.tsx","./src/setupTests.ts"],"version":"5.9.3"}
+{"root":["./src/App.test.tsx","./src/App.tsx","./src/LoginPage.test.tsx","./src/LoginPage.tsx","./src/SignUpPage.test.tsx","./src/SignUpPage.tsx","./src/main.tsx","./src/setupTests.ts","./src/components/ui/button.tsx","./src/components/ui/card.tsx","./src/components/ui/input.tsx","./src/components/ui/label.tsx","./src/lib/utils.ts"],"version":"5.9.3"}

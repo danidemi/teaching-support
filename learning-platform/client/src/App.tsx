@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import './App.css'
+import { Button } from './components/ui/button'
 
 const PRODUCT_NAME = 'Learning Platform'
 
@@ -16,22 +16,34 @@ const CONFIRM_MESSAGES: Record<string, string> = {
   invalid: 'This confirmation link is not valid.',
 }
 
+/**
+ * UI-FOUNDATION-001: the confirm banner uses the success/error tokens
+ * (tailwind.config.js) — `ok` reads as success, everything else as an
+ * error state, matching how the platform elsewhere signals outcomes.
+ */
+const CONFIRM_TONE: Record<string, 'success' | 'error'> = {
+  ok: 'success',
+  expired: 'error',
+  used: 'error',
+  invalid: 'error',
+}
+
 interface SignedInUser {
   id: string
   email: string
 }
 
 /**
- * Home page (HOME-001, restructured by AUTH-UX-001/LOGOUT-001): reachable
- * without signing in. The header states the product name (a link back to
- * `/`), and shows either a "Sign in" link (unregistered) or the signed-in
- * user's email plus a "Log out" control (once `GET /api/me` confirms a
- * session exists).
+ * Home page (HOME-001, restructured by AUTH-UX-001/LOGOUT-001, restyled by
+ * UI-FOUNDATION-001): reachable without signing in. The header states the
+ * product name (a link back to `/`), and shows either a "Sign in" link
+ * (unregistered) or the signed-in user's email plus a "Log out" control
+ * (once `GET /api/me` confirms a session exists).
  *
- * "Sign in" is a plain <a>, not react-router's <Link>, so App.tsx keeps
- * needing no <Router> ancestor and App.test.tsx (which renders <App />
- * standalone) needed no <Router> wrapper — same reasoning as the existing
- * "Sign up" link (ADR-0004).
+ * "Sign in" is a plain <a> wrapped in `Button asChild`, not react-router's
+ * <Link>, so App.tsx keeps needing no <Router> ancestor and App.test.tsx
+ * (which renders <App /> standalone) needed no <Router> wrapper — same
+ * reasoning as the existing "Sign up" link (ADR-0004).
  */
 function App() {
   const [user, setUser] = useState<SignedInUser | null>(null)
@@ -63,38 +75,59 @@ function App() {
     window.location.assign('/')
   }
 
+  const tone = confirmStatus ? CONFIRM_TONE[confirmStatus] ?? 'error' : null
+
   return (
-    <div className="app">
-      <header className="app-header">
-        <a href="/" className="app-header-title">
+    <div className="min-h-screen flex flex-col bg-paper">
+      <header className="flex items-center justify-between border-b-2 border-brass bg-ink px-6 py-4 text-paper">
+        <a href="/" className="font-display text-xl font-semibold tracking-tight text-paper no-underline">
           {PRODUCT_NAME}
         </a>
         {user ? (
-          <span className="signed-in-controls">
-            <span className="signed-in-user">{user.email}</span>
-            <button type="button" className="log-out-button" onClick={handleLogout}>
+          <span className="flex items-center gap-group-gap">
+            <span className="text-sm font-medium">{user.email}</span>
+            <Button type="button" variant="ghost" size="sm" onClick={handleLogout}>
               Log out
-            </button>
+            </Button>
           </span>
         ) : (
-          <a href="/login" className="sign-in-button">
-            Sign in
-          </a>
+          <Button asChild variant="ghost" size="sm">
+            <a href="/login">Sign in</a>
+          </Button>
         )}
       </header>
+
       {confirmStatus && (
-        <div role="status" className="confirm-banner">
+        <div
+          role="status"
+          className={
+            tone === 'success'
+              ? 'flex items-center justify-between gap-group-gap border-b border-success/30 bg-success-50 px-6 py-3 text-sm text-success'
+              : 'flex items-center justify-between gap-group-gap border-b border-error/30 bg-error-50 px-6 py-3 text-sm text-error'
+          }
+        >
           <span>{CONFIRM_MESSAGES[confirmStatus] ?? CONFIRM_MESSAGES.invalid}</span>
-          <button type="button" className="confirm-banner-dismiss" aria-label="Dismiss" onClick={() => setConfirmStatus(null)}>
+          <button
+            type="button"
+            aria-label="Dismiss"
+            onClick={() => setConfirmStatus(null)}
+            className="text-lg leading-none opacity-70 hover:opacity-100"
+          >
             ×
           </button>
         </div>
       )}
-      <main className="app-body">
+
+      <main className="flex flex-1 flex-col items-center justify-center gap-group-gap px-6 text-center">
+        <h1 className="font-display text-3xl font-semibold text-ink">Plan courses. Author quizzes. Teach with confidence.</h1>
+        <p className="max-w-md text-base text-ink/70">
+          The Learning Platform helps trainers build and manage adult-education courses from
+          one place.
+        </p>
         {!user && (
-          <a href="/signup" className="sign-up-link">
-            Sign up
-          </a>
+          <Button asChild variant="outline" className="mt-2">
+            <a href="/signup">Sign up</a>
+          </Button>
         )}
       </main>
     </div>

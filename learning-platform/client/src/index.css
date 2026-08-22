@@ -1,0 +1,12 @@
+/* UI-FOUNDATION-001 / ADR-0006: shadcn/ui adoption. Fonts must be
+   @import'd before any other rule (CSS requirement) — the three faces in
+   tailwind.config.js's fontFamily tokens (display/sans/mono). */
+@import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-paper text-ink font-sans antialiased;
+}

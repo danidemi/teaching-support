@@ -1,5 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import './App.css'
+import { Button } from './components/ui/button'
+import { Card } from './components/ui/card'
+import { Input } from './components/ui/input'
+import { Label } from './components/ui/label'
 
 /**
  * `/signup` screen. Email + password fields, scaffolded by
@@ -7,6 +10,8 @@ import './App.css'
  * once `GET /api/config` confirms the flag is on). The normal "Sign up"
  * submit is wired by SIGN-UP-001 to `POST /api/signup` — the confirmation-
  * email flow: the account is created unconfirmed, and a link is emailed.
+ * Restyled by UI-FOUNDATION-001 (ADR-0006): the same header pattern as
+ * `App.tsx`/`LoginPage.tsx`, and the form lives inside a `Card`.
  */
 function SignUpPage() {
   const [email, setEmail] = useState('')
@@ -61,36 +66,47 @@ function SignUpPage() {
   }
 
   return (
-    <div className="app">
-      <header className="app-header">
-        <span>Learning Platform</span>
+    <div className="min-h-screen flex flex-col bg-paper">
+      <header className="flex items-center justify-between border-b-2 border-brass bg-ink px-6 py-4 text-paper">
+        <a href="/" className="font-display text-xl font-semibold tracking-tight text-paper no-underline">
+          Learning Platform
+        </a>
       </header>
-      <main className="app-body">
-        <form onSubmit={handleSignUp}>
-          <label>
-            Email
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-            />
-          </label>
-          <label>
-            Password
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </label>
-          <button type="submit">Sign up</button>
-          {expediteEnabled && (
-            <button type="button" onClick={handleExpediteSignUp}>
-              Expedite sign up
-            </button>
+      <main className="flex flex-1 items-center justify-center px-6 py-section-gap">
+        <Card className="w-full max-w-sm">
+          <h1 className="mb-group-gap font-display text-2xl font-semibold text-ink">Create your account</h1>
+          <form onSubmit={handleSignUp} className="flex flex-col gap-group-gap">
+            <div>
+              <Label htmlFor="signup-email">Email</Label>
+              <Input
+                id="signup-email"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="signup-password">Password</Label>
+              <Input
+                id="signup-password"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
+            </div>
+            <Button type="submit">Sign up</Button>
+            {expediteEnabled && (
+              <Button type="button" variant="outline" onClick={handleExpediteSignUp}>
+                Expedite sign up
+              </Button>
+            )}
+          </form>
+          {message && (
+            <p role="status" className="mt-group-gap text-sm text-ink/80">
+              {message}
+            </p>
           )}
-        </form>
-        {message && <p role="status">{message}</p>}
+        </Card>
       </main>
     </div>
   )
