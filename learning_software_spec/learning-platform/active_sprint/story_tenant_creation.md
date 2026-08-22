@@ -1,12 +1,12 @@
 ID: TENANT-001
 
-Status: DRAFT
+Status: READY
 
 Priority: High
 
 Effort: 5 (added during grooming, 2026-08-21: first story to touch Postgres in earnest —
-schema, membership check/creation logic, header UI — on top of whatever ORM-SELECTION-001
-already settled)
+schema, membership check/creation logic, header UI — on top of what ORM-SELECTION-001 and
+DB-MIGRATIONS-001 already settled)
 
 As:
 an `registered user`
@@ -35,11 +35,15 @@ Notes:
   story re-touching the header independently
 * persistence: `tenants` and `users` tables in PostgreSQL, per
   `adr/ADR-0002-persistence-and-iam.md`
-* depends on ORM-SELECTION-001 (added during grooming, 2026-08-21): this story is the
-  first to read/write Postgres, so it needs the ORM/query-builder choice settled first,
-  and depends on DB-MIGRATIONS-001 for how its `tenants`/`users` schema gets created
+* ORM-SELECTION-001 and DB-MIGRATIONS-001 are DONE (`past_sprints/sprint_26_08_21/`) —
+  Drizzle + `pg` is chosen (ADR-0003) and the migration mechanism exists
+  (`applyMigrations()` runs on server startup); this story is unblocked and defines the
+  actual `tenants`/`users` schema in its own migration
 * shares the header component (`client/src/App.tsx`) with COURSE-001 too, not only
   LOGIN-001 — COURSE-001's wireframe shows the same `[Tenant: Acme] [👤]` header block
-  (noted during grooming, 2026-08-21, per `references/do_and_donts.md`'s rule to check
+  (noted during grooming, 2026-08-21, per `reference/do_and_donts.md`'s rule to check
   shared components across stories)
+
+Open questions:
+* none
 

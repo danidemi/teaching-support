@@ -1,6 +1,6 @@
 ID: AUTH-UX-001
 
-Status: DRAFT
+Status: READY
 
 Priority: Medium
 
@@ -31,13 +31,18 @@ Definition of Done:
   (SIGN-UP-001) — both already exist; this story is about how they're presented together,
   not new sign-up logic
 * email+password sign-in itself: `POST /api/login` checks email + password against the
-  stored bcrypt hash and creates a session on success (cookie via `express-session`); login
-  is rejected with a generic error (not revealing which part is wrong) when the email
-  doesn't exist, the password doesn't match, or `confirmed_at` is still null
-  — this is LOGIN-EMAIL-001's former Definition of Done, absorbed here (see Notes)
+  stored bcrypt hash and creates a session on success (cookie via `express-session`, session
+  store `connect-pg-simple` backed by Postgres — decided at sprint planning 2026-08-22, so
+  sessions survive a server restart); login is rejected with a generic error (not revealing
+  which part is wrong) when the email doesn't exist, the password doesn't match, or
+  `confirmed_at` is still null — this is LOGIN-EMAIL-001's former Definition of Done, absorbed
+  here (see Notes)
+* no rate limiting / lockout on repeated failed login attempts — explicitly out of scope for
+  now (decided at sprint planning 2026-08-22); revisit if abuse becomes a real problem
 * clicking the confirmation link (`GET /api/confirm?token=...`) redirects straight to the
   home page instead of `/confirm-result`; the home page shows the confirmation outcome
-  (confirmed / expired / used / invalid) — `/confirm-result` is retired
+  (confirmed / expired / used / invalid) as a dismissible banner at the top of the page
+  (decided at sprint planning 2026-08-22) — `/confirm-result` is retired
 * the platform name in the top-left of the header links to the home page
 * once signed in (by any method), the header reflects the signed-in state (name/avatar) —
   the actual sign-out control is LOGOUT-001's (`story_logout.md`) job, not this story's
@@ -56,18 +61,35 @@ Notes:
   LOGIN-EMAIL-001 is marked SUPERSEDED, its DoD content carried over above.
 * depends on `express-session` (or equivalent) being wired into `server/` — not yet present
   in the codebase; this is the first story to introduce session middleware (carried over
-  from LOGIN-EMAIL-001)
+  from LOGIN-EMAIL-001), backed by `connect-pg-simple` per the sprint-planning decision above
 * shares the header component (`client/src/App.tsx`) with LOGIN-001, LOGOUT-001, and
   TENANT-001 — coordinate rather than re-touch independently
-* coordinates with UI-FOUNDATION-001 (`story_ui_foundation.md`) on sequencing — see that
-  story's Notes
+* sequenced before UI-FOUNDATION-001 (decided at sprint planning 2026-08-22): this story
+  ships with today's ad-hoc styling; UI-FOUNDATION-001 restyles it afterward along with the
+  other screens, rather than restyling a header/login layout mid-change
 * out of scope: Google sign-in itself (LOGIN-001, still blocked on OAuth credentials);
   logging out (LOGOUT-001)
 
 Open questions:
-* session store: in-memory vs. Postgres-backed (`connect-pg-simple` or similar) — needs
-  deciding before READY (carried over from LOGIN-EMAIL-001)
-* rate limiting / lockout after repeated failed login attempts — needs an explicit decision,
-  even if it's "out of scope for now" (carried over from LOGIN-EMAIL-001)
-* exact home-page presentation of the confirm outcome (banner? inline message? auto-dismiss?)
-  — needs deciding during grooming
+* none — all resolved at sprint planning 2026-08-22
+
+Verification (development, 2026-08-22):
+* automated: 36/36 server tests green (`server/src/routes/login.test.ts` — 7 new tests
+  covering success, unknown email, wrong password, unconfirmed account, missing fields,
+  and `GET /api/me` signed-in/signed-out), 21/21 client tests green
+  (`client/src/LoginPage.test.tsx` — new; `client/src/App.test.tsx` — rewritten for the
+  header/banner restructure)
+* manual, disposable server instance on port 4123 with matching `APP_BASE_URL` (per this
+  sprint's DO): expedite-signed-up a user, confirmed `POST /api/login` returns 401 for wrong
+  password and for an unknown email with the same `invalid_credentials` body, confirmed 200 +
+  `Set-Cookie` for the right password, confirmed `GET /api/me` returns 401 with no cookie and
+  200 with it, confirmed the `session` row actually lands in Postgres (not just in-memory) via
+  `psql`, and confirmed `GET /api/confirm?token=...` redirects to `/?status=ok` (not
+  `/confirm-result`) using a real signup + Mailpit-captured email
+* gap, not closed: the DoD's "manual/Playwright browsing-only verification" was done at the
+  HTTP level (curl following the same redirect chain a browser follows), not through an
+  actual browser clicking links starting from `/`. No Playwright (or other browser-automation)
+  setup exists anywhere in this repo yet — adding one is a bigger addition than this story's
+  own scope, so it wasn't done silently. Flagging for Sprint Review: either accept the
+  HTTP-level verification as sufficient for this story, or scope a small follow-up PBI to add
+  browser-automation infrastructure before the next story that calls for it.

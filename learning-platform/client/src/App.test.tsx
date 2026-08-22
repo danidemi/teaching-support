@@ -1,44 +1,142 @@
-import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import App from './App'
 
-// Covers HOME-001's Definition of Done (active_sprint/story_access_home_page.md):
-// - header states the product name, styled distinctly from the body
-// - a sign-in/log-in button is visible, centered in the body
+// Covers HOME-001's original DoD (header states the product name) plus
+// AUTH-UX-001's restructure: the header now links home, shows "Sign in"
+// (linking to /login) for an unregistered user or the signed-in user's
+// email once GET /api/me confirms a session, and the home page renders a
+// dismissible confirm-outcome banner when opened with ?status=.
 
-describe('App (home page, HOME-001)', () => {
-  it('shows a header with the product name', () => {
-    // given: an unregistered user opens the home page
-    render(<App />)
+function stubFetch(meResponse: { status: number; body?: unknown }) {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(() =>
+      Promise.resolve({
+        status: meResponse.status,
+        json: () => Promise.resolve(meResponse.body ?? {}),
+      }),
+    ),
+  )
+}
 
-    // when: the page has rendered
-    // then: the header states the product name
-    const header = screen.getByText('Learning Platform').closest('header')
-    expect(header).not.toBeNull()
+describe('App (home page, HOME-001 / AUTH-UX-001)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    window.history.pushState({}, '', '/')
   })
 
-  it('shows a sign-in button centered in the body', () => {
+  it('shows a header with the product name, linking back to home', () => {
     // given: an unregistered user opens the home page
+    stubFetch({ status: 401 })
     render(<App />)
 
     // when: the page has rendered
-    // then: a sign-in button is visible, inside the main body area (not the header)
-    const button = screen.getByRole('button', { name: /sign in/i })
-    expect(button).toBeInTheDocument()
-    expect(button.closest('main')).not.toBeNull()
-    expect(button.closest('header')).toBeNull()
+    // then: the header states the product name and links to /
+    const link = screen.getByRole('link', { name: 'Learning Platform' })
+    expect(link.closest('header')).not.toBeNull()
+    expect(link).toHaveAttribute('href', '/')
   })
 
-  // Covers SIGNUP-EXPEDITE-001: /signup exists but is unreachable from the
-  // UI without a link pointing to it.
-  it('shows a sign-up link pointing to /signup', () => {
-    // given: an unregistered user opens the home page
-    render(<App />)
+  it('shows a "Sign in" link to /login in the header before /api/me resolves', () => {
+    // given: /api/me hasn't resolved yet
+    vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})))
 
     // when: the page has rendered
+    render(<App />)
+
+    // then: a sign-in link is visible in the header, pointing at /login
+    const link = screen.getByRole('link', { name: /sign in/i })
+    expect(link).toBeInTheDocument()
+    expect(link).toHaveAttribute('href', '/login')
+    expect(link.closest('header')).not.toBeNull()
+  })
+
+  it("shows the signed-in user's email in the header once GET /api/me confirms a session", async () => {
+    // given: the server reports a signed-in user
+    stubFetch({ status: 200, body: { id: '1', email: 'trainer@example.com' } })
+
+    // when: the page renders and /api/me resolves
+    render(<App />)
+
+    // then: the header shows the user's email instead of "Sign in"
+    await waitFor(() => {
+      expect(screen.getByText('trainer@example.com')).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('link', { name: /sign in/i })).not.toBeInTheDocument()
+  })
+
+  it('shows a sign-up link pointing to /signup when signed out', async () => {
+    // given: an unregistered user opens the home page
+    stubFetch({ status: 401 })
+
+    // when: the page has rendered and /api/me resolves
+    render(<App />)
+    await waitFor(() => expect(vi.mocked(fetch)).toHaveBeenCalled())
+
     // then: a sign-up link is visible and points at /signup
     const link = screen.getByRole('link', { name: /sign up/i })
     expect(link).toBeInTheDocument()
     expect(link).toHaveAttribute('href', '/signup')
+  })
+
+  it('hides the sign-up link once signed in', async () => {
+    // given: the server reports a signed-in user
+    stubFetch({ status: 200, body: { id: '1', email: 'trainer@example.com' } })
+
+    // when: the page renders and /api/me resolves
+    render(<App />)
+    await waitFor(() => expect(screen.getByText('trainer@example.com')).toBeInTheDocument())
+
+    // then: the sign-up link is no longer shown
+    expect(screen.queryByRole('link', { name: /sign up/i })).not.toBeInTheDocument()
+  })
+})
+
+// Covers AUTH-UX-001's confirm-outcome banner: GET /api/confirm now
+// redirects to /?status=..., and the home page renders it instead of the
+// retired /confirm-result page.
+describe('App confirm-outcome banner (AUTH-UX-001)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    window.history.pushState({}, '', '/')
+  })
+
+  function renderWithStatus(status: string) {
+    stubFetch({ status: 401 })
+    window.history.pushState({}, '', `/?status=${status}`)
+    render(<App />)
+  }
+
+  it('shows a success banner for status=ok', () => {
+    renderWithStatus('ok')
+    expect(screen.getByRole('status')).toHaveTextContent(/confirmed/i)
+  })
+
+  it('shows an expired banner for status=expired', () => {
+    renderWithStatus('expired')
+    expect(screen.getByRole('status')).toHaveTextContent(/expired/i)
+  })
+
+  it('shows a used banner for status=used', () => {
+    renderWithStatus('used')
+    expect(screen.getByRole('status')).toHaveTextContent(/already been used/i)
+  })
+
+  it('shows an invalid banner for status=invalid', () => {
+    renderWithStatus('invalid')
+    expect(screen.getByRole('status')).toHaveTextContent(/not valid/i)
+  })
+
+  it('shows no banner when there is no ?status= at all', () => {
+    stubFetch({ status: 401 })
+    render(<App />)
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('dismisses the banner when its close button is clicked', () => {
+    renderWithStatus('ok')
+    fireEvent.click(screen.getByRole('button', { name: /dismiss/i }))
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 })

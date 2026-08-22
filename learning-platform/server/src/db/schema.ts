@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, timestamp, varchar, json, index } from 'drizzle-orm/pg-core'
 
 /**
  * ORM-SELECTION-001's spike table: one minimal table to prove the
@@ -63,3 +63,23 @@ export const confirmationTokens = pgTable('confirmation_tokens', {
   usedAt: timestamp('used_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })
+
+/**
+ * AUTH-UX-001 / ADR-0005: session store for `express-session`, managed by
+ * `connect-pg-simple`. Column names/types (`sid`/`sess`/`expire`) and the
+ * `expire` index match `connect-pg-simple`'s own expected schema exactly —
+ * this table is created by this Drizzle migration instead of the library's
+ * `createTableIfMissing` option, per ADR-0005 and the sprint's DON'T about
+ * migrations happening outside the one applied-at-startup path
+ * (`reference/do_and_donts.md`). `connect-pg-simple` is configured with
+ * `createTableIfMissing: false` accordingly (`server/src/auth/session.ts`).
+ */
+export const sessions = pgTable(
+  'session',
+  {
+    sid: varchar('sid').primaryKey(),
+    sess: json('sess').notNull(),
+    expire: timestamp('expire', { precision: 6 }).notNull(),
+  },
+  (table) => [index('IDX_session_expire').on(table.expire)],
+)

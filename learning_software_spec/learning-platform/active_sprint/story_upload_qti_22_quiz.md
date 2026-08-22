@@ -1,6 +1,6 @@
 ID: QTI-22-IMPORT
 
-Status: DRAFT
+Status: READY
 
 Priority: Medium
 
@@ -30,7 +30,7 @@ Notes:
   binary fields, per `adr/ADR-0002-persistence-and-iam.md`'s PostgreSQL choice
 * "format is not correct" reports back to the trainer line/element-level errors
 
-
-
-
+Open questions:
+* none — both dependencies (COURSE-001, QUIZ-DASHBOARD-001) reached READY at sprint
+  planning 2026-08-22; this story is a scheduling dependent, not an open question
 

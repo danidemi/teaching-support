@@ -1,0 +1,98 @@
+import { Router, type RequestHandler } from 'express'
+import 'express-session'
+import { verifyPassword } from '../auth/password.js'
+import type { UserRepository } from '../db/users.js'
+
+// Augments express-session's SessionData so `req.session.userId`/`userEmail`
+// are typed, instead of `any`. AUTH-UX-001 is the first story to write to
+// the session; LOGOUT-001/TENANT-001 read the same fields, not new ones.
+declare module 'express-session' {
+  interface SessionData {
+    userId?: string
+    userEmail?: string
+  }
+}
+
+const GENERIC_LOGIN_ERROR = { error: 'invalid_credentials' } as const
+
+/**
+ * `POST /api/login` and `GET /api/me` (AUTH-UX-001).
+ *
+ * The three rejection cases in the DoD — unknown email, wrong password,
+ * unconfirmed account — all return the same generic 401 body, so a client
+ * can't use the response to enumerate which emails have an account or
+ * which are still unconfirmed.
+ *
+ * `sessionMiddleware` is passed explicitly to each route below, not
+ * mounted via `router.use` — this router is registered with `app.use()`
+ * at the top level (no path prefix), so an unscoped `router.use` would run
+ * on every request that reaches it, including ones matching no route here
+ * (e.g. `GET /`, which falls through to the SPA static handler). `/healthz`,
+ * the static/SPA fallback, and the signup/confirm routes stay untouched,
+ * so the DB-free unit test suite (`app.test.ts`, `signup.test.ts`) stays
+ * DB-free even though the real session store needs Postgres.
+ */
+export function createLoginRouter(users: UserRepository, sessionMiddleware: RequestHandler): Router {
+  const router = Router()
+
+  router.post('/api/login', sessionMiddleware, async (req, res) => {
+    const { email, password } = req.body ?? {}
+
+    if (typeof email !== 'string' || typeof password !== 'string') {
+      res.status(401).json(GENERIC_LOGIN_ERROR)
+      return
+    }
+
+    try {
+      const user = await users.findByEmail(email)
+
+      if (!user || !user.passwordHash || !user.confirmedAt) {
+        res.status(401).json(GENERIC_LOGIN_ERROR)
+        return
+      }
+
+      const passwordMatches = await verifyPassword(password, user.passwordHash)
+      if (!passwordMatches) {
+        res.status(401).json(GENERIC_LOGIN_ERROR)
+        return
+      }
+
+      // Regenerate the session id on privilege change (signing in), so a
+      // session id observed before login can't be reused to hijack the
+      // now-signed-in session.
+      req.session.regenerate((regenerateErr) => {
+        if (regenerateErr) {
+          console.error('login session regenerate failed:', regenerateErr)
+          res.status(500).json({ error: 'internal_error' })
+          return
+        }
+
+        req.session.userId = user.id
+        req.session.userEmail = user.email
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.error('login session save failed:', saveErr)
+            res.status(500).json({ error: 'internal_error' })
+            return
+          }
+          res.status(200).json({ id: user.id, email: user.email })
+        })
+      })
+    } catch (err) {
+      console.error('login failed:', err)
+      res.status(500).json({ error: 'internal_error' })
+    }
+  })
+
+  // AUTH-UX-001: lets the header (and any other client code) ask "am I
+  // signed in, and as whom" without re-deriving it from a cookie itself.
+  router.get('/api/me', sessionMiddleware, (req, res) => {
+    if (!req.session.userId || !req.session.userEmail) {
+      res.status(401).json({ error: 'not_signed_in' })
+      return
+    }
+    res.status(200).json({ id: req.session.userId, email: req.session.userEmail })
+  })
+
+  return router
+}

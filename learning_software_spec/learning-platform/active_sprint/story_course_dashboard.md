@@ -1,6 +1,6 @@
 ID: COURSE-001
 
-Status: DRAFT
+Status: READY
 
 Priority: Medium
 
@@ -29,8 +29,13 @@ Definition of Done:
   course sub-view
 * no other course action (uploading slides/quizzes, editing, deleting) is in scope — this
   story covers list, sort, create, and select only
+* no pagination: all of the tenant's courses load in one list (decided at sprint planning
+  2026-08-22 — trainers aren't expected to manage hundreds of courses)
+* empty state: when the tenant has no courses yet, the dashboard shows a friendly
+  "no courses yet, create one" message instead of an empty table (decided at sprint
+  planning 2026-08-22)
 
-Wireframe (drawn during grooming, per `references/do_and_donts.md`'s rule for front-end-heavy
+Wireframe (drawn during grooming, per `reference/do_and_donts.md`'s rule for front-end-heavy
 stories without enough visual detail in the story text):
 
 ```
@@ -64,11 +69,13 @@ Notes:
 * shares the header component (`client/src/App.tsx`) with LOGIN-001 and TENANT-001 — this
   story's wireframe draws the same `[Tenant: Acme] [👤]` block those stories build; no new
   header work is expected here (noted during grooming, 2026-08-21, per
-  `references/do_and_donts.md`'s rule to check shared components across stories)
+  `reference/do_and_donts.md`'s rule to check shared components across stories)
 * QTI-22-IMPORT (uploading a quiz) depends on a course existing to upload into — see
   `story_upload_qti_22_quiz.md`
 
 Open questions:
-* pagination/empty-state (no courses yet) behavior is not specified — needs grooming before
-  this story is sprint-ready
-* There isn't any ADR related to front end technologies, as CSS framework, responsiveness, etc.
+* none — pagination/empty-state resolved at sprint planning 2026-08-22. The lack of a
+  front-end UI-library ADR is closed by UI-FOUNDATION-001 (shadcn/ui, ADR-0006). Revised
+  during the sprint (see `active_sprint/sprint.md`'s Development sequence): UI-FOUNDATION-001
+  is built *before* this story, not after, so this dashboard is built directly on shadcn/ui
+  components rather than ad-hoc-styled and restyled later.

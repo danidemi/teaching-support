@@ -1,6 +1,6 @@
 ID: LOGOUT-001
 
-Status: DRAFT
+Status: READY
 
 Priority: Medium
 
@@ -35,11 +35,12 @@ Notes:
 * deliberately kept as its own PBI rather than folded into AUTH-UX-001 or LOGIN-001, since
   its signed-in header state is shared by whichever sign-in method lands first — building it
   once here avoids either of those stories re-solving the same problem
-* hard dependency: needs a working session mechanism to exist first — i.e. AUTH-UX-001 (or
-  LOGIN-001, whichever ships session support first) must be DONE before this is playable
+* hard dependency: needs a working session mechanism to exist first — AUTH-UX-001 ships
+  session support first (decided at sprint planning 2026-08-22), so AUTH-UX-001 must be DONE
+  before this is playable. This is a scheduling dependency, not an open question — the story
+  itself is fully specified and can be picked up as soon as AUTH-UX-001 ships.
 * shares the header component (`client/src/App.tsx`) with LOGIN-001, AUTH-UX-001, and
   TENANT-001
 
 Open questions:
-* which story actually ships session middleware first (AUTH-UX-001 vs LOGIN-001) — this
-  story is blocked on whichever lands first; needs revisiting once that's clearer
+* none — all resolved at sprint planning 2026-08-22

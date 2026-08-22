@@ -16,8 +16,10 @@ import type { Mailer } from '../email/mailer.js'
  * checked only `.code` and silently 500'd on a real duplicate email while
  * this fake — throwing the flat shape — still made the 409 test pass).
  */
-function createFakeUserRepository(): UserRepository & { rows: (CreatedUser & { confirmedAt: Date | null })[] } {
-  const rows: (CreatedUser & { confirmedAt: Date | null })[] = []
+function createFakeUserRepository(): UserRepository & {
+  rows: (CreatedUser & { passwordHash: string; confirmedAt: Date | null })[]
+} {
+  const rows: (CreatedUser & { passwordHash: string; confirmedAt: Date | null })[] = []
   let nextId = 1
 
   return {
@@ -28,13 +30,16 @@ function createFakeUserRepository(): UserRepository & { rows: (CreatedUser & { c
           cause: { code: UNIQUE_VIOLATION },
         })
       }
-      const created = { id: String(nextId++), email: user.email, confirmedAt: user.confirmedAt }
+      const created = { id: String(nextId++), email: user.email, passwordHash: user.passwordHash, confirmedAt: user.confirmedAt }
       rows.push(created)
       return { id: created.id, email: created.email }
     },
     async confirmUser(userId: string) {
       const row = rows.find((row) => row.id === userId)
       if (row) row.confirmedAt = new Date()
+    },
+    async findByEmail(email: string) {
+      return rows.find((row) => row.email === email) ?? null
     },
   }
 }
@@ -293,7 +298,7 @@ describe('GET /api/confirm (SIGN-UP-001)', () => {
 
     // then: it redirects to the ok result, and the user is confirmed
     expect(response.status).toBe(302)
-    expect(response.headers.location).toBe('http://localhost:3000/confirm-result?status=ok')
+    expect(response.headers.location).toBe('http://localhost:3000/?status=ok')
     expect(users.rows[0].confirmedAt).not.toBeNull()
   })
 
@@ -309,7 +314,7 @@ describe('GET /api/confirm (SIGN-UP-001)', () => {
     const response = await request(app).get(`/api/confirm?token=${token}`)
 
     // then: it redirects to the used result
-    expect(response.headers.location).toBe('http://localhost:3000/confirm-result?status=used')
+    expect(response.headers.location).toBe('http://localhost:3000/?status=used')
   })
 
   it('redirects to status=expired when the token has expired', async () => {
@@ -325,7 +330,7 @@ describe('GET /api/confirm (SIGN-UP-001)', () => {
     const response = await request(app).get(`/api/confirm?token=${token}`)
 
     // then: it redirects to the expired result
-    expect(response.headers.location).toBe('http://localhost:3000/confirm-result?status=expired')
+    expect(response.headers.location).toBe('http://localhost:3000/?status=expired')
   })
 
   it('redirects to status=invalid for an unrecognized token', async () => {
@@ -336,7 +341,7 @@ describe('GET /api/confirm (SIGN-UP-001)', () => {
     const response = await request(app).get('/api/confirm?token=not-a-real-token')
 
     // then: it redirects to the invalid result
-    expect(response.headers.location).toBe('http://localhost:3000/confirm-result?status=invalid')
+    expect(response.headers.location).toBe('http://localhost:3000/?status=invalid')
   })
 
   it('redirects to status=invalid when no token is given', async () => {
@@ -347,6 +352,6 @@ describe('GET /api/confirm (SIGN-UP-001)', () => {
     const response = await request(app).get('/api/confirm')
 
     // then: it redirects to the invalid result
-    expect(response.headers.location).toBe('http://localhost:3000/confirm-result?status=invalid')
+    expect(response.headers.location).toBe('http://localhost:3000/?status=invalid')
   })
 })

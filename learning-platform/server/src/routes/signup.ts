@@ -134,11 +134,14 @@ export function createSignupRouter(
     }
   })
 
+  // AUTH-UX-001: redirects to the home page's `?status=` outcome instead
+  // of the retired `/confirm-result` page — the home page renders the
+  // same messages as a dismissible banner.
   router.get('/api/confirm', async (req, res) => {
     const token = req.query.token
 
     if (typeof token !== 'string' || token.length === 0) {
-      res.redirect(302, `${appBaseUrl()}/confirm-result?status=invalid`)
+      res.redirect(302, `${appBaseUrl()}/?status=invalid`)
       return
     }
 
@@ -146,24 +149,24 @@ export function createSignupRouter(
       const stored = await confirmationTokens.findByHash(hashToken(token))
 
       if (!stored) {
-        res.redirect(302, `${appBaseUrl()}/confirm-result?status=invalid`)
+        res.redirect(302, `${appBaseUrl()}/?status=invalid`)
         return
       }
       if (stored.usedAt) {
-        res.redirect(302, `${appBaseUrl()}/confirm-result?status=used`)
+        res.redirect(302, `${appBaseUrl()}/?status=used`)
         return
       }
       if (stored.expiresAt.getTime() < Date.now()) {
-        res.redirect(302, `${appBaseUrl()}/confirm-result?status=expired`)
+        res.redirect(302, `${appBaseUrl()}/?status=expired`)
         return
       }
 
       await users.confirmUser(stored.userId)
       await confirmationTokens.markUsed(stored.id)
-      res.redirect(302, `${appBaseUrl()}/confirm-result?status=ok`)
+      res.redirect(302, `${appBaseUrl()}/?status=ok`)
     } catch (err) {
       console.error('confirm failed:', err)
-      res.redirect(302, `${appBaseUrl()}/confirm-result?status=invalid`)
+      res.redirect(302, `${appBaseUrl()}/?status=invalid`)
     }
   })
 
