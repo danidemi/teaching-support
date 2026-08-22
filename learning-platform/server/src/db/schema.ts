@@ -1,27 +1,15 @@
 import { pgTable, uuid, text, timestamp, varchar, json, index } from 'drizzle-orm/pg-core'
 
 /**
- * ORM-SELECTION-001's spike table: one minimal table to prove the
- * Drizzle + pg + Postgres path works end-to-end (connect, define, query).
- *
- * Throwaway — can be dropped once TENANT-001 is fully implemented and this
- * table is no longer needed to sanity-check the setup.
- */
-export const spikeItems = pgTable('spike_items', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  label: text('label').notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-})
-
-/**
- * DB-MIGRATIONS-001's first real migration target: the minimal `tenants`/
- * `users` schema ADR-0002 calls for, just enough for a migration to exist
- * and be applied. TENANT-001 is still `DRAFT` and not yet groomed in
- * detail (multi-tenant membership vs. one tenant per user, how a user
- * becomes associated) — these columns are the smallest shape consistent
- * with ADR-0002 and TENANT-001's current draft text ("a single `current
- * tenant`"), not a full TENANT-001 design. A later migration should adjust
- * this once TENANT-001 is groomed to READY.
+ * TENANT-001: the `tenants`/`users` schema ADR-0002 calls for. The columns
+ * were originally sketched by DB-MIGRATIONS-001 ahead of TENANT-001 being
+ * groomed; TENANT-001's own development confirmed this shape is enough —
+ * one tenant per registered user (created lazily on first login, see
+ * `server/src/db/tenants.ts`), not a multi-user-per-tenant membership
+ * model. The DB-MIGRATIONS-001/ORM-SELECTION-001 spike table
+ * (`spike_items`) that used to sit here is dropped as of this story's
+ * migration — its job (prove the Drizzle+pg+Postgres path works) is done,
+ * and this schema is now doing that job for real.
  */
 export const tenants = pgTable('tenants', {
   id: uuid('id').primaryKey().defaultRandom(),

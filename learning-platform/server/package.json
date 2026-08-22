@@ -10,7 +10,6 @@
     "test": "vitest run",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
-    "db:spike": "tsx scripts/db-spike.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/db-migrate.ts"
   },

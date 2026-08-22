@@ -5,6 +5,7 @@ import { createSignupRouter } from './routes/signup.js'
 import { createLoginRouter } from './routes/login.js'
 import { createUserRepository, type UserRepository } from './db/users.js'
 import { createConfirmationTokenRepository, type ConfirmationTokenRepository } from './db/confirmationTokens.js'
+import { createTenantRepository, type TenantRepository } from './db/tenants.js'
 import { createMailer, type Mailer } from './email/mailer.js'
 import { createSessionMiddleware } from './auth/session.js'
 
@@ -15,6 +16,7 @@ export interface AppDeps {
   users: UserRepository
   confirmationTokens: ConfirmationTokenRepository
   mailer: Mailer
+  tenants: TenantRepository
   // AUTH-UX-001: applied only to the login router's own routes (see
   // routes/login.ts) — pass a fake (e.g. `express-session` with its
   // default in-memory store) in tests, so exercising /api/login doesn't
@@ -44,6 +46,7 @@ export function createApp(deps?: Partial<AppDeps>): Express {
   const users = deps?.users ?? lazyUserRepository()
   const confirmationTokens = deps?.confirmationTokens ?? lazyConfirmationTokenRepository()
   const mailer = deps?.mailer ?? lazyMailer()
+  const tenants = deps?.tenants ?? lazyTenantRepository()
   const sessionMiddleware = deps?.sessionMiddleware ?? lazySessionMiddleware()
 
   app.get('/healthz', (_req, res) => {
@@ -55,7 +58,7 @@ export function createApp(deps?: Partial<AppDeps>): Express {
   // API routes must be registered before the static/SPA fallback below,
   // or `/api/*` requests get swallowed and served index.html instead.
   app.use(createSignupRouter(users, confirmationTokens, mailer))
-  app.use(createLoginRouter(users, sessionMiddleware))
+  app.use(createLoginRouter(users, tenants, sessionMiddleware))
 
   app.use(express.static(CLIENT_DIST))
 
@@ -126,6 +129,25 @@ function lazyMailer(): Mailer {
 
   return {
     sendConfirmationEmail: (to, link) => resolve().sendConfirmationEmail(to, link),
+  }
+}
+
+function lazyTenantRepository(): TenantRepository {
+  let real: TenantRepository | undefined
+
+  function resolve(): TenantRepository {
+    if (!real) {
+      const databaseUrl = process.env.DATABASE_URL
+      if (!databaseUrl) {
+        throw new Error('DATABASE_URL is not set — copy server/.env.example to server/.env first')
+      }
+      real = createTenantRepository(databaseUrl)
+    }
+    return real
+  }
+
+  return {
+    ensureCurrentTenant: (userId, email) => resolve().ensureCurrentTenant(userId, email),
   }
 }
 

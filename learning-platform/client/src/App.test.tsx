@@ -66,6 +66,22 @@ describe('App (home page, HOME-001 / AUTH-UX-001)', () => {
     expect(screen.queryByRole('link', { name: /sign in/i })).not.toBeInTheDocument()
   })
 
+  it("shows the user's current tenant next to their email (TENANT-001)", async () => {
+    // given: the server reports a signed-in user with a current tenant
+    stubFetch({
+      status: 200,
+      body: { id: '1', email: 'trainer@example.com', tenant: { id: '1', name: "trainer@example.com's workspace" } },
+    })
+
+    // when: the page renders and /api/me resolves
+    render(<App />)
+
+    // then: the tenant name is shown alongside the email
+    await waitFor(() => {
+      expect(screen.getByText("trainer@example.com's workspace")).toBeInTheDocument()
+    })
+  })
+
   it('shows a sign-up link pointing to /signup when signed out', async () => {
     // given: an unregistered user opens the home page
     stubFetch({ status: 401 })

@@ -31,14 +31,19 @@ const CONFIRM_TONE: Record<string, 'success' | 'error'> = {
 interface SignedInUser {
   id: string
   email: string
+  // TENANT-001: null only for a session predating this story (or a
+  // lookup race) — every current login path assigns one.
+  tenant: { id: string; name: string } | null
 }
 
 /**
- * Home page (HOME-001, restructured by AUTH-UX-001/LOGOUT-001, restyled by
- * UI-FOUNDATION-001): reachable without signing in. The header states the
- * product name (a link back to `/`), and shows either a "Sign in" link
- * (unregistered) or the signed-in user's email plus a "Log out" control
- * (once `GET /api/me` confirms a session exists).
+ * Home page (HOME-001, restructured by AUTH-UX-001/LOGOUT-001/TENANT-001,
+ * restyled by UI-FOUNDATION-001): reachable without signing in. The header
+ * states the product name (a link back to `/`), and shows either a
+ * "Sign in" link (unregistered) or the signed-in user's current tenant and
+ * email plus a "Log out" control (once `GET /api/me` confirms a session
+ * exists) — TENANT-001's "visualizes its current tenant close to its
+ * avatar", `user.email` standing in for the avatar until one exists.
  *
  * "Sign in" is a plain <a> wrapped in `Button asChild`, not react-router's
  * <Link>, so App.tsx keeps needing no <Router> ancestor and App.test.tsx
@@ -85,6 +90,11 @@ function App() {
         </a>
         {user ? (
           <span className="flex items-center gap-group-gap">
+            {user.tenant && (
+              <span className="rounded border border-brass/60 px-2 py-0.5 text-xs font-medium text-brass-50">
+                {user.tenant.name}
+              </span>
+            )}
             <span className="text-sm font-medium">{user.email}</span>
             <Button type="button" variant="ghost" size="sm" onClick={handleLogout}>
               Log out
