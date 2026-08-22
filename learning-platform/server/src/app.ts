@@ -8,6 +8,8 @@ import { createConfirmationTokenRepository, type ConfirmationTokenRepository } f
 import { createTenantRepository, type TenantRepository } from './db/tenants.js'
 import { createCoursesRouter } from './routes/courses.js'
 import { createCourseRepository, type CourseRepository } from './db/courses.js'
+import { createQuizzesRouter } from './routes/quizzes.js'
+import { createQuizRepository, type QuizRepository } from './db/quizzes.js'
 import { createMailer, type Mailer } from './email/mailer.js'
 import { createSessionMiddleware } from './auth/session.js'
 
@@ -20,6 +22,7 @@ export interface AppDeps {
   mailer: Mailer
   tenants: TenantRepository
   courses: CourseRepository
+  quizzes: QuizRepository
   // AUTH-UX-001: applied only to the login router's own routes (see
   // routes/login.ts) — pass a fake (e.g. `express-session` with its
   // default in-memory store) in tests, so exercising /api/login doesn't
@@ -51,6 +54,7 @@ export function createApp(deps?: Partial<AppDeps>): Express {
   const mailer = deps?.mailer ?? lazyMailer()
   const tenants = deps?.tenants ?? lazyTenantRepository()
   const courses = deps?.courses ?? lazyCourseRepository()
+  const quizzes = deps?.quizzes ?? lazyQuizRepository()
   const sessionMiddleware = deps?.sessionMiddleware ?? lazySessionMiddleware()
 
   app.get('/healthz', (_req, res) => {
@@ -64,6 +68,7 @@ export function createApp(deps?: Partial<AppDeps>): Express {
   app.use(createSignupRouter(users, confirmationTokens, mailer))
   app.use(createLoginRouter(users, tenants, sessionMiddleware))
   app.use(createCoursesRouter(courses, sessionMiddleware))
+  app.use(createQuizzesRouter(courses, quizzes, sessionMiddleware))
 
   app.use(express.static(CLIENT_DIST))
 
@@ -173,6 +178,29 @@ function lazyCourseRepository(): CourseRepository {
   return {
     listByTenant: (tenantId, sortBy) => resolve().listByTenant(tenantId, sortBy),
     create: (course) => resolve().create(course),
+    findByIdForTenant: (courseId, tenantId) => resolve().findByIdForTenant(courseId, tenantId),
+  }
+}
+
+function lazyQuizRepository(): QuizRepository {
+  let real: QuizRepository | undefined
+
+  function resolve(): QuizRepository {
+    if (!real) {
+      const databaseUrl = process.env.DATABASE_URL
+      if (!databaseUrl) {
+        throw new Error('DATABASE_URL is not set — copy server/.env.example to server/.env first')
+      }
+      real = createQuizRepository(databaseUrl)
+    }
+    return real
+  }
+
+  return {
+    listByCourse: (courseId) => resolve().listByCourse(courseId),
+    create: (quiz) => resolve().create(quiz),
+    delete: (quizId, courseId) => resolve().delete(quizId, courseId),
+    replaceFile: (quizId, courseId, file) => resolve().replaceFile(quizId, courseId, file),
   }
 }
 

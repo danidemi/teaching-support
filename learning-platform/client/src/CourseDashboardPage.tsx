@@ -32,11 +32,11 @@ function formatDate(iso: string) {
  * DoD; those are future stories' jobs.
  *
  * "Current course" is kept as this page's own state, not a route param or
- * anything persisted — no course sub-view exists yet for it to survive
- * navigation into (the DoD only requires the breadcrumb to reflect the
- * selection on this page). A later story (QUIZ-DASHBOARD-001) that adds a
- * course sub-view decides how selection carries over there; not invented
- * here ahead of need.
+ * anything persisted — the DoD only requires the breadcrumb to reflect
+ * the selection on this page. Once a course is selected, a "View
+ * quizzes" link appears (QUIZ-DASHBOARD-001) — that story's screen is
+ * reached by its own URL (`/courses/:courseId/quizzes`), not by carrying
+ * this page's state into a preserved location.
  */
 function CourseDashboardPage() {
   const { user, logout } = useSignedInUser()
@@ -89,9 +89,16 @@ function CourseDashboardPage() {
     <div className="min-h-screen flex flex-col bg-paper">
       <AppHeader user={user} onLogout={logout} />
 
-      <nav aria-label="Breadcrumb" className="border-b border-border px-6 py-3 text-sm text-ink/70">
-        Courses{selectedCourse && <> &gt; {selectedCourse.title}</>}
-        {!selectedCourse && <> &gt; (no course selected)</>}
+      <nav aria-label="Breadcrumb" className="flex items-center justify-between border-b border-border px-6 py-3 text-sm text-ink/70">
+        <span>
+          Courses{selectedCourse && <> &gt; {selectedCourse.title}</>}
+          {!selectedCourse && <> &gt; (no course selected)</>}
+        </span>
+        {selectedCourse && (
+          <a href={`/courses/${selectedCourse.id}/quizzes`} className="text-ink underline underline-offset-2 hover:text-brass">
+            View quizzes
+          </a>
+        )}
       </nav>
 
       <main className="flex-1 px-6 py-section-gap">

@@ -6,6 +6,7 @@ import App from './App'
 import SignUpPage from './SignUpPage'
 import LoginPage from './LoginPage'
 import CourseDashboardPage from './CourseDashboardPage'
+import QuizDashboardPage from './QuizDashboardPage'
 
 // Router + route table live here, not in App.tsx, so App.tsx keeps
 // rendering standalone (no <Router> ancestor needed) for App.test.tsx —
@@ -22,6 +23,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
         <Route path="/signup" element={<SignUpPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/courses" element={<CourseDashboardPage />} />
+        <Route path="/courses/:courseId/quizzes" element={<QuizDashboardPage />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>,

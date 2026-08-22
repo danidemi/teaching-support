@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 import { createDb } from './client.js'
 import { courses } from './schema.js'
 
@@ -23,6 +23,11 @@ export type CourseSort = 'title' | 'createdAt' | 'updatedAt'
 export interface CourseRepository {
   listByTenant(tenantId: string, sortBy: CourseSort): Promise<Course[]>
   create(course: NewCourse): Promise<Course>
+  // QUIZ-DASHBOARD-001: authorizes a course-scoped request (list/delete/
+  // replace a quiz) — returns null if the course doesn't exist *or*
+  // belongs to a different tenant, the same "not found" either way so a
+  // caller can't distinguish "wrong tenant" from "no such course".
+  findByIdForTenant(courseId: string, tenantId: string): Promise<Course | null>
 }
 
 const SORT_COLUMN = {
@@ -49,6 +54,15 @@ export function createCourseRepository(databaseUrl: string): CourseRepository {
         .values({ tenantId: course.tenantId, title: course.title })
         .returning({ id: courses.id, title: courses.title, createdAt: courses.createdAt, updatedAt: courses.updatedAt })
       return rows[0]
+    },
+
+    async findByIdForTenant(courseId, tenantId) {
+      const rows = await db
+        .select({ id: courses.id, title: courses.title, createdAt: courses.createdAt, updatedAt: courses.updatedAt })
+        .from(courses)
+        .where(and(eq(courses.id, courseId), eq(courses.tenantId, tenantId)))
+        .limit(1)
+      return rows[0] ?? null
     },
   }
 }

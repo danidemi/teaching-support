@@ -1,4 +1,17 @@
-import { pgTable, uuid, text, timestamp, varchar, json, index, uniqueIndex } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, timestamp, varchar, json, index, uniqueIndex, customType } from 'drizzle-orm/pg-core'
+
+/**
+ * Postgres `bytea` — drizzle-orm/pg-core has no built-in binary column
+ * type, so this is the minimal `customType` needed for it. Used by
+ * `quizzes.fileData` (QUIZ-DASHBOARD-001/QTI-22-IMPORT): the raw QTI file
+ * itself, not just a filename, per ADR-0002's "raw QTI files are stored in
+ * PostgreSQL binary fields" decision.
+ */
+const bytea = customType<{ data: Buffer }>({
+  dataType() {
+    return 'bytea'
+  },
+})
 
 /**
  * TENANT-001: the `tenants`/`users` schema ADR-0002 calls for. The columns
@@ -78,6 +91,31 @@ export const courses = pgTable(
   },
   (table) => [uniqueIndex('courses_tenant_id_title_unique').on(table.tenantId, table.title)],
 )
+
+/**
+ * QUIZ-DASHBOARD-001: quizzes belong to exactly one course (`course_id`,
+ * per that story's dependency on COURSE-001 — "quizzes are scoped to a
+ * current course"). `status` is a plain text label, not an enum — nothing
+ * in either QUIZ-DASHBOARD-001 or QTI-22-IMPORT's DoD produces more than
+ * one value yet (every stored row got there by passing QTI-22-IMPORT's
+ * synchronous format check, so it's always "uploaded"); a real state
+ * machine can replace this column's meaning later without a shape change.
+ * No `create` route ships in QUIZ-DASHBOARD-001 itself — `QuizRepository
+ * .create` exists for QTI-22-IMPORT to call (that story owns the only
+ * user-facing way to add a quiz row: format-validated upload).
+ */
+export const quizzes = pgTable('quizzes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  courseId: uuid('course_id')
+    .notNull()
+    .references(() => courses.id),
+  title: text('title').notNull(),
+  fileName: text('file_name').notNull(),
+  fileData: bytea('file_data').notNull(),
+  status: text('status').notNull().default('uploaded'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
 
 /**
  * AUTH-UX-001 / ADR-0005: session store for `express-session`, managed by
