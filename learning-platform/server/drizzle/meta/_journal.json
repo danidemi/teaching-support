@@ -36,6 +36,13 @@
       "when": 1787412476317,
       "tag": "0004_illegal_toad_men",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787413642746,
+      "tag": "0005_rich_cargill",
+      "breakpoints": true
     }
   ]
 }

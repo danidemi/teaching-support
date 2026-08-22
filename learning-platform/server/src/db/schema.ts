@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, varchar, json, index } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, timestamp, varchar, json, index, uniqueIndex } from 'drizzle-orm/pg-core'
 
 /**
  * TENANT-001: the `tenants`/`users` schema ADR-0002 calls for. The columns
@@ -51,6 +51,33 @@ export const confirmationTokens = pgTable('confirmation_tokens', {
   usedAt: timestamp('used_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })
+
+/**
+ * COURSE-001: courses belong to exactly one tenant from the start
+ * (`tenant_id`, per ADR-0002's tenancy-before-courses decision) —
+ * "all courses" in this story's DoD never means courses outside the
+ * caller's tenant. `courses_tenant_id_title_unique` gives the DoD's
+ * "two courses in the same tenant cannot share the same name" a
+ * database-level guarantee (scoped to the tenant, not global — two
+ * different tenants can both have a course named "Intro to Python").
+ * `updatedAt` exists now even though this story never updates a course
+ * after creation (no edit action in scope) — it's part of the DoD's own
+ * sort criteria ("last update date"), so the column has to exist even
+ * before anything sets it to something other than its creation value.
+ */
+export const courses = pgTable(
+  'courses',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tenantId: uuid('tenant_id')
+      .notNull()
+      .references(() => tenants.id),
+    title: text('title').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [uniqueIndex('courses_tenant_id_title_unique').on(table.tenantId, table.title)],
+)
 
 /**
  * AUTH-UX-001 / ADR-0005: session store for `express-session`, managed by

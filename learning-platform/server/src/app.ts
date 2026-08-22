@@ -6,6 +6,8 @@ import { createLoginRouter } from './routes/login.js'
 import { createUserRepository, type UserRepository } from './db/users.js'
 import { createConfirmationTokenRepository, type ConfirmationTokenRepository } from './db/confirmationTokens.js'
 import { createTenantRepository, type TenantRepository } from './db/tenants.js'
+import { createCoursesRouter } from './routes/courses.js'
+import { createCourseRepository, type CourseRepository } from './db/courses.js'
 import { createMailer, type Mailer } from './email/mailer.js'
 import { createSessionMiddleware } from './auth/session.js'
 
@@ -17,6 +19,7 @@ export interface AppDeps {
   confirmationTokens: ConfirmationTokenRepository
   mailer: Mailer
   tenants: TenantRepository
+  courses: CourseRepository
   // AUTH-UX-001: applied only to the login router's own routes (see
   // routes/login.ts) — pass a fake (e.g. `express-session` with its
   // default in-memory store) in tests, so exercising /api/login doesn't
@@ -47,6 +50,7 @@ export function createApp(deps?: Partial<AppDeps>): Express {
   const confirmationTokens = deps?.confirmationTokens ?? lazyConfirmationTokenRepository()
   const mailer = deps?.mailer ?? lazyMailer()
   const tenants = deps?.tenants ?? lazyTenantRepository()
+  const courses = deps?.courses ?? lazyCourseRepository()
   const sessionMiddleware = deps?.sessionMiddleware ?? lazySessionMiddleware()
 
   app.get('/healthz', (_req, res) => {
@@ -59,6 +63,7 @@ export function createApp(deps?: Partial<AppDeps>): Express {
   // or `/api/*` requests get swallowed and served index.html instead.
   app.use(createSignupRouter(users, confirmationTokens, mailer))
   app.use(createLoginRouter(users, tenants, sessionMiddleware))
+  app.use(createCoursesRouter(courses, sessionMiddleware))
 
   app.use(express.static(CLIENT_DIST))
 
@@ -148,6 +153,26 @@ function lazyTenantRepository(): TenantRepository {
 
   return {
     ensureCurrentTenant: (userId, email) => resolve().ensureCurrentTenant(userId, email),
+  }
+}
+
+function lazyCourseRepository(): CourseRepository {
+  let real: CourseRepository | undefined
+
+  function resolve(): CourseRepository {
+    if (!real) {
+      const databaseUrl = process.env.DATABASE_URL
+      if (!databaseUrl) {
+        throw new Error('DATABASE_URL is not set — copy server/.env.example to server/.env first')
+      }
+      real = createCourseRepository(databaseUrl)
+    }
+    return real
+  }
+
+  return {
+    listByTenant: (tenantId, sortBy) => resolve().listByTenant(tenantId, sortBy),
+    create: (course) => resolve().create(course),
   }
 }
 

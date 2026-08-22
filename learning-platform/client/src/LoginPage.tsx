@@ -3,6 +3,7 @@ import { Button } from './components/ui/button'
 import { Card } from './components/ui/card'
 import { Input } from './components/ui/input'
 import { Label } from './components/ui/label'
+import AppHeader from './components/AppHeader'
 
 /**
  * `/login` screen (AUTH-UX-001, restyled by UI-FOUNDATION-001 — ADR-0006).
@@ -37,11 +38,7 @@ function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-paper">
-      <header className="flex items-center justify-between border-b-2 border-brass bg-ink px-6 py-4 text-paper">
-        <a href="/" className="font-display text-xl font-semibold tracking-tight text-paper no-underline">
-          Learning Platform
-        </a>
-      </header>
+      <AppHeader user={null} />
       <main className="flex flex-1 items-center justify-center px-6 py-section-gap">
         <Card className="w-full max-w-sm">
           <h1 className="mb-group-gap font-display text-2xl font-semibold text-ink">Sign in</h1>
