@@ -44,3 +44,18 @@ Notes:
 
 Open questions:
 * none — all resolved at sprint planning 2026-08-22
+
+Verification (development, 2026-08-22):
+* automated: 39/39 server tests green (`server/src/routes/login.test.ts` — 3 new tests:
+  destroys the session so a subsequent `GET /api/me` reports signed out, clears the session
+  cookie, and is idempotent with no session), 23/23 client tests green
+  (`client/src/App.test.tsx` — 2 new tests: log-out control replaces "Sign in" once signed
+  in, clicking it calls `POST /api/logout` and navigates home)
+* manual, disposable server instance on port 4124 with matching `APP_BASE_URL`: signed in,
+  confirmed the `session` table had 2 rows (1 from a stale earlier run, 1 for this session),
+  logged out, confirmed the row count dropped to 1 (the session was actually destroyed
+  server-side, not just the cookie cleared), confirmed `GET /api/me` with the same cookie
+  jar returns 401 after logout, and confirmed the logout response's `Set-Cookie` expires the
+  cookie (`Expires=Thu, 01 Jan 1970...`)
+* same gap as AUTH-UX-001: HTTP-level verification only, no browser/Playwright click-through
+  (no such infrastructure exists in this repo)

@@ -22,10 +22,11 @@ interface SignedInUser {
 }
 
 /**
- * Home page (HOME-001, restructured by AUTH-UX-001): reachable without
- * signing in. The header states the product name (now a link back to `/`),
- * and shows either a "Sign in" link (unregistered) or the signed-in user's
- * email (once `GET /api/me` confirms a session exists).
+ * Home page (HOME-001, restructured by AUTH-UX-001/LOGOUT-001): reachable
+ * without signing in. The header states the product name (a link back to
+ * `/`), and shows either a "Sign in" link (unregistered) or the signed-in
+ * user's email plus a "Log out" control (once `GET /api/me` confirms a
+ * session exists).
  *
  * "Sign in" is a plain <a>, not react-router's <Link>, so App.tsx keeps
  * needing no <Router> ancestor and App.test.tsx (which renders <App />
@@ -53,6 +54,15 @@ function App() {
     }
   }, [])
 
+  // LOGOUT-001: a full navigation back to `/` after the server confirms
+  // the session is destroyed, so every bit of client state (this
+  // component's, and anything future protected screens hold) resets from
+  // a clean signed-out load rather than being patched in place.
+  async function handleLogout() {
+    await fetch('/api/logout', { method: 'POST' })
+    window.location.assign('/')
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -60,7 +70,12 @@ function App() {
           {PRODUCT_NAME}
         </a>
         {user ? (
-          <span className="signed-in-user">{user.email}</span>
+          <span className="signed-in-controls">
+            <span className="signed-in-user">{user.email}</span>
+            <button type="button" className="log-out-button" onClick={handleLogout}>
+              Log out
+            </button>
+          </span>
         ) : (
           <a href="/login" className="sign-in-button">
             Sign in

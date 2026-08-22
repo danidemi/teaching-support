@@ -160,3 +160,51 @@ describe('GET /api/me (AUTH-UX-001)', () => {
     expect(response.body).toEqual({ id: '1', email: 'trainer@example.com' })
   })
 })
+
+describe('POST /api/logout (LOGOUT-001)', () => {
+  it('destroys the session so a subsequent GET /api/me reports signed out', async () => {
+    // given: a confirmed user who is signed in
+    const users = createFakeUserRepository()
+    await seedConfirmedUser(users, 'trainer@example.com', 'correcthorse')
+    const app = createApp({ users, sessionMiddleware: createTestSessionMiddleware() })
+    const agent = request.agent(app)
+    await agent.post('/api/login').send({ email: 'trainer@example.com', password: 'correcthorse' })
+
+    // when: logging out
+    const logoutResponse = await agent.post('/api/logout')
+
+    // then: the logout succeeds and the session no longer authenticates
+    expect(logoutResponse.status).toBe(200)
+    expect(logoutResponse.body).toEqual({ ok: true })
+    const meResponse = await agent.get('/api/me')
+    expect(meResponse.status).toBe(401)
+  })
+
+  it('clears the session cookie', async () => {
+    // given: a confirmed user who is signed in
+    const users = createFakeUserRepository()
+    await seedConfirmedUser(users, 'trainer@example.com', 'correcthorse')
+    const app = createApp({ users, sessionMiddleware: createTestSessionMiddleware() })
+    const agent = request.agent(app)
+    await agent.post('/api/login').send({ email: 'trainer@example.com', password: 'correcthorse' })
+
+    // when: logging out
+    const response = await agent.post('/api/logout')
+
+    // then: the response clears the cookie (an expired Set-Cookie for the session cookie name)
+    const setCookie = ([] as string[]).concat(response.headers['set-cookie'] ?? [])
+    expect(setCookie.some((cookie) => cookie.startsWith('connect.sid=;'))).toBe(true)
+  })
+
+  it('is idempotent — logging out with no session succeeds without error', async () => {
+    // given: a client with no prior login
+    const app = createApp({ users: createFakeUserRepository(), sessionMiddleware: createTestSessionMiddleware() })
+
+    // when: logging out anyway
+    const response = await request(app).post('/api/logout')
+
+    // then: it reports success rather than an error
+    expect(response.status).toBe(200)
+    expect(response.body).toEqual({ ok: true })
+  })
+})

@@ -20,9 +20,25 @@
   text-decoration: none;
 }
 
+.signed-in-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .signed-in-user {
   font-size: 1rem;
   font-weight: 400;
+}
+
+.log-out-button {
+  font-size: 0.875rem;
+  padding: 0.4rem 1rem;
+  border-radius: 0.375rem;
+  border: 1px solid #ffffff;
+  background-color: transparent;
+  color: #ffffff;
+  cursor: pointer;
 }
 
 .confirm-banner {

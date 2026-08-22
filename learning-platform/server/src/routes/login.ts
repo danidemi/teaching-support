@@ -16,7 +16,9 @@ declare module 'express-session' {
 const GENERIC_LOGIN_ERROR = { error: 'invalid_credentials' } as const
 
 /**
- * `POST /api/login` and `GET /api/me` (AUTH-UX-001).
+ * `POST /api/login`, `GET /api/me` (AUTH-UX-001), and `POST /api/logout`
+ * (LOGOUT-001) — grouped in one router/file because all three read or
+ * write the same session, not because they're one story's work.
  *
  * The three rejection cases in the DoD — unknown email, wrong password,
  * unconfirmed account — all return the same generic 401 body, so a client
@@ -92,6 +94,26 @@ export function createLoginRouter(users: UserRepository, sessionMiddleware: Requ
       return
     }
     res.status(200).json({ id: req.session.userId, email: req.session.userEmail })
+  })
+
+  // LOGOUT-001: destroys the session server-side (not just clearing the
+  // client's cookie) so the session row is actually gone from the store —
+  // a stolen cookie from before logout is worthless afterward. Idempotent:
+  // logging out with no session already just confirms "signed out".
+  router.post('/api/logout', sessionMiddleware, (req, res) => {
+    if (!req.session.userId) {
+      res.status(200).json({ ok: true })
+      return
+    }
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('logout failed:', err)
+        res.status(500).json({ error: 'internal_error' })
+        return
+      }
+      res.clearCookie('connect.sid')
+      res.status(200).json({ ok: true })
+    })
   })
 
   return router

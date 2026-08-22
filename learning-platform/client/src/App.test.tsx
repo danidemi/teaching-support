@@ -140,3 +140,57 @@ describe('App confirm-outcome banner (AUTH-UX-001)', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 })
+
+// Covers LOGOUT-001's DoD (active_sprint/story_logout.md): a signed-in
+// header shows a log-out control instead of "Sign in"; clicking it calls
+// POST /api/logout and returns to a signed-out home page.
+describe('App log-out control (LOGOUT-001)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    window.history.pushState({}, '', '/')
+  })
+
+  function stubSignedInThenLogout(logoutSpy: ReturnType<typeof vi.fn>) {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string, init?: RequestInit) => {
+        if (url === '/api/logout') {
+          logoutSpy(init)
+          return Promise.resolve({ status: 200, json: () => Promise.resolve({ ok: true }) })
+        }
+        return Promise.resolve({ status: 200, json: () => Promise.resolve({ id: '1', email: 'trainer@example.com' }) })
+      }),
+    )
+  }
+
+  it('shows a "Log out" control instead of "Sign in" once signed in', async () => {
+    // given: a signed-in user
+    stubSignedInThenLogout(vi.fn())
+
+    // when: the page renders and /api/me resolves
+    render(<App />)
+
+    // then: a log-out control is shown, and "Sign in" is not
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /log out/i })).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('link', { name: /sign in/i })).not.toBeInTheDocument()
+  })
+
+  it('calls POST /api/logout and navigates home when "Log out" is clicked', async () => {
+    // given: a signed-in user
+    const logoutSpy = vi.fn()
+    stubSignedInThenLogout(logoutSpy)
+    const assignSpy = vi.fn()
+    vi.stubGlobal('location', { ...window.location, assign: assignSpy })
+    render(<App />)
+    await waitFor(() => expect(screen.getByRole('button', { name: /log out/i })).toBeInTheDocument())
+
+    // when: clicking "Log out"
+    fireEvent.click(screen.getByRole('button', { name: /log out/i }))
+
+    // then: the server is told to end the session, and the browser returns home
+    await waitFor(() => expect(logoutSpy).toHaveBeenCalledWith(expect.objectContaining({ method: 'POST' })))
+    expect(assignSpy).toHaveBeenCalledWith('/')
+  })
+})
