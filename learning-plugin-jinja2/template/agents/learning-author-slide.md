@@ -27,7 +27,8 @@ does that, once a human has set `status: approved`; you write the model only.
    every other session in {{ stores.curriculum.name }} — you need the whole store, not just your
    own session, to tell what earlier sessions already taught and what later sessions will
    teach.   
-* `{{ stores.design.path }}` — the node(s) each item's `node_ref` (or `covers_node_refs`) points to, and, for each
+* `{{ stores.design.path }}` — the node(s) each item's `node_ref` points to (a single id, or an
+   array of ids for an item spanning several nodes), and, for each
    such node, its `Requires` edges — this is how you tell whether a prerequisite was already
    taught, and under which name, even when the earlier session phrased it differently.
 {% endblock ground_yourself %}

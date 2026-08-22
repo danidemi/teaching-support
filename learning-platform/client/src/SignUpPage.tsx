@@ -2,10 +2,11 @@ import { useEffect, useState, type FormEvent } from 'react'
 import './App.css'
 
 /**
- * `/signup` screen (SIGNUP-EXPEDITE-001). Email + password fields and a
- * normal "Sign up" submit are scaffolded here for SIGN-UP-001 to wire up;
- * this story only needs the "expedite sign up" option to work, shown only
- * once `GET /api/config` confirms the flag is on.
+ * `/signup` screen. Email + password fields, scaffolded by
+ * SIGNUP-EXPEDITE-001 alongside the "expedite sign up" option (shown only
+ * once `GET /api/config` confirms the flag is on). The normal "Sign up"
+ * submit is wired by SIGN-UP-001 to `POST /api/signup` — the confirmation-
+ * email flow: the account is created unconfirmed, and a link is emailed.
  */
 function SignUpPage() {
   const [email, setEmail] = useState('')
@@ -30,7 +31,18 @@ function SignUpPage() {
 
   async function handleSignUp(event: FormEvent) {
     event.preventDefault()
-    // SIGN-UP-001 wires this to POST /api/signup (confirmation-email flow).
+    setMessage(null)
+    const response = await fetch('/api/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+    const body = await response.json()
+    if (response.status === 201) {
+      setMessage(`Account created for ${body.email}. Check your email for a confirmation link.`)
+    } else {
+      setMessage(`Sign up failed: ${body.error}`)
+    }
   }
 
   async function handleExpediteSignUp() {

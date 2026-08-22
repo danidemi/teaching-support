@@ -15,6 +15,13 @@
       "when": 1787331839525,
       "tag": "0001_futuristic_lethal_legion",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787344177248,
+      "tag": "0002_next_brother_voodoo",
+      "breakpoints": true
     }
   ]
 }

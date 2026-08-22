@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm'
 import { createDb } from './client.js'
 import { users } from './schema.js'
 
@@ -25,6 +26,9 @@ export interface CreatedUser {
  */
 export interface UserRepository {
   create(user: NewUser): Promise<CreatedUser>
+  // SIGN-UP-001: sets `confirmed_at` once the confirmation link has been
+  // followed with a valid, unused, unexpired token.
+  confirmUser(userId: string): Promise<void>
 }
 
 /** Postgres-error shape narrow enough to check the SQLSTATE code we care about. */
@@ -63,6 +67,10 @@ export function createUserRepository(databaseUrl: string): UserRepository {
         })
         .returning({ id: users.id, email: users.email })
       return rows[0]
+    },
+
+    async confirmUser(userId) {
+      await db.update(users).set({ confirmedAt: new Date() }).where(eq(users.id, userId))
     },
   }
 }

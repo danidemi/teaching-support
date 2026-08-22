@@ -19,6 +19,18 @@ cd server && npm install && npm test   # unit tests
 ## Run
 
 ```bash
+cd server && npm run db:up             # starts Postgres + Mailpit (docker-compose.yml)
 cd client && npm run build             # produces client/dist
 cd server && npm run build && npm start   # serves the built client on :3000
 ```
+
+## Local email testing (Mailpit)
+
+`server/docker-compose.yml` starts a `mailpit` container that catches all
+emails sent by the server in local dev (e.g. sign-up confirmation links) —
+nothing is sent to a real inbox. View captured emails at:
+
+http://localhost:8025
+
+SMTP itself is on port `1025`, matching `SMTP_HOST`/`SMTP_PORT` in
+`server/.env.example`.

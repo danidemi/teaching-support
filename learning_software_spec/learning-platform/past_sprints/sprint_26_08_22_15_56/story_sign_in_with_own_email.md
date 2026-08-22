@@ -1,6 +1,6 @@
 ID: SIGN-UP-001
 
-Status: READY
+Status: DONE
 
 Priority: Low
 
@@ -85,3 +85,52 @@ Out of scope (deliberately, decided during sprint planning 2026-08-21):
 * production SMTP provider — Mailpit covers local dev/verification only; a real provider
   needs deciding before this is deployed anywhere beyond local dev, but that decision does
   not block building or verifying this story now
+
+Implementation (2026-08-21):
+* code: `server/src/auth/tokens.ts` (raw-token generation + SHA-256 hashing),
+  `server/src/db/confirmationTokens.ts` (`ConfirmationTokenRepository`),
+  `server/src/db/schema.ts` (`confirmation_tokens` table),
+  `server/drizzle/0002_next_brother_voodoo.sql` (its migration),
+  `server/src/db/users.ts` (added `confirmUser(userId)`), `server/src/email/mailer.ts`
+  (`Mailer`, nodemailer against Mailpit), `server/src/routes/signup.ts` (`POST /api/signup`,
+  `GET /api/confirm`, both reusing SIGNUP-EXPEDITE-001's validation and
+  `isUniqueViolation`), `server/src/app.ts` (wired `confirmationTokens`/`mailer` deps,
+  lazily resolved same as `users`), `server/docker-compose.yml` (`mailpit` service, ports
+  1025/8025), `server/.env.example`/`server/.env` (`SMTP_HOST`, `SMTP_PORT`,
+  `APP_BASE_URL`), `client/src/SignUpPage.tsx` (wired the normal "Sign up" submit to
+  `POST /api/signup`), `client/src/ConfirmResultPage.tsx` (new — renders the
+  `?status=` message), `client/src/main.tsx` (added the `/confirm-result` route).
+* no new ADR: nodemailer/Mailpit and the token-hashing scheme were already decided during
+  sprint planning (2026-08-21, recorded in `active_sprint/sprint.md` and this story's
+  Technical plan) — nothing new was decided during development itself.
+* confirmation link points at `{APP_BASE_URL}/api/confirm?token=...` (matching the
+  Technical plan's route, `GET /api/confirm`), not the bare `/confirm` mentioned in one
+  DoD bullet — that bullet's path was shorthand; the Technical plan's explicit route
+  contract is the source of truth.
+* automated tests: `server/src/auth/tokens.test.ts`, `server/src/routes/signup.test.ts`
+  (extended with `POST /api/signup` and `GET /api/confirm` cases, using in-memory fakes for
+  the token repository and mailer, same DI pattern as `UserRepository`) — given/when/then,
+  all passing alongside the pre-existing suites (29/29 server). Client:
+  `client/src/SignUpPage.test.tsx` (extended) and `client/src/ConfirmResultPage.test.tsx`
+  (new) — 14/14 client.
+* manual verification (all DoD bullets) run against real Postgres + Mailpit via
+  `docker compose up -d`: signed up via `POST /api/signup`, opened the captured email
+  through Mailpit's HTTP API, followed the real link — `status=ok` and `confirmed_at` set;
+  revisited the same link — `status=used`; an unrecognized token — `status=invalid`; a
+  token whose `expires_at` was forced into the past — `status=expired`; a duplicate email —
+  `409`; a 7-character password — `400`; no `Set-Cookie` header on signup.
+* verification ran on a second server instance (`PORT=3099`), not the port-3000 process the
+  human already had running — that process predates this story and doesn't have its routes,
+  so hitting it directly would have silently 200'd through the SPA fallback instead of
+  confirming anything (this is exactly what happened on the first attempt, following the
+  link Mailpit captured, since `APP_BASE_URL` in `.env` points at :3000).
+* the local `.env` (not `.env.example`) needed `SMTP_HOST`/`SMTP_PORT`/`APP_BASE_URL` added
+  by hand — `.env.example` already had them documented but nothing had copied them over
+  since SIGNUP-EXPEDITE-001 last touched this file.
+* test users/tokens created during manual verification were deleted from the dev Postgres
+  afterward (`email LIKE '%@example.com'`), and the verification server instance was
+  stopped, so a later manual re-run doesn't hit a stale `409`.
+* not yet done: the human's own long-running server process on port 3000 is still serving
+  the pre-this-story build — it needs a restart (after `npm run build` in `client/` and
+  `npm run db:migrate`/restart in `server/`) before `/signup`'s normal submit or
+  `/api/confirm` links will work there.

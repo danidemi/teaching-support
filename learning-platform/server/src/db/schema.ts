@@ -44,3 +44,22 @@ export const users = pgTable('users', {
   confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })
+
+/**
+ * SIGN-UP-001: one row per confirmation-link email sent. Only the SHA-256
+ * digest of the raw token is stored (`token_hash`) — the raw token lives
+ * only in the emailed link, so a database leak alone doesn't yield usable
+ * tokens (see `server/src/auth/tokens.ts`). `expires_at` is set 24h ahead
+ * at creation; `used_at` is set once the link has been visited, so a
+ * second visit is rejected as `status=used` rather than re-confirming.
+ */
+export const confirmationTokens = pgTable('confirmation_tokens', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id),
+  tokenHash: text('token_hash').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  usedAt: timestamp('used_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+})

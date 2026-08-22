@@ -49,9 +49,18 @@
           "description": "Display order key as used in the source doc (e.g. \"1\", \"A1\", \"13\"). Array position is authoritative for ordering; this is for cross-referencing the human-readable doc."
         },
         "node_ref": {
-          "type": "string",
-          "description": "Id of the DESIGN node this item teaches or checks (e.g. PRQ-SCG-BASICS, DR-DEPLOY-GATEWAY). Required for item_type lesson and checkpoint; omitted for a pure cross-DR assessment such as the final capstone.",
-          "pattern": "^(BSL|PRQ|DR)-[A-Z0-9-]+$"
+          "description": "Id(s) of the DESIGN node(s) this item teaches or checks (e.g. PRQ-SCG-BASICS, DR-DEPLOY-GATEWAY). A single id for an item that teaches or checks one node. An array of ids for an item that spans several nodes at once (e.g. a prerequisite-check quiz covering every Baseline a unit assumes) — never invent a separate field name for this case. Omitted entirely for a pure cross-DR assessment scoped to \"all nodes in the course\", such as a summative final exam or the capstone, where enumerating every node adds no information. Required (in one of its two shapes) for item_type lesson and checkpoint.",
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^(BSL|PRQ|DR)-[A-Z0-9-]+$"
+            },
+            {
+              "type": "array",
+              "items": { "type": "string", "pattern": "^(BSL|PRQ|DR)-[A-Z0-9-]+$" },
+              "minItems": 1
+            }
+          ]
         },
         "title": {
           "type": "string",

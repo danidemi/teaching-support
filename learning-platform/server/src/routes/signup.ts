@@ -1,8 +1,12 @@
 import { Router } from 'express'
 import { hashPassword } from '../auth/password.js'
+import { generateToken, hashToken } from '../auth/tokens.js'
 import { isUniqueViolation, type UserRepository } from '../db/users.js'
+import type { ConfirmationTokenRepository } from '../db/confirmationTokens.js'
+import type { Mailer } from '../email/mailer.js'
 
 const MIN_PASSWORD_LENGTH = 8
+const CONFIRMATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000
 
 /**
  * Minimal shape check for the email field — the DoD only specifies the
@@ -19,16 +23,27 @@ function isValidPassword(password: unknown): password is string {
   return typeof password === 'string' && password.length >= MIN_PASSWORD_LENGTH
 }
 
+function appBaseUrl(): string {
+  // Read per-request, not captured at module load, consistent with how
+  // EXPEDITE_SIGNUP_ENABLED is read below — a test can set it per-case.
+  return process.env.APP_BASE_URL ?? 'http://localhost:3000'
+}
+
 /**
- * `GET /api/config` and `POST /api/signup/expedite`
- * (SIGNUP-EXPEDITE-001, `active_sprint/story_expedite_sign_up.md`).
+ * `GET /api/config`, `POST /api/signup/expedite` (SIGNUP-EXPEDITE-001), and
+ * `POST /api/signup` / `GET /api/confirm` (SIGN-UP-001,
+ * `active_sprint/story_sign_in_with_own_email.md`).
  *
  * The feature flag is read from `process.env` on every request, not
  * captured at module load — so a test can flip it per-request and the
  * "403 when the flag is off" case stays testable without a process
  * restart.
  */
-export function createSignupRouter(users: UserRepository): Router {
+export function createSignupRouter(
+  users: UserRepository,
+  confirmationTokens: ConfirmationTokenRepository,
+  mailer: Mailer,
+): Router {
   const router = Router()
 
   router.get('/api/config', (_req, res) => {
@@ -72,6 +87,83 @@ export function createSignupRouter(users: UserRepository): Router {
       // respond here rather than letting it hang/crash the process.
       console.error('signup/expedite failed:', err)
       res.status(500).json({ error: 'internal_error' })
+    }
+  })
+
+  router.post('/api/signup', async (req, res) => {
+    const { email, password } = req.body ?? {}
+
+    if (!isValidEmail(email)) {
+      res.status(400).json({ error: 'invalid_email' })
+      return
+    }
+
+    if (!isValidPassword(password)) {
+      res.status(400).json({ error: 'password_too_short' })
+      return
+    }
+
+    try {
+      const passwordHash = await hashPassword(password)
+      const created = await users.create({
+        email,
+        passwordHash,
+        // Unconfirmed until the emailed link is followed — unlike the
+        // expedite path, which confirms immediately.
+        confirmedAt: null,
+      })
+
+      const rawToken = generateToken()
+      await confirmationTokens.create({
+        userId: created.id,
+        tokenHash: hashToken(rawToken),
+        expiresAt: new Date(Date.now() + CONFIRMATION_TOKEN_TTL_MS),
+      })
+
+      const confirmationLink = `${appBaseUrl()}/api/confirm?token=${rawToken}`
+      await mailer.sendConfirmationEmail(created.email, confirmationLink)
+
+      res.status(201).json(created)
+    } catch (err) {
+      if (isUniqueViolation(err)) {
+        res.status(409).json({ error: 'email_taken' })
+        return
+      }
+      console.error('signup failed:', err)
+      res.status(500).json({ error: 'internal_error' })
+    }
+  })
+
+  router.get('/api/confirm', async (req, res) => {
+    const token = req.query.token
+
+    if (typeof token !== 'string' || token.length === 0) {
+      res.redirect(302, `${appBaseUrl()}/confirm-result?status=invalid`)
+      return
+    }
+
+    try {
+      const stored = await confirmationTokens.findByHash(hashToken(token))
+
+      if (!stored) {
+        res.redirect(302, `${appBaseUrl()}/confirm-result?status=invalid`)
+        return
+      }
+      if (stored.usedAt) {
+        res.redirect(302, `${appBaseUrl()}/confirm-result?status=used`)
+        return
+      }
+      if (stored.expiresAt.getTime() < Date.now()) {
+        res.redirect(302, `${appBaseUrl()}/confirm-result?status=expired`)
+        return
+      }
+
+      await users.confirmUser(stored.userId)
+      await confirmationTokens.markUsed(stored.id)
+      res.redirect(302, `${appBaseUrl()}/confirm-result?status=ok`)
+    } catch (err) {
+      console.error('confirm failed:', err)
+      res.redirect(302, `${appBaseUrl()}/confirm-result?status=invalid`)
     }
   })
 

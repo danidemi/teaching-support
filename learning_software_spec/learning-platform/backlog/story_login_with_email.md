@@ -1,6 +1,7 @@
 ID: LOGIN-EMAIL-001
 
-Status: DRAFT
+Status: SUPERSEDED by AUTH-UX-001 (`story_auth_ux.md`) — see that story's Notes,
+2026-08-22 backlog refinement
 
 Priority: Medium
 

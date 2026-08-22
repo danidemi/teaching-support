@@ -43,7 +43,8 @@ Read, in order:
    every other session in CURRICULUM — you need the whole store, not just your
    own session, to tell what earlier sessions already taught and what later sessions will
    teach.   
-* `design/knowledge_goals_graph.json` — the node(s) each item's `node_ref` (or `covers_node_refs`) points to, and, for each
+* `design/knowledge_goals_graph.json` — the node(s) each item's `node_ref` points to (a single id, or an
+   array of ids for an item spanning several nodes), and, for each
    such node, its `Requires` edges — this is how you tell whether a prerequisite was already
    taught, and under which name, even when the earlier session phrased it differently.
 

@@ -49,8 +49,9 @@ items.
 One `Agent` call per (material type, item) pair, using the matching subagent name from
 `reference/material_catalog.md`. 
 Independent calls (different material types, or the same material type on different items) are batched together in one message so they run in parallel. 
-Give each subagent: the item's `sequence`/`node_ref` (or `covers_node_refs` for a
-capstone), the session number, and a pointer to read `design/material_authoring_rules.md` and
+Give each subagent: the item's `sequence`/`node_ref` (a single id, an array of ids for an item
+spanning several nodes, or omitted for a capstone scoped to the whole course), the session number,
+and a pointer to read `design/material_authoring_rules.md` and
 its own spec — do not paste store content into the prompt; the subagent reads the stores itself,
 per retrieval-before-generation.
 
