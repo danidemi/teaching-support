@@ -1,26 +1,19 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
-import { MemoryRouter, Routes, Route } from 'react-router-dom'
-import QuizDashboardPage from './QuizDashboardPage'
+import QuizzesSection from './QuizzesSection'
 
-// Covers QUIZ-DASHBOARD-001's DoD (active_sprint/story_quiz_dashboard.md):
+// Covers QUIZ-DASHBOARD-001's DoD (past_sprints/.../story_quiz_dashboard.md):
 // lists a course's quizzes (title/upload date/status), can delete a row,
-// can replace a quiz's file without creating a new row.
+// can replace a quiz's file without creating a new row. Extracted out of
+// the former standalone `QuizDashboardPage` by COURSE-DETAIL-001 — this
+// component takes `courseId` as a prop, no route/session concerns of its
+// own (those now live on `CourseDetailPage`).
 
-const SIGNED_IN_USER = { id: '1', email: 'trainer@example.com', tenant: { id: 't1', name: "trainer@example.com's workspace" } }
-
-function renderAt(courseId: string) {
-  render(
-    <MemoryRouter initialEntries={[`/courses/${courseId}/quizzes`]}>
-      <Routes>
-        <Route path="/courses/:courseId/quizzes" element={<QuizDashboardPage />} />
-      </Routes>
-    </MemoryRouter>,
-  )
+function renderSection(courseId = 'course-1') {
+  render(<QuizzesSection courseId={courseId} />)
 }
 
 function stubFetch(handlers: {
-  me?: object | null
   quizzes?: unknown[]
   deleteStatus?: number
   replaceStatus?: number
@@ -31,11 +24,6 @@ function stubFetch(handlers: {
   vi.stubGlobal(
     'fetch',
     vi.fn((url: string, init?: RequestInit) => {
-      if (url === '/api/me') {
-        return handlers.me
-          ? Promise.resolve({ status: 200, json: () => Promise.resolve(handlers.me) })
-          : Promise.resolve({ status: 401, json: () => Promise.resolve({ error: 'not_signed_in' }) })
-      }
       if (url.endsWith('/quizzes') && (!init || init.method === undefined)) {
         return Promise.resolve({ status: 200, json: () => Promise.resolve(handlers.quizzes ?? []) })
       }
@@ -65,29 +53,22 @@ function chooseFile(testId: string, name = 'quiz.xml') {
   fireEvent.change(input, { target: { files: [file] } })
 }
 
-describe('QuizDashboardPage (QUIZ-DASHBOARD-001)', () => {
+describe('QuizzesSection (QUIZ-DASHBOARD-001, extracted by COURSE-DETAIL-001)', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
   })
 
-  it('prompts to sign in when not signed in', async () => {
-    stubFetch({ me: null })
-    renderAt('course-1')
-    await waitFor(() => expect(screen.getByText(/to view this course's quizzes/i)).toBeInTheDocument())
-  })
-
   it('shows an empty state when the course has no quizzes yet', async () => {
-    stubFetch({ me: SIGNED_IN_USER, quizzes: [] })
-    renderAt('course-1')
+    stubFetch({ quizzes: [] })
+    renderSection()
     await waitFor(() => expect(screen.getByText(/no quizzes uploaded/i)).toBeInTheDocument())
   })
 
   it('lists quizzes with title, uploaded date, and status', async () => {
     stubFetch({
-      me: SIGNED_IN_USER,
       quizzes: [{ id: 'q1', title: 'Chapter 1 quiz', fileName: 'ch1.xml', status: 'uploaded', createdAt: '2026-01-10T00:00:00Z', updatedAt: '2026-01-10T00:00:00Z' }],
     })
-    renderAt('course-1')
+    renderSection()
 
     await waitFor(() => expect(screen.getByText('Chapter 1 quiz')).toBeInTheDocument())
     expect(screen.getByText('uploaded')).toBeInTheDocument()
@@ -95,10 +76,9 @@ describe('QuizDashboardPage (QUIZ-DASHBOARD-001)', () => {
 
   it('deletes a quiz row and refreshes the list', async () => {
     stubFetch({
-      me: SIGNED_IN_USER,
       quizzes: [{ id: 'q1', title: 'Chapter 1 quiz', fileName: 'ch1.xml', status: 'uploaded', createdAt: '2026-01-10T00:00:00Z', updatedAt: '2026-01-10T00:00:00Z' }],
     })
-    renderAt('course-1')
+    renderSection()
     await waitFor(() => expect(screen.getByText('Chapter 1 quiz')).toBeInTheDocument())
 
     fireEvent.click(screen.getByRole('button', { name: /delete/i }))
@@ -110,11 +90,10 @@ describe('QuizDashboardPage (QUIZ-DASHBOARD-001)', () => {
 
   it('shows an error when delete fails', async () => {
     stubFetch({
-      me: SIGNED_IN_USER,
       quizzes: [{ id: 'q1', title: 'Chapter 1 quiz', fileName: 'ch1.xml', status: 'uploaded', createdAt: '2026-01-10T00:00:00Z', updatedAt: '2026-01-10T00:00:00Z' }],
       deleteStatus: 500,
     })
-    renderAt('course-1')
+    renderSection()
     await waitFor(() => expect(screen.getByText('Chapter 1 quiz')).toBeInTheDocument())
 
     fireEvent.click(screen.getByRole('button', { name: /delete/i }))
@@ -123,8 +102,8 @@ describe('QuizDashboardPage (QUIZ-DASHBOARD-001)', () => {
   })
 
   it('uploads a quiz and refreshes the list on success (QTI-22-IMPORT)', async () => {
-    stubFetch({ me: SIGNED_IN_USER, quizzes: [] })
-    renderAt('course-1')
+    stubFetch({ quizzes: [] })
+    renderSection()
     await waitFor(() => expect(screen.getByText(/no quizzes uploaded/i)).toBeInTheDocument())
 
     chooseFile('upload-file-input')
@@ -136,7 +115,6 @@ describe('QuizDashboardPage (QUIZ-DASHBOARD-001)', () => {
 
   it('shows line/element-level errors when the server rejects the file as invalid QTI (QTI3-MIGRATION-001)', async () => {
     stubFetch({
-      me: SIGNED_IN_USER,
       quizzes: [],
       uploadStatus: 400,
       uploadBody: {
@@ -144,7 +122,7 @@ describe('QuizDashboardPage (QUIZ-DASHBOARD-001)', () => {
         errors: [{ line: 1, message: '<qti-assessment-item> is missing the required "identifier" attribute' }],
       },
     })
-    renderAt('course-1')
+    renderSection()
     await waitFor(() => expect(screen.getByText(/no quizzes uploaded/i)).toBeInTheDocument())
 
     chooseFile('upload-file-input', 'bad.xml')
@@ -155,8 +133,8 @@ describe('QuizDashboardPage (QUIZ-DASHBOARD-001)', () => {
   })
 
   it('shows a generic error for an unexpected upload failure', async () => {
-    stubFetch({ me: SIGNED_IN_USER, quizzes: [], uploadStatus: 500, uploadBody: { error: 'internal_error' } })
-    renderAt('course-1')
+    stubFetch({ quizzes: [], uploadStatus: 500, uploadBody: { error: 'internal_error' } })
+    renderSection()
     await waitFor(() => expect(screen.getByText(/no quizzes uploaded/i)).toBeInTheDocument())
 
     chooseFile('upload-file-input')

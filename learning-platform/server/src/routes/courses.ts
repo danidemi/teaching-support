@@ -41,6 +41,29 @@ export function createCoursesRouter(courses: CourseRepository, sessionMiddleware
     }
   })
 
+  // COURSE-DETAIL-001: fetches one course's own title for the course
+  // detail page's breadcrumb. Same 401/404 shape as quizzes.ts's
+  // `authorizeCourse` — a course id in another tenant is indistinguishable
+  // from one that doesn't exist at all.
+  router.get('/api/courses/:courseId', sessionMiddleware, async (req, res) => {
+    if (!req.session.tenantId) {
+      res.status(401).json({ error: 'not_signed_in' })
+      return
+    }
+
+    try {
+      const course = await courses.findByIdForTenant(req.params.courseId, req.session.tenantId)
+      if (!course) {
+        res.status(404).json({ error: 'course_not_found' })
+        return
+      }
+      res.status(200).json(course)
+    } catch (err) {
+      console.error('get course failed:', err)
+      res.status(500).json({ error: 'internal_error' })
+    }
+  })
+
   router.post('/api/courses', sessionMiddleware, async (req, res) => {
     if (!req.session.tenantId) {
       res.status(401).json({ error: 'not_signed_in' })

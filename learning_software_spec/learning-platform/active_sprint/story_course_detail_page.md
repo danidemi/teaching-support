@@ -1,6 +1,6 @@
 ID: COURSE-DETAIL-001
 
-Status: READY — depends on COURSE-001 finishing its sort-UX rework first (see Dependencies)
+Status: READY (development complete, see Verification below)
 
 Priority: Medium
 
@@ -89,3 +89,34 @@ Technical plan (sprint planning, 2026-08-23):
   the new component/props instead of the page+route); add new `CourseDetailPage.test.tsx`
   for breadcrumb + navigation-between-courses coverage per the DoD
 * no ADR needed — reshapes existing routing/components, no new tech-stack element
+
+Verification (development, 2026-08-23):
+* implemented exactly per the technical plan: `server/src/routes/courses.ts` gained
+  `GET /api/courses/:courseId` (same 401/404 shape as the quizzes route); `QuizDashboardPage.tsx`'s
+  logic moved unchanged into `client/src/components/QuizzesSection.tsx` (courseId as a prop);
+  new `client/src/CourseDetailPage.tsx` fetches the course, renders the breadcrumb, and renders
+  `QuizzesSection`; `CourseDashboardPage.tsx` lost `selectedCourse` state/highlighting/"View
+  quizzes" link — a row click now does `window.location.assign('/courses/:courseId')`
+  (consistent with this codebase's established full-navigation pattern, not `useNavigate`);
+  `main.tsx`'s route table replaced `/courses/:courseId/quizzes` with `/courses/:courseId`
+* automated: 89/89 server tests (4 new for `GET /api/courses/:courseId` — signed-out,
+  own-tenant, other-tenant 404, nonexistent-id 404) and 50/50 client tests (ported
+  `QuizDashboardPage.test.tsx` to `QuizzesSection.test.tsx` unchanged in substance; new
+  `CourseDetailPage.test.tsx` for breadcrumb/sign-in-gate/cross-course navigation; updated
+  `CourseDashboardPage.test.tsx`'s two selection-dependent tests to assert direct navigation
+  and the now-permanent "no course selected" breadcrumb); both `npm run build`s clean
+* manual: ran the built server against the real Postgres, signed up + logged in, created two
+  courses, confirmed `GET /api/courses/:id` returns each course's own title, confirmed
+  `/courses/:id` serves the SPA shell, uploaded a quiz to one course and confirmed it's scoped
+  to that course only (the other course's quiz list stayed empty)
+* **discovered, out of scope, flagged for a new backlog story**: while testing a malformed
+  course id manually, found that `quizzes.ts`'s `authorizeCourse` helper calls
+  `courses.findByIdForTenant` **without** a surrounding try/catch — a non-UUID course id
+  segment (e.g. a stale/hand-typed URL) makes Postgres reject the query, and the resulting
+  rejection is unhandled and **crashes the whole server process**. This is pre-existing
+  (predates this story, part of `QUIZ-DASHBOARD-001`/`QTI-22-IMPORT`'s original routes), not
+  something COURSE-DETAIL-001 introduced — this story's own new `GET /api/courses/:courseId`
+  route wraps the same call in try/catch and correctly returns 500 instead of crashing. Not
+  fixed here since it's outside this story's scope; needs its own backlog story
+  (a proper 404 for a malformed id, and an audit of other unguarded route handlers for the
+  same pattern).

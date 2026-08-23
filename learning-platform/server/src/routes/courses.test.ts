@@ -175,3 +175,58 @@ describe('POST /api/courses (COURSE-001)', () => {
     expect(response.body).toEqual({ error: 'invalid_title' })
   })
 })
+
+describe('GET /api/courses/:courseId (COURSE-DETAIL-001)', () => {
+  it('returns 401 when not signed in', async () => {
+    // given: no session
+    const { app } = createTestApp()
+
+    // when: fetching a course anyway
+    const response = await request(app).get('/api/courses/some-id')
+
+    // then: it is rejected
+    expect(response.status).toBe(401)
+  })
+
+  it('returns the course when it belongs to the caller\'s tenant', async () => {
+    // given: a signed-in trainer with a course
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const created = await agent.post('/api/courses').send({ title: 'Intro to Python' })
+
+    // when: fetching it by id
+    const response = await agent.get(`/api/courses/${created.body.id}`)
+
+    // then: its title is returned
+    expect(response.status).toBe(200)
+    expect(response.body.title).toBe('Intro to Python')
+  })
+
+  it("returns 404 for a course belonging to a different tenant", async () => {
+    // given: two tenants, one with a course
+    const { app, users } = createTestApp()
+    const agentA = await signInAgent(users, app, 'trainer-a@example.com')
+    const agentB = await signInAgent(users, app, 'trainer-b@example.com')
+    const created = await agentA.post('/api/courses').send({ title: 'Intro to Python' })
+
+    // when: the other tenant fetches it by id
+    const response = await agentB.get(`/api/courses/${created.body.id}`)
+
+    // then: it is hidden the same way a nonexistent id would be
+    expect(response.status).toBe(404)
+    expect(response.body).toEqual({ error: 'course_not_found' })
+  })
+
+  it('returns 404 for a course id that does not exist', async () => {
+    // given: a signed-in trainer
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+
+    // when: fetching a made-up id
+    const response = await agent.get('/api/courses/does-not-exist')
+
+    // then: it is rejected as not found
+    expect(response.status).toBe(404)
+    expect(response.body).toEqual({ error: 'course_not_found' })
+  })
+})

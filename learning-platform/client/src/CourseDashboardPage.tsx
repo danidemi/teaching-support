@@ -33,9 +33,8 @@ function compareCourses(a: Course, b: Course, column: SortBy, direction: SortDir
 
 /**
  * `/courses` (COURSE-001): lists the signed-in trainer's tenant's
- * courses, with a "+ New course" action and row selection that updates
- * the breadcrumb. No edit/delete/upload — out of scope per the DoD;
- * those are future stories' jobs.
+ * courses, with a "+ New course" action. No edit/delete/upload — out of
+ * scope per the DoD; those are future stories' jobs.
  *
  * Sorting is column-header click-to-sort, computed client-side over the
  * already-loaded (unpaginated) course list: clicking a header cycles
@@ -44,19 +43,18 @@ function compareCourses(a: Course, b: Course, column: SortBy, direction: SortDir
  * /api/courses` returns (its own default, title ascending) — reworked at
  * sprint review (2026-08-23) to replace an earlier "Sort by" dropdown.
  *
- * "Current course" is kept as this page's own state, not a route param or
- * anything persisted — the DoD only requires the breadcrumb to reflect
- * the selection on this page. Once a course is selected, a "View
- * quizzes" link appears (QUIZ-DASHBOARD-001) — that story's screen is
- * reached by its own URL (`/courses/:courseId/quizzes`), not by carrying
- * this page's state into a preserved location.
+ * Clicking a course row navigates directly to that course's detail page
+ * (`/courses/:courseId`, COURSE-DETAIL-001) — decided at that story's
+ * grooming (2026-08-23) to remove the earlier in-memory "selected
+ * course" state and "View quizzes" link this page used to have. Nothing
+ * is ever "selected" on this page any more, so the breadcrumb always
+ * reads `Courses > (no course selected)`.
  */
 function CourseDashboardPage() {
   const { user, logout } = useSignedInUser()
   const [courses, setCourses] = useState<Course[] | null>(null)
   const [sortColumn, setSortColumn] = useState<SortBy | null>(null)
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [createError, setCreateError] = useState<string | null>(null)
@@ -122,15 +120,7 @@ function CourseDashboardPage() {
       <AppHeader user={user} onLogout={logout} />
 
       <nav aria-label="Breadcrumb" className="flex items-center justify-between border-b border-border px-6 py-3 text-sm text-ink/70">
-        <span>
-          Courses{selectedCourse && <> &gt; {selectedCourse.title}</>}
-          {!selectedCourse && <> &gt; (no course selected)</>}
-        </span>
-        {selectedCourse && (
-          <a href={`/courses/${selectedCourse.id}/quizzes`} className="text-ink underline underline-offset-2 hover:text-brass">
-            View quizzes
-          </a>
-        )}
+        <span>Courses &gt; (no course selected)</span>
       </nav>
 
       <main className="flex-1 px-6 py-section-gap">
@@ -179,13 +169,8 @@ function CourseDashboardPage() {
                   {sortedCourses.map((course) => (
                     <tr
                       key={course.id}
-                      onClick={() => setSelectedCourse(course)}
-                      aria-selected={selectedCourse?.id === course.id}
-                      className={
-                        selectedCourse?.id === course.id
-                          ? 'cursor-pointer bg-brass-50 border-t border-border'
-                          : 'cursor-pointer border-t border-border hover:bg-ink-50'
-                      }
+                      onClick={() => window.location.assign(`/courses/${course.id}`)}
+                      className="cursor-pointer border-t border-border hover:bg-ink-50"
                     >
                       <td className="px-4 py-2 text-ink">{course.title}</td>
                       <td className="px-4 py-2 text-ink/70">{formatDate(course.createdAt)}</td>

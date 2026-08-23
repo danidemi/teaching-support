@@ -76,41 +76,27 @@ describe('CourseDashboardPage (COURSE-001)', () => {
     expect(screen.getByText('Advanced SQL')).toBeInTheDocument()
   })
 
-  it('updates the breadcrumb when a course row is clicked', async () => {
+  it('navigates directly to the course detail page when a row is clicked (COURSE-DETAIL-001)', async () => {
     // given: a signed-in user with one course
     stubFetch({ me: SIGNED_IN_USER, courses: [{ id: 'c1', title: 'Intro to Python', createdAt: '2026-01-10T00:00:00Z', updatedAt: '2026-08-01T00:00:00Z' }] })
+    const assignSpy = vi.fn()
+    vi.stubGlobal('location', { ...window.location, assign: assignSpy })
     render(<CourseDashboardPage />)
     await waitFor(() => expect(screen.getByText('Intro to Python')).toBeInTheDocument())
 
     // when: clicking the course row
     fireEvent.click(screen.getByText('Intro to Python'))
 
-    // then: the breadcrumb reflects the selection
-    const breadcrumb = screen.getByRole('navigation', { name: /breadcrumb/i })
-    expect(within(breadcrumb).getByText(/Intro to Python/)).toBeInTheDocument()
+    // then: it navigates straight to that course's detail page, no intermediate selection
+    expect(assignSpy).toHaveBeenCalledWith('/courses/c1')
   })
 
-  it('shows a "View quizzes" link to the course once a row is selected (QUIZ-DASHBOARD-001)', async () => {
-    // given: a signed-in user with one course, none selected yet
-    stubFetch({ me: SIGNED_IN_USER, courses: [{ id: 'c1', title: 'Intro to Python', createdAt: '2026-01-10T00:00:00Z', updatedAt: '2026-08-01T00:00:00Z' }] })
-    render(<CourseDashboardPage />)
-    await waitFor(() => expect(screen.getByText('Intro to Python')).toBeInTheDocument())
-    expect(screen.queryByRole('link', { name: /view quizzes/i })).not.toBeInTheDocument()
-
-    // when: selecting the course
-    fireEvent.click(screen.getByText('Intro to Python'))
-
-    // then: a link to that course's quiz dashboard appears
-    const link = screen.getByRole('link', { name: /view quizzes/i })
-    expect(link).toHaveAttribute('href', '/courses/c1/quizzes')
-  })
-
-  it('shows "(no course selected)" in the breadcrumb before any row is clicked', async () => {
-    // given: a signed-in user with a course, none selected yet
+  it('always shows "(no course selected)" in the breadcrumb (COURSE-DETAIL-001: nothing is ever selected on this page)', async () => {
+    // given: a signed-in user with a course
     stubFetch({ me: SIGNED_IN_USER, courses: [{ id: 'c1', title: 'Intro to Python', createdAt: '2026-01-10T00:00:00Z', updatedAt: '2026-08-01T00:00:00Z' }] })
     render(<CourseDashboardPage />)
 
-    // when/then: the breadcrumb starts unselected
+    // when/then: the breadcrumb never reflects a selection
     const breadcrumb = screen.getByRole('navigation', { name: /breadcrumb/i })
     await waitFor(() => expect(within(breadcrumb).getByText(/no course selected/i)).toBeInTheDocument())
   })
