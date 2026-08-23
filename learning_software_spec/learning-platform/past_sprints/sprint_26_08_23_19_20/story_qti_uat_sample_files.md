@@ -1,6 +1,6 @@
 ID: QTI-UAT-SAMPLES-001
 
-Status: READY (development complete, see Verification below)
+Status: DONE
 
 Priority: High
 

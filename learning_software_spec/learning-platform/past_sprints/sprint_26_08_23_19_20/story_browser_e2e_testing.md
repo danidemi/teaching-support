@@ -1,6 +1,6 @@
 ID: E2E-BROWSER-001
 
-Status: READY (development complete, see Verification below)
+Status: DONE
 
 Priority: Medium
 

@@ -1,6 +1,6 @@
 ID: QTI3-MIGRATION-001
 
-Status: READY (development complete, see Verification below)
+Status: DONE
 
 Priority: High (blocks `QTI-UAT-SAMPLES-001`, which is High)
 
