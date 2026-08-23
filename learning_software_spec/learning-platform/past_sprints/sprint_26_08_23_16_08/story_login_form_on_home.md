@@ -1,6 +1,6 @@
 ID: HOME-LOGIN-001
 
-Status: READY
+Status: DONE
 
 Priority: High
 

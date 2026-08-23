@@ -1,6 +1,6 @@
 ID: UAT-BOOTSTRAP-001
 
-Status: READY
+Status: DONE
 
 Priority: Medium (infrastructure/DX story, not user-facing — flag at sprint planning if UAT
 timing makes this more urgent than Medium)
