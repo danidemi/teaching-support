@@ -59,3 +59,25 @@ Technical plan (sprint planning, 2026-08-23):
   in place of the current hero-only body (hero text can stay above/around it, per whatever
   layout looks right — no wireframe exists for this, keep it simple)
 * no ADR needed — no tech-stack change, reusing existing routing/session primitives
+
+Deviation from plan (development, 2026-08-23):
+* the redirect uses `window.location.assign('/courses')`, not `useNavigate` — ADR-0004
+  ("Client-side routing") explicitly keeps `App.tsx` free of any `<Router>`-ancestor
+  requirement so it "keeps rendering standalone in tests with no `<Router>` ancestor";
+  `useNavigate` throws outside a Router. A full navigation also matches the pattern
+  `SignInForm`/`LoginPage` already use on successful login, for the same reason (session
+  cookie freshness).
+
+Verification (development, 2026-08-23):
+* implemented: `client/src/components/SignInForm.tsx` (new, shared) holds the
+  email/password fields, submit handler, and error message, extracted unchanged out of
+  `LoginPage.tsx`; `LoginPage.tsx` now renders `<SignInForm />` inside its existing `<Card>`;
+  `App.tsx` renders the same `<SignInForm />` in a `<Card>` when signed out, alongside the
+  existing "Sign up" button, and redirects to `/courses` via `window.location.assign` in a
+  `useEffect` once `user` is truthy
+* automated: 47/47 client tests green — all pre-existing `/login` tests pass unmodified
+  against the extracted component; 4 new tests in `App.test.tsx` (home page shows the
+  form, submitting it behaves like `/login`, a signed-in visitor is redirected to
+  `/courses`, a signed-out visitor is not redirected); `npm run build` succeeds with no
+  type errors
+* manual: not run this pass — same sprint-wide gap tracked by E2E-BROWSER-001 (deferred)

@@ -109,6 +109,79 @@ describe('App (home page, HOME-001 / AUTH-UX-001)', () => {
   })
 })
 
+// Covers HOME-LOGIN-001's DoD (active_sprint/story_login_form_on_home.md):
+// the home page shows the shared sign-in form directly, and a signed-in
+// visitor is redirected to /courses.
+describe('App sign-in form and signed-in redirect (HOME-LOGIN-001)', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    window.history.pushState({}, '', '/')
+  })
+
+  it('shows the sign-in form directly on the home page when signed out', () => {
+    // given: an unregistered/signed-out user
+    stubFetch({ status: 401 })
+
+    // when: the home page renders
+    render(<App />)
+
+    // then: the same email/password sign-in form is shown, no extra click needed
+    expect(screen.getByLabelText(/email/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/password/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^sign in$/i })).toBeInTheDocument()
+  })
+
+  it('submits the home-page form the same way /login does', async () => {
+    // given: an unregistered user on the home page
+    const assignSpy = vi.fn()
+    vi.stubGlobal('location', { ...window.location, assign: assignSpy })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) => {
+        if (url === '/api/me') return Promise.resolve({ status: 401, json: () => Promise.resolve({}) })
+        if (url === '/api/login') return Promise.resolve({ status: 200, json: () => Promise.resolve({ ok: true }) })
+        return Promise.resolve({ status: 404, json: () => Promise.resolve({}) })
+      }),
+    )
+    render(<App />)
+
+    // when: filling in and submitting the form
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'trainer@example.com' } })
+    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'secret' } })
+    fireEvent.click(screen.getByRole('button', { name: /^sign in$/i }))
+
+    // then: POST /api/login is called and the browser navigates home
+    await waitFor(() => expect(assignSpy).toHaveBeenCalledWith('/'))
+  })
+
+  it('redirects a signed-in visitor away from the home page to /courses', async () => {
+    // given: /api/me confirms a session
+    const assignSpy = vi.fn()
+    vi.stubGlobal('location', { ...window.location, assign: assignSpy })
+    stubFetch({ status: 200, body: { id: '1', email: 'trainer@example.com' } })
+
+    // when: the home page renders and /api/me resolves
+    render(<App />)
+
+    // then: the browser is sent to /courses
+    await waitFor(() => expect(assignSpy).toHaveBeenCalledWith('/courses'))
+  })
+
+  it('does not redirect while signed out', async () => {
+    // given: an unregistered user
+    const assignSpy = vi.fn()
+    vi.stubGlobal('location', { ...window.location, assign: assignSpy })
+    stubFetch({ status: 401 })
+
+    // when: the home page renders and /api/me resolves
+    render(<App />)
+    await waitFor(() => expect(vi.mocked(fetch)).toHaveBeenCalled())
+
+    // then: no redirect happens
+    expect(assignSpy).not.toHaveBeenCalled()
+  })
+})
+
 // Covers AUTH-UX-001's confirm-outcome banner: GET /api/confirm now
 // redirects to /?status=..., and the home page renders it instead of the
 // retired /confirm-result page.

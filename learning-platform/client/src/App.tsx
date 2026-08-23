@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from './components/ui/button'
+import { Card } from './components/ui/card'
 import AppHeader from './components/AppHeader'
+import SignInForm from './components/SignInForm'
 import { useSignedInUser } from './lib/session'
 
 /**
@@ -36,6 +38,11 @@ const CONFIRM_TONE: Record<string, 'success' | 'error'> = {
  * email plus a "Log out" control (once `GET /api/me` confirms a session
  * exists) — TENANT-001's "visualizes its current tenant close to its
  * avatar", `user.email` standing in for the avatar until one exists.
+ *
+ * HOME-LOGIN-001: signed-out visitors see the shared `SignInForm` here
+ * directly, not just a link to `/login` — one click saved. A signed-in
+ * visitor is redirected to `/courses` (no signed-in home/dashboard exists
+ * yet; building one is future scope).
  */
 function App() {
   const { user, logout } = useSignedInUser()
@@ -44,6 +51,16 @@ function App() {
   )
 
   const tone = confirmStatus ? CONFIRM_TONE[confirmStatus] ?? 'error' : null
+
+  // HOME-LOGIN-001: a signed-in user visiting `/` has nothing to do on
+  // this signed-out landing page (no signed-in home/dashboard exists
+  // yet) — send them to `/courses` instead. A full navigation, not
+  // client-side routing: `App.tsx` stays a plain, router-ancestor-free
+  // component (ADR-0004), same reasoning as `SignInForm`'s post-login
+  // redirect.
+  useEffect(() => {
+    if (user) window.location.assign('/courses')
+  }, [user])
 
   return (
     <div className="min-h-screen flex flex-col bg-paper">
@@ -70,16 +87,22 @@ function App() {
         </div>
       )}
 
-      <main className="flex flex-1 flex-col items-center justify-center gap-group-gap px-6 text-center">
+      <main className="flex flex-1 flex-col items-center justify-center gap-group-gap px-6 py-section-gap text-center">
         <h1 className="font-display text-3xl font-semibold text-ink">Plan courses. Author quizzes. Teach with confidence.</h1>
         <p className="max-w-md text-base text-ink/70">
           The Learning Platform helps trainers build and manage adult-education courses from
           one place.
         </p>
         {!user && (
-          <Button asChild variant="outline" className="mt-2">
-            <a href="/signup">Sign up</a>
-          </Button>
+          <>
+            <Card className="w-full max-w-sm text-left">
+              <h2 className="mb-group-gap font-display text-xl font-semibold text-ink">Sign in</h2>
+              <SignInForm />
+            </Card>
+            <Button asChild variant="outline" className="mt-2">
+              <a href="/signup">Sign up</a>
+            </Button>
+          </>
         )}
       </main>
     </div>
