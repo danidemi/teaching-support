@@ -1,6 +1,6 @@
 ID: E2E-BROWSER-001
 
-Status: READY
+Status: READY (development complete, see Verification below)
 
 Priority: Medium
 
@@ -73,3 +73,30 @@ Technical plan (sprint planning, 2026-08-23):
 * no ADR needed — `@playwright/test` is already present at the outer-repo level (confirmed
   at grooming, `1.62.1`), this only wires it into `learning-platform` itself; no new
   tech-stack element
+
+Verification (development, 2026-08-23):
+* implemented per the technical plan, with two adjustments made during development:
+  * the disposable Postgres is its own isolated `docker-compose.e2e.yml` (project name
+    `learning-platform-e2e`, host port `5433`, no named volume) rather than reusing
+    `server/docker-compose.yml` directly — needed to actually guarantee no collision with a
+    developer's own running stack (confirmed: ran the suite while `server-postgres-1`/
+    `server-mailpit-1` were up and healthy, and they were untouched both before and after)
+  * `client/vite.config.ts`'s vitest `test.exclude` gained `e2e/**` — without it, `npm test`
+    (vitest) tried to run the Playwright specs itself and failed; this was caught by running
+    the full unit suite after adding the e2e specs, not assumed
+* 5 spec files (`home`, `signup`, `login`, `courses`, `course-detail`) plus a
+  `signUpAndLogIn` helper, all UI-navigation-only (click links/buttons, `page.goto('/')` only
+  as the initial entry point) — covers all 5 shipped screens per the DoD, with
+  `course-detail.spec.ts` targeting COURSE-DETAIL-001's `/courses/:courseId` (not the
+  now-removed `/courses/:courseId/quizzes`)
+* `npm run test:e2e` (`client/package.json`) run twice against this machine's Docker: 6/6
+  passed both times, ~19s each; the disposable stack's containers/volume were confirmed
+  gone after each run (`docker ps`/`docker volume ls`); the dev stack
+  (`server-postgres-1`/`server-mailpit-1`) stayed up and untouched throughout both runs
+* one benign finding: the webServer process logs an unhandled Postgres-pool error to stderr
+  when Playwright kills it at the end of a run (a DB connection mid-flight at kill time) —
+  cosmetic noise in the test output, not a test failure (all tests still reported passed);
+  not fixed, same category as this codebase's already-accepted jsdom "Not implemented:
+  navigation" noise elsewhere
+* `README.md` updated with a "Browser end-to-end tests" section: command, what it covers,
+  Docker requirement, and that it's safe to run alongside a developer's own dev server

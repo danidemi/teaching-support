@@ -44,6 +44,23 @@ Safe to re-run: each run starts from a clean container/volume state.
 Whenever a change alters how the app is built, started, or migrated,
 update this script in the same change.
 
+## Browser end-to-end tests (E2E-BROWSER-001)
+
+```bash
+cd client && npm run test:e2e
+```
+
+Runs a headless Playwright click-through suite (`client/e2e/`) covering
+every screen shipped so far (`/`, `/signup`, `/login`, `/courses`,
+`/courses/:courseId`) — each test reaches its target only via UI
+navigation (clicking links/buttons), never a typed URL.
+
+Needs Docker: the suite brings up its own disposable Postgres (isolated
+compose project + port `5433`, torn down again when the run ends), builds
+the real server and client, and drives a real browser against them — it
+never touches a developer's own `server/docker-compose.yml` stack or
+long-running dev server. Safe to run alongside `npm run dev`/`db:up`.
+
 ## Local email testing (Mailpit)
 
 `server/docker-compose.yml` starts a `mailpit` container that catches all

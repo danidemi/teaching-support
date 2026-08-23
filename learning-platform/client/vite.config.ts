@@ -1,6 +1,7 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { configDefaults } from 'vitest/config'
 
 export default defineConfig({
   plugins: [react()],
@@ -17,5 +18,9 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: './src/setupTests.ts',
+    // E2E-BROWSER-001's Playwright specs live under e2e/ and run via
+    // `npm run test:e2e`, not vitest — exclude them here so `npm test`
+    // doesn't try (and fail) to run them as unit tests.
+    exclude: [...configDefaults.exclude, 'e2e/**'],
   },
 })
