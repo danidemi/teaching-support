@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  QTI-UAT-SAMPLES-001: valid QTI 3.0 sample — multiple-choice item.
+  Expected outcome when uploaded: ACCEPTED.
+-->
+<qti-assessment-item xmlns="http://www.imsglobal.org/xsd/imsqtiasi_v3p0"
+                      identifier="multiple-choice-basic"
+                      title="Prime numbers (multiple choice)"
+                      adaptive="false"
+                      time-dependent="false">
+  <qti-response-declaration identifier="RESPONSE" cardinality="multiple" base-type="identifier">
+    <qti-correct-response>
+      <qti-value>choice_a</qti-value>
+      <qti-value>choice_c</qti-value>
+    </qti-correct-response>
+  </qti-response-declaration>
+  <qti-outcome-declaration identifier="SCORE" cardinality="single" base-type="float">
+    <qti-default-value>
+      <qti-value>0</qti-value>
+    </qti-default-value>
+  </qti-outcome-declaration>
+  <qti-item-body>
+    <qti-choice-interaction response-identifier="RESPONSE" shuffle="false" max-choices="0">
+      <qti-prompt>Which of the following are prime numbers?</qti-prompt>
+      <qti-simple-choice identifier="choice_a">2</qti-simple-choice>
+      <qti-simple-choice identifier="choice_b">4</qti-simple-choice>
+      <qti-simple-choice identifier="choice_c">7</qti-simple-choice>
+      <qti-simple-choice identifier="choice_d">9</qti-simple-choice>
+    </qti-choice-interaction>
+  </qti-item-body>
+  <qti-response-processing template="https://purl.imsglobal.org/spec/qti/v3p0/rptemplates/match_correct"/>
+</qti-assessment-item>

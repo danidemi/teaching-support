@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  QTI-UAT-SAMPLES-001: invalid sample — well-formed XML, correct root
+  element and namespace, but missing the required "identifier" attribute.
+  Expected outcome when uploaded: REJECTED (missing required attribute).
+-->
+<qti-assessment-item xmlns="http://www.imsglobal.org/xsd/imsqtiasi_v3p0"
+                      title="Missing identifier attribute">
+  <qti-item-body>
+    <p>What is 2 + 2?</p>
+  </qti-item-body>
+</qti-assessment-item>

@@ -1,5 +1,15 @@
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, it, expect } from 'vitest'
 import { validateQti3 } from './validateQti3.js'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const SAMPLES_DIR = path.resolve(__dirname, '../../test-fixtures/qti-samples')
+
+function readSample(name: string): Buffer {
+  return readFileSync(path.join(SAMPLES_DIR, name))
+}
 
 // Covers QTI3-MIGRATION-001's DoD (active_sprint/story_qti3_migration.md):
 // validates QTI 3.0 files with the same structural-check shape
@@ -114,5 +124,29 @@ describe('validateQti3 (QTI3-MIGRATION-001)', () => {
     const result = validateQti3(buf('<qti-assessment-item xmlns="http://www.imsglobal.org/xsd/imsqtiasi_v3p0"><qti-item-body/></qti-assessment-item>'))
 
     expect(result.errors.length).toBeGreaterThanOrEqual(2)
+  })
+})
+
+// QTI-UAT-SAMPLES-001: the same fixed sample files used for manual UAT
+// upload also exercise the real validator here, so a change to either
+// the validator or the fixtures that breaks their intended outcome is
+// caught automatically.
+describe('validateQti3 against the QTI-UAT-SAMPLES-001 fixtures', () => {
+  it.each([
+    'sample-accept-single-choice-basic.xml',
+    'sample-accept-multiple-choice-basic.xml',
+    'sample-accept-multi-item-test.xml',
+  ])('accepts %s', (fileName) => {
+    const result = validateQti3(readSample(fileName))
+    expect(result.valid).toBe(true)
+  })
+
+  it.each([
+    'sample-reject-malformed-xml.xml',
+    'sample-reject-wrong-root-element.xml',
+    'sample-reject-missing-identifier.xml',
+  ])('rejects %s', (fileName) => {
+    const result = validateQti3(readSample(fileName))
+    expect(result.valid).toBe(false)
   })
 })

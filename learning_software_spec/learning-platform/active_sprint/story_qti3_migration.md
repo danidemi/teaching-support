@@ -102,6 +102,10 @@ Verification (development, 2026-08-23):
   `server/src/routes/quizzes.test.ts` and `client/src/QuizDashboardPage.test.tsx` to upload
   QTI-3.0-shaped fixtures instead of QTI 2.2 ones — 79/79 server tests and 47/47 client tests
   green; both `npm run build`s clean
-* manual: not run this pass — deferred to right after `QTI-UAT-SAMPLES-001` produces real
-  QTI 3.0 sample files to upload, per that story's own technical plan; will be done together
-  rather than hand-authoring a throwaway file just for this story
+* manual (completed after `QTI-UAT-SAMPLES-001` produced the sample files, 2026-08-23):
+  started the built server against the already-running Postgres, signed up + logged in via
+  the real API, created a course, uploaded all 6 `QTI-UAT-SAMPLES-001` fixtures — the 3
+  "accept" files returned `201` and appeared in `GET .../quizzes` (3 rows); the 3 "reject"
+  files each returned `400 invalid_format` with the expected error and created nothing.
+  Server process stopped afterward; the pre-existing Postgres/mailpit containers were left
+  running untouched (no `docker compose down -v` this time)

@@ -1,7 +1,6 @@
 ID: QTI-UAT-SAMPLES-001
 
-Status: READY — blocked from sprint selection until `QTI3-MIGRATION-001` ships (see
-Dependencies below); groom-complete otherwise
+Status: READY (development complete, see Verification below)
 
 Priority: High
 
@@ -75,3 +74,19 @@ Technical plan (sprint planning, 2026-08-23):
   inlining XML strings, where convenient) and manual UAT (upload each through the running
   UI, per DoD)
 * no new application code — authoring fixed files only, per the story's own effort estimate
+
+Verification (development, 2026-08-23):
+* implemented: all 6 files exist at `server/test-fixtures/qti-samples/`, named per the fixed
+  convention — 3 accept (`sample-accept-single-choice-basic.xml`,
+  `sample-accept-multiple-choice-basic.xml`, `sample-accept-multi-item-test.xml`) and 3
+  reject (`sample-reject-malformed-xml.xml`, `sample-reject-wrong-root-element.xml` — a QTI
+  2.2-shaped file, doubling as QTI3-MIGRATION-001's own hard-cutover-rejection case,
+  `sample-reject-missing-identifier.xml`)
+* automated: added `describe('validateQti3 against the QTI-UAT-SAMPLES-001 fixtures', ...)`
+  to `validateQti3.test.ts` — reads each fixture file directly and asserts the intended
+  accept/reject outcome; 85/85 server tests green
+* manual: ran `npm run build && npm start` against the already-running Postgres, signed up
+  + logged in via the real API, created a course, uploaded all 6 files through the real
+  `POST /api/courses/:courseId/quizzes` endpoint — all 3 "accept" files returned `201` and
+  showed up in `GET .../quizzes` (confirmed 3 rows with the expected titles); all 3 "reject"
+  files returned `400` with the expected validation error and created nothing

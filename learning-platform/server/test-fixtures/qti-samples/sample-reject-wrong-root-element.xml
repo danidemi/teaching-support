@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  QTI-UAT-SAMPLES-001: invalid sample — well-formed XML, but the root
+  element is QTI 2.2's, not QTI 3.0's (ADR-0007's hard cutover means a
+  QTI 2.2 file is rejected the same way any other wrong-root file is).
+  Expected outcome when uploaded: REJECTED (wrong root element).
+-->
+<assessmentItem xmlns="http://www.imsglobal.org/xsd/imsqti_v2p2"
+                 identifier="wrong-root-element"
+                 title="Old QTI 2.2 sample, now unsupported">
+  <itemBody>
+    <p>What is 2 + 2?</p>
+  </itemBody>
+</assessmentItem>

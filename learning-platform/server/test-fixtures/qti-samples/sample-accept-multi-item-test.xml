@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  QTI-UAT-SAMPLES-001: valid QTI 3.0 sample — multi-item test.
+  Expected outcome when uploaded: ACCEPTED. Note: this validator checks
+  structure only (root/namespace/attributes), not that referenced item
+  files actually exist — matching validateQti3.ts's documented scope.
+-->
+<qti-assessment-test xmlns="http://www.imsglobal.org/xsd/imsqtiasi_v3p0"
+                      identifier="geography-quiz-test"
+                      title="Geography quiz (multi-item test)">
+  <qti-test-part identifier="part1" navigation-mode="linear" submission-mode="individual">
+    <qti-assessment-section identifier="section1" title="Capitals" visible="true">
+      <qti-assessment-item-ref identifier="single-choice-basic" href="./sample-accept-single-choice-basic.xml"/>
+      <qti-assessment-item-ref identifier="multiple-choice-basic" href="./sample-accept-multiple-choice-basic.xml"/>
+    </qti-assessment-section>
+  </qti-test-part>
+</qti-assessment-test>

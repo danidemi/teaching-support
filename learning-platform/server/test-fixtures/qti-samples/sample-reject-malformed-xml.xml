@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  QTI-UAT-SAMPLES-001: invalid sample — malformed XML (unclosed tag).
+  Expected outcome when uploaded: REJECTED (well-formedness error).
+-->
+<qti-assessment-item xmlns="http://www.imsglobal.org/xsd/imsqtiasi_v3p0"
+                      identifier="malformed-xml"
+                      title="Malformed sample">
+  <qti-item-body>
+    <p>This paragraph tag is deliberately never closed
+  </qti-item-body>
+</qti-assessment-item>
