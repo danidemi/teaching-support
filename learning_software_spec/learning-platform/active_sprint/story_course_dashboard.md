@@ -1,6 +1,6 @@
 ID: COURSE-001
 
-Status: IN PROGRESS
+Status: READY
 
 Priority: Medium
 
@@ -132,6 +132,20 @@ Technical plan (sprint planning, 2026-08-23):
   (`▲`/`▼`) next to the active column's header text, nothing on the others; unsorted falls
   back to the order `GET /api/courses` returns (its existing default, title ascending)
 * no ADR needed — no tech-stack change, same React state + shadcn/ui table already in place
+
+Rework verification (development, 2026-08-23):
+* implemented per the "Technical plan (sprint planning, 2026-08-23)" above: column headers in
+  `CourseDashboardPage.tsx` are now clickable buttons (`Title`/`Created`/`Last updated`),
+  cycling asc → desc → unsorted, sorting the already-loaded `Course[]` client-side; an
+  arrow (▲/▼) marks the active column; the "Sort by" dropdown and its `SORT_OPTIONS` are
+  removed; the `GET /api/courses` call no longer sends `sortBy` (server default — title
+  ascending — is what "unsorted" falls back to)
+* automated: 43/43 client tests green (`CourseDashboardPage.test.tsx` — 2 new tests: first
+  click sorts ascending with an ascending arrow shown, three clicks on the same header cycle
+  ascending → descending → unsorted with the arrow appearing/disappearing correctly); `npm run
+  build` (tsc -b + vite build) succeeds with no type errors
+* manual: not re-run this pass — same gap as the rest of this sprint's stories, no
+  browser/Playwright click-through (tracked by E2E-BROWSER-001, deferred out of this sprint)
 
 Sprint review feedback (2026-08-23) — rejected, not accepted as DONE:
 * the built sorting UI is a "Sort by:" dropdown (per the wireframe drawn at grooming); the

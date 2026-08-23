@@ -154,6 +154,62 @@ describe('CourseDashboardPage (COURSE-001)', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
+  it('sorts ascending on the first click of a column header', async () => {
+    // given: a signed-in user with courses in server (title-ascending) order
+    stubFetch({
+      me: SIGNED_IN_USER,
+      courses: [
+        { id: 'c1', title: 'Advanced SQL', createdAt: '2026-03-02T00:00:00Z', updatedAt: '2026-07-15T00:00:00Z' },
+        { id: 'c2', title: 'Intro to Python', createdAt: '2026-01-10T00:00:00Z', updatedAt: '2026-08-01T00:00:00Z' },
+      ],
+    })
+    render(<CourseDashboardPage />)
+    await waitFor(() => expect(screen.getByText('Advanced SQL')).toBeInTheDocument())
+
+    // when: clicking the "Created" header once
+    fireEvent.click(screen.getByRole('button', { name: /^created$/i }))
+
+    // then: rows are in ascending created-date order, with an ascending arrow on that header
+    const rows = screen.getAllByRole('row').slice(1) // skip header row
+    expect(within(rows[0]).getByText('Intro to Python')).toBeInTheDocument()
+    expect(within(rows[1]).getByText('Advanced SQL')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^created$/i })).toHaveTextContent('▲')
+  })
+
+  it('cycles a column through ascending, descending, and unsorted on repeat clicks', async () => {
+    // given: a signed-in user with two courses
+    stubFetch({
+      me: SIGNED_IN_USER,
+      courses: [
+        { id: 'c1', title: 'Advanced SQL', createdAt: '2026-03-02T00:00:00Z', updatedAt: '2026-07-15T00:00:00Z' },
+        { id: 'c2', title: 'Intro to Python', createdAt: '2026-01-10T00:00:00Z', updatedAt: '2026-08-01T00:00:00Z' },
+      ],
+    })
+    render(<CourseDashboardPage />)
+    await waitFor(() => expect(screen.getByText('Advanced SQL')).toBeInTheDocument())
+    const titleHeader = screen.getByRole('button', { name: /^title$/i })
+
+    // when: clicking the "Title" header twice (asc, then desc)
+    fireEvent.click(titleHeader)
+    fireEvent.click(titleHeader)
+
+    // then: rows are in descending title order, with a descending arrow
+    let rows = screen.getAllByRole('row').slice(1)
+    expect(within(rows[0]).getByText('Intro to Python')).toBeInTheDocument()
+    expect(within(rows[1]).getByText('Advanced SQL')).toBeInTheDocument()
+    expect(titleHeader).toHaveTextContent('▼')
+
+    // when: clicking it a third time
+    fireEvent.click(titleHeader)
+
+    // then: sorting is removed — back to server order (title ascending) and no arrow shown
+    rows = screen.getAllByRole('row').slice(1)
+    expect(within(rows[0]).getByText('Advanced SQL')).toBeInTheDocument()
+    expect(within(rows[1]).getByText('Intro to Python')).toBeInTheDocument()
+    expect(titleHeader).not.toHaveTextContent('▲')
+    expect(titleHeader).not.toHaveTextContent('▼')
+  })
+
   it('closes the form without creating anything when Cancel is clicked', async () => {
     // given: a signed-in user with the create form open
     stubFetch({ me: SIGNED_IN_USER, courses: [] })

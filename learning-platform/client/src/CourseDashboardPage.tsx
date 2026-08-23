@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import AppHeader from './components/AppHeader'
 import { Button } from './components/ui/button'
 import { Card } from './components/ui/card'
@@ -14,22 +14,35 @@ interface Course {
 }
 
 type SortBy = 'title' | 'createdAt' | 'updatedAt'
+type SortDirection = 'asc' | 'desc'
 
-const SORT_OPTIONS: { value: SortBy; label: string }[] = [
+const COLUMNS: { value: SortBy; label: string }[] = [
   { value: 'title', label: 'Title' },
   { value: 'createdAt', label: 'Created' },
-  { value: 'updatedAt', label: 'Updated' },
+  { value: 'updatedAt', label: 'Last updated' },
 ]
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString()
 }
 
+function compareCourses(a: Course, b: Course, column: SortBy, direction: SortDirection) {
+  const result = a[column].localeCompare(b[column])
+  return direction === 'asc' ? result : -result
+}
+
 /**
  * `/courses` (COURSE-001): lists the signed-in trainer's tenant's
- * courses, sortable, with a "+ New course" action and row selection that
- * updates the breadcrumb. No edit/delete/upload — out of scope per the
- * DoD; those are future stories' jobs.
+ * courses, with a "+ New course" action and row selection that updates
+ * the breadcrumb. No edit/delete/upload — out of scope per the DoD;
+ * those are future stories' jobs.
+ *
+ * Sorting is column-header click-to-sort, computed client-side over the
+ * already-loaded (unpaginated) course list: clicking a header cycles
+ * ascending → descending → unsorted, with an arrow marking the active
+ * column's direction. Unsorted falls back to whatever order `GET
+ * /api/courses` returns (its own default, title ascending) — reworked at
+ * sprint review (2026-08-23) to replace an earlier "Sort by" dropdown.
  *
  * "Current course" is kept as this page's own state, not a route param or
  * anything persisted — the DoD only requires the breadcrumb to reflect
@@ -41,15 +54,16 @@ function formatDate(iso: string) {
 function CourseDashboardPage() {
   const { user, logout } = useSignedInUser()
   const [courses, setCourses] = useState<Course[] | null>(null)
-  const [sortBy, setSortBy] = useState<SortBy>('title')
+  const [sortColumn, setSortColumn] = useState<SortBy | null>(null)
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [createError, setCreateError] = useState<string | null>(null)
   const [loadError, setLoadError] = useState(false)
 
-  const loadCourses = useCallback(async (sort: SortBy) => {
-    const response = await fetch(`/api/courses?sortBy=${sort}`)
+  const loadCourses = useCallback(async () => {
+    const response = await fetch('/api/courses')
     if (response.status === 200) {
       setCourses(await response.json())
       setLoadError(false)
@@ -60,8 +74,26 @@ function CourseDashboardPage() {
   }, [])
 
   useEffect(() => {
-    loadCourses(sortBy)
-  }, [sortBy, loadCourses])
+    loadCourses()
+  }, [loadCourses])
+
+  const sortedCourses = useMemo(() => {
+    if (courses === null || sortColumn === null) return courses
+    return [...courses].sort((a, b) => compareCourses(a, b, sortColumn, sortDirection))
+  }, [courses, sortColumn, sortDirection])
+
+  function handleHeaderClick(column: SortBy) {
+    if (sortColumn !== column) {
+      setSortColumn(column)
+      setSortDirection('asc')
+      return
+    }
+    if (sortDirection === 'asc') {
+      setSortDirection('desc')
+      return
+    }
+    setSortColumn(null)
+  }
 
   async function handleCreate(event: FormEvent) {
     event.preventDefault()
@@ -74,7 +106,7 @@ function CourseDashboardPage() {
     if (response.status === 201) {
       setShowCreateForm(false)
       setNewTitle('')
-      await loadCourses(sortBy)
+      await loadCourses()
       return
     }
     const body = await response.json()
@@ -115,39 +147,36 @@ function CourseDashboardPage() {
               <Button type="button" onClick={() => setShowCreateForm(true)}>
                 + New course
               </Button>
-              <label className="flex items-center gap-2 text-sm text-ink">
-                Sort by
-                <select
-                  value={sortBy}
-                  onChange={(event) => setSortBy(event.target.value as SortBy)}
-                  className="rounded border border-border bg-white px-2 py-1 text-sm text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass"
-                >
-                  {SORT_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
             </div>
 
             {loadError && <p className="text-sm text-error">Could not load your courses. Try reloading the page.</p>}
 
-            {courses === null ? (
+            {sortedCourses === null ? (
               <p className="text-ink/70">Loading your courses…</p>
-            ) : courses.length === 0 ? (
+            ) : sortedCourses.length === 0 ? (
               <p className="text-ink/70">No courses yet — create one to get started.</p>
             ) : (
               <table className="w-full border-collapse overflow-hidden rounded-card border border-border text-left text-sm">
                 <thead>
                   <tr className="bg-ink-50 text-ink">
-                    <th className="px-4 py-2 font-medium">Title</th>
-                    <th className="px-4 py-2 font-medium">Created</th>
-                    <th className="px-4 py-2 font-medium">Last updated</th>
+                    {COLUMNS.map((column) => (
+                      <th key={column.value} className="px-4 py-2 font-medium">
+                        <button
+                          type="button"
+                          onClick={() => handleHeaderClick(column.value)}
+                          className="flex items-center gap-1 font-medium hover:text-brass focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass"
+                        >
+                          {column.label}
+                          {sortColumn === column.value && (
+                            <span aria-hidden="true">{sortDirection === 'asc' ? '▲' : '▼'}</span>
+                          )}
+                        </button>
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {courses.map((course) => (
+                  {sortedCourses.map((course) => (
                     <tr
                       key={course.id}
                       onClick={() => setSelectedCourse(course)}
