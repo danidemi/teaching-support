@@ -46,3 +46,30 @@ Notes:
   `references/do_and_donts.md` for the retrospective entry this produced.
 * scope is test infrastructure + coverage for what already shipped, not a commitment to add
   a browser test for every future story as a standing rule — decide that policy at grooming.
+
+Technical plan (sprint planning, 2026-08-23):
+* add `@playwright/test` as a dev dependency to `learning-platform/client/package.json`
+  (the suite drives the browser against the client's served UI; keeping it there — not a
+  new top-level workspace — matches this repo's existing per-package dependency style)
+* `client/playwright.config.ts`: `webServer` config that runs the server against a
+  disposable Postgres — reuse `server/docker-compose.yml` for Postgres/mailpit (same
+  disposable-instance pattern `scripts/uat.sh` already established this sprint) plus
+  `server: npm run build && npm start` in `server/`, `baseURL` pointing at `:3000`; picks a
+  non-default test DB name/port if needed to avoid colliding with a developer's own running
+  stack — confirm exact isolation approach against `do_and_donts.md`'s disposable-instance
+  rule during implementation
+* scheduled **last** in this sprint (see `sprint.md`'s development sequence) so it exercises
+  the actual screens as they exist after `COURSE-DETAIL-001`'s route changes
+  (`/courses/:courseId` replacing `/courses/:courseId/quizzes`) land, rather than testing a
+  route about to be removed
+* one spec file per screen under `client/e2e/`: `home.spec.ts` (`/`), `signup.spec.ts`,
+  `login.spec.ts`, `courses.spec.ts` (`/courses`), `course-detail.spec.ts`
+  (`/courses/:courseId`, replacing the old `/courses/:courseId/quizzes` target per
+  COURSE-DETAIL-001) — each reaches its target via UI navigation only (click links/buttons),
+  per the DoD and the SIGN-UP-001 precedent
+* `client/package.json` gets `"test:e2e": "playwright test"`; `README.md` gets a "Browser
+  end-to-end tests (E2E-BROWSER-001)" section: what it does, how to run it, that it needs
+  Docker (for the disposable Postgres) the same way `scripts/uat.sh` does
+* no ADR needed — `@playwright/test` is already present at the outer-repo level (confirmed
+  at grooming, `1.62.1`), this only wires it into `learning-platform` itself; no new
+  tech-stack element

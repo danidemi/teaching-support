@@ -57,3 +57,21 @@ Dependencies:
 * `QTI3-MIGRATION-001` must ship first (hard cutover to QTI 3.0, decided at grooming
   2026-08-23) — this story is groomed and READY, but not selectable into a sprint before
   that one is done, since there's nothing to validate "accept" against until then
+
+Technical plan (sprint planning, 2026-08-23):
+* scheduled after `QTI3-MIGRATION-001` in this sprint's development sequence (see
+  `sprint.md`) so the validator these files target actually exists when authored
+* 6 files at `server/test-fixtures/qti-samples/`, named per the fixed convention:
+  * `sample-accept-single-choice-basic.xml` — one `qti-assessment-item`, single-choice
+  * `sample-accept-multiple-choice-basic.xml` — one `qti-assessment-item`, multiple-choice
+  * `sample-accept-multi-item-test.xml` — one `qti-assessment-test` referencing 2+ items
+  * `sample-reject-malformed-xml.xml` — deliberately unclosed/broken tag
+  * `sample-reject-wrong-root-element.xml` — well-formed XML, wrong root (e.g. QTI 2.2's
+    `assessmentItem`, doubling as the QTI3-MIGRATION-001 test's "old format now rejected"
+    case if convenient to share)
+  * `sample-reject-missing-identifier.xml` — well-formed, correct root, missing the
+    required `identifier` attribute
+* reused by both `validateQti3.test.ts` (import the accept/reject fixtures instead of
+  inlining XML strings, where convenient) and manual UAT (upload each through the running
+  UI, per DoD)
+* no new application code — authoring fixed files only, per the story's own effort estimate

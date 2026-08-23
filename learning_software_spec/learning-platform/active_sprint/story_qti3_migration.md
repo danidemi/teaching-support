@@ -67,3 +67,25 @@ Open questions:
 * none blocking READY — hard cutover and validation-only scope were decided at grooming
   (2026-08-23, see above). Which concrete QTI 3.0 player library to adopt, if any, is
   deferred to whichever future story actually adds playback — not this one.
+
+Technical plan (sprint planning, 2026-08-23):
+* ADR written: `adr/ADR-0007-qti-3-0-cutover.md` — records the hard-cutover decision and its
+  rationale (player-library/HTML5 motivation, not yet independently verified, flagged again
+  for whichever story adds playback)
+* rename/replace `server/src/qti/validateQti22.ts` → `server/src/qti/validateQti3.ts`:
+  swap `ROOT_ELEMENT_NAMES` to `qti-assessment-item`/`qti-assessment-test`, swap the
+  namespace check to the QTI 3.0 namespace, swap `itemBody` → `qti-item-body` (QTI 3.0's
+  renamed element); same structural-validation scope/shape as the 2.2 version (well-formed
+  XML, correct root/namespace, required `identifier`/`title` attributes, `qti-item-body`
+  presence for an item) — no full XSD validation, same documented reduction as `QTI-22-IMPORT`
+* `server/src/routes/quizzes.ts` — swap the `validateQti22` import/call for the new
+  `validateQti3` function; no other route logic changes (same accept/store/list flow)
+* `client/src/QuizDashboardPage.tsx:153` — update the error copy from "isn't valid QTI 2.2"
+  to "isn't valid QTI 3.0"
+* delete `server/src/qti/validateQti22.test.ts`'s QTI-2.2-accept fixtures/cases, replace with
+  QTI-3.0-shaped ones in a new `validateQti3.test.ts`; add at least one case that uploads a
+  pre-existing QTI 2.2 sample and asserts it is now rejected as wrong-namespace (per DoD)
+* no DB/schema changes — no column encodes "22"/"2.2" anywhere (checked at planning)
+* manual verification: hand-author (or reuse from `QTI-UAT-SAMPLES-001` once that story
+  produces them) at least one real QTI 3.0 sample file, upload it against a disposable server
+  instance, confirm accept/store/list works end-to-end

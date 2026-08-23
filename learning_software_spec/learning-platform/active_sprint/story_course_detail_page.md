@@ -62,3 +62,30 @@ Dependencies:
 
 Open questions:
 * none — direct-navigation decision made at grooming (2026-08-23, see DoD above)
+
+Technical plan (sprint planning, 2026-08-23):
+* `client/src/CourseDashboardPage.tsx`: remove `selectedCourse` state, the `aria-selected`
+  row highlighting, and the "View quizzes" link; a course row click becomes a plain
+  navigation (`window.location.assign`, consistent with this codebase's existing
+  full-navigation pattern elsewhere — no `<Router>` dependency needed here since this page
+  is already rendered under `<BrowserRouter>` via `main.tsx`, but a plain link/anchor per
+  row is simpler than adding `useNavigate` for a one-line redirect) to
+  `/courses/:courseId` (new route, replacing today's direct link to
+  `/courses/:courseId/quizzes`); breadcrumb permanently reads
+  `Courses > (no course selected)` on this page, per the DoD
+* new `client/src/CourseDetailPage.tsx` at route `/courses/:courseId`: fetches the course's
+  own title (new/reused `GET /api/courses/:courseId` — check `server/src/routes/courses.ts`
+  for whether a single-course-by-id endpoint already exists; add one if not, following the
+  existing list endpoint's shape) to render the breadcrumb `Courses > <course name>`, then
+  renders the existing quiz list/upload/delete/replace UI as one section
+* `QuizDashboardPage.tsx`'s existing JSX/logic becomes that section — extracted into a
+  `client/src/components/QuizzesSection.tsx` (keeps `courseId` as a prop instead of reading
+  it via `useParams` itself) so `CourseDetailPage` can render it without a nested route;
+  `/courses/:courseId/quizzes` route is removed in favor of `/courses/:courseId`
+* `main.tsx`: replace the `/courses/:courseId/quizzes` route with `/courses/:courseId` →
+  `<CourseDetailPage />`
+* update `QuizDashboardPage.test.tsx`'s existing coverage to target the extracted
+  `QuizzesSection` component directly (same test bodies, same assertions, just rendered via
+  the new component/props instead of the page+route); add new `CourseDetailPage.test.tsx`
+  for breadcrumb + navigation-between-courses coverage per the DoD
+* no ADR needed — reshapes existing routing/components, no new tech-stack element
