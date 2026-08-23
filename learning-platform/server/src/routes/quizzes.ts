@@ -3,7 +3,7 @@ import multer from 'multer'
 import path from 'node:path'
 import type { CourseRepository } from '../db/courses.js'
 import type { QuizRepository } from '../db/quizzes.js'
-import { validateQti22 } from '../qti/validateQti22.js'
+import { validateQti3 } from '../qti/validateQti3.js'
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } })
 
@@ -67,7 +67,7 @@ export function createQuizzesRouter(courses: CourseRepository, quizzes: QuizRepo
       return
     }
 
-    const validation = validateQti22(req.file.buffer)
+    const validation = validateQti3(req.file.buffer)
     if (!validation.valid) {
       res.status(400).json({ error: 'invalid_format', errors: validation.errors })
       return

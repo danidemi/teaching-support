@@ -150,7 +150,7 @@ function QuizDashboardPage() {
             {actionError && <p className="text-sm text-error">{actionError}</p>}
             {uploadErrors && (
               <div className="rounded border border-error/30 bg-error-50 px-4 py-3 text-sm text-error">
-                <p className="font-medium">This file isn&apos;t valid QTI 2.2:</p>
+                <p className="font-medium">This file isn&apos;t valid QTI 3.0:</p>
                 <ul className="mt-1 list-disc pl-5">
                   {uploadErrors.map((err, index) => (
                     <li key={index}>

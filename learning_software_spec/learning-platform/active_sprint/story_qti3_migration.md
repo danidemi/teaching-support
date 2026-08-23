@@ -1,6 +1,6 @@
 ID: QTI3-MIGRATION-001
 
-Status: READY
+Status: READY (development complete, see Verification below)
 
 Priority: High (blocks `QTI-UAT-SAMPLES-001`, which is High)
 
@@ -89,3 +89,19 @@ Technical plan (sprint planning, 2026-08-23):
 * manual verification: hand-author (or reuse from `QTI-UAT-SAMPLES-001` once that story
   produces them) at least one real QTI 3.0 sample file, upload it against a disposable server
   instance, confirm accept/store/list works end-to-end
+
+Verification (development, 2026-08-23):
+* implemented: `server/src/qti/validateQti3.ts` (new) replaces the deleted
+  `validateQti22.ts`; checks `qti-assessment-item`/`qti-assessment-test` root elements, the
+  QTI 3.0 namespace, `identifier`/`title` attributes, and `qti-item-body` presence for an
+  item — same structural-check shape and scope reduction as the QTI 2.2 version
+* `server/src/routes/quizzes.ts` now imports/calls `validateQti3`; `client/src/QuizDashboardPage.tsx`'s
+  upload-error copy changed from "isn't valid QTI 2.2" to "isn't valid QTI 3.0"
+* automated: 10 new unit tests in `validateQti3.test.ts` (accept/reject cases, including a
+  QTI 2.2 file now rejected as wrong root element, confirming the hard cutover); updated
+  `server/src/routes/quizzes.test.ts` and `client/src/QuizDashboardPage.test.tsx` to upload
+  QTI-3.0-shaped fixtures instead of QTI 2.2 ones — 79/79 server tests and 47/47 client tests
+  green; both `npm run build`s clean
+* manual: not run this pass — deferred to right after `QTI-UAT-SAMPLES-001` produces real
+  QTI 3.0 sample files to upload, per that story's own technical plan; will be done together
+  rather than hand-authoring a throwaway file just for this story

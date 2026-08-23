@@ -134,19 +134,22 @@ describe('QuizDashboardPage (QUIZ-DASHBOARD-001)', () => {
     )
   })
 
-  it('shows line/element-level errors when the server rejects the file as invalid QTI (QTI-22-IMPORT)', async () => {
+  it('shows line/element-level errors when the server rejects the file as invalid QTI (QTI3-MIGRATION-001)', async () => {
     stubFetch({
       me: SIGNED_IN_USER,
       quizzes: [],
       uploadStatus: 400,
-      uploadBody: { error: 'invalid_format', errors: [{ line: 1, message: '<assessmentItem> is missing the required "identifier" attribute' }] },
+      uploadBody: {
+        error: 'invalid_format',
+        errors: [{ line: 1, message: '<qti-assessment-item> is missing the required "identifier" attribute' }],
+      },
     })
     renderAt('course-1')
     await waitFor(() => expect(screen.getByText(/no quizzes uploaded/i)).toBeInTheDocument())
 
     chooseFile('upload-file-input', 'bad.xml')
 
-    await waitFor(() => expect(screen.getByText(/isn't valid qti 2\.2/i)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/isn't valid qti 3\.0/i)).toBeInTheDocument())
     expect(screen.getByText(/missing the required "identifier" attribute/i)).toBeInTheDocument()
     expect(screen.getByText(/line 1/i)).toBeInTheDocument()
   })

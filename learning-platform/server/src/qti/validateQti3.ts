@@ -9,30 +9,28 @@ export interface QtiValidationResult {
   valid: boolean
   errors: QtiValidationError[]
   // Present only when valid — the root element's declared title, used as
-  // the quiz's title (QTI-22-IMPORT DoD doesn't specify where the title
-  // comes from; the file's own `title` attribute is the natural source,
-  // since QTI 2.2 requires it).
+  // the quiz's title (QTI-22-IMPORT's DoD, carried over unchanged by
+  // QTI3-MIGRATION-001 — the file's own `title` attribute is the natural
+  // source, since QTI 3.0 requires it too).
   title?: string
 }
 
-const QTI_2P2_NAMESPACE = 'http://www.imsglobal.org/xsd/imsqti_v2p2'
-const ROOT_ELEMENT_NAMES = new Set(['assessmentItem', 'assessmentTest'])
+const QTI_3P0_NAMESPACE = 'http://www.imsglobal.org/xsd/imsqtiasi_v3p0'
+const ROOT_ELEMENT_NAMES = new Set(['qti-assessment-item', 'qti-assessment-test'])
 
 /**
- * QTI-22-IMPORT: structural validation of an uploaded QTI 2.2 file,
+ * QTI3-MIGRATION-001: structural validation of an uploaded QTI 3.0 file,
  * reporting line/element-level errors per the DoD.
  *
- * This is NOT full XSD schema validation against the official QTI 2.2
- * schema (`imsqti_v2p2.xsd`) — that schema is a large, multi-file XSD
- * this environment has no network access to fetch, and hand-transcribing
- * it would itself be error-prone and unverifiable. Instead this checks
- * the structural rules a trainer's mistake would actually violate:
- * well-formed XML, the correct root element and namespace, the root's two
- * required attributes (`identifier`, `title`), and — for an
- * `assessmentItem` — at least one `itemBody`. Documented here and in
- * `story_upload_qti_22_quiz.md` as a known scope reduction, not hidden.
+ * This replaces `validateQti22` (removed — ADR-0007's hard cutover, no
+ * dual-format support). Same scope reduction as that module: NOT full XSD
+ * schema validation against the official QTI 3.0 schema — this checks the
+ * structural rules a trainer's mistake would actually violate: well-formed
+ * XML, the correct root element and namespace, the root's two required
+ * attributes (`identifier`, `title`), and — for a `qti-assessment-item` —
+ * at least one `qti-item-body` (QTI 3.0's renamed `itemBody`).
  */
-export function validateQti22(fileContent: Buffer): QtiValidationResult {
+export function validateQti3(fileContent: Buffer): QtiValidationResult {
   const errors: QtiValidationError[] = []
   const parser = sax.parser(true)
 
@@ -59,17 +57,17 @@ export function validateQti22(fileContent: Buffer): QtiValidationResult {
       if (!ROOT_ELEMENT_NAMES.has(name)) {
         errors.push({
           line: parser.line + 1,
-          message: `root element must be <assessmentItem> or <assessmentTest>, found <${name}>`,
+          message: `root element must be <qti-assessment-item> or <qti-assessment-test>, found <${name}>`,
         })
         return
       }
-      rootIsAssessmentItem = name === 'assessmentItem'
+      rootIsAssessmentItem = name === 'qti-assessment-item'
 
       const xmlns = typeof node.attributes['xmlns'] === 'string' ? node.attributes['xmlns'] : undefined
-      if (xmlns !== undefined && xmlns !== QTI_2P2_NAMESPACE) {
+      if (xmlns !== undefined && xmlns !== QTI_3P0_NAMESPACE) {
         errors.push({
           line: parser.line + 1,
-          message: `<${name}> has namespace "${xmlns}", expected "${QTI_2P2_NAMESPACE}" (QTI 2.2)`,
+          message: `<${name}> has namespace "${xmlns}", expected "${QTI_3P0_NAMESPACE}" (QTI 3.0)`,
         })
       }
 
@@ -86,7 +84,7 @@ export function validateQti22(fileContent: Buffer): QtiValidationResult {
       }
     }
 
-    if (name === 'itemBody') sawItemBody = true
+    if (name === 'qti-item-body') sawItemBody = true
   }
 
   try {
@@ -99,7 +97,7 @@ export function validateQti22(fileContent: Buffer): QtiValidationResult {
   if (!rootSeen) {
     errors.push({ line: 1, message: 'the file has no root element (is it empty?)' })
   } else if (rootIsAssessmentItem && !sawItemBody) {
-    errors.push({ line: 1, message: '<assessmentItem> is missing the required <itemBody> element' })
+    errors.push({ line: 1, message: '<qti-assessment-item> is missing the required <qti-item-body> element' })
   }
 
   if (errors.length > 0) {

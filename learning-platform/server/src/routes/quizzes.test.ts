@@ -12,14 +12,15 @@ import type { NewQuiz, Quiz, QuizFileUpdate, QuizRepository } from '../db/quizze
 
 // Covers QUIZ-DASHBOARD-001's DoD (active_sprint/story_quiz_dashboard.md):
 // list, delete, and replace-file, all scoped to a course the caller's
-// tenant actually owns. Also covers QTI-22-IMPORT's DoD
-// (active_sprint/story_upload_qti_22_quiz.md): POST validates the file as
-// QTI 2.2 before creating a row, rejecting an invalid one with
-// line/element-level errors and not creating anything.
+// tenant actually owns. Also covers QTI3-MIGRATION-001's DoD
+// (active_sprint/story_qti3_migration.md, replacing QTI-22-IMPORT's
+// original QTI 2.2 coverage per ADR-0007's hard cutover): POST validates
+// the file as QTI 3.0 before creating a row, rejecting an invalid one
+// with line/element-level errors and not creating anything.
 
-const VALID_QTI_ITEM = `<assessmentItem xmlns="http://www.imsglobal.org/xsd/imsqti_v2p2" identifier="q1" title="Sample question">
-  <itemBody><p>What is 2 + 2?</p></itemBody>
-</assessmentItem>`
+const VALID_QTI_ITEM = `<qti-assessment-item xmlns="http://www.imsglobal.org/xsd/imsqtiasi_v3p0" identifier="q1" title="Sample question">
+  <qti-item-body><p>What is 2 + 2?</p></qti-item-body>
+</qti-assessment-item>`
 
 function createFakeQuizRepository(): QuizRepository & { rows: (Quiz & { courseId: string })[] } {
   const rows: (Quiz & { courseId: string })[] = []
@@ -147,13 +148,13 @@ describe('POST /api/courses/:courseId/quizzes (QTI-22-IMPORT)', () => {
     expect(response.body).toEqual({ error: 'missing_file' })
   })
 
-  it('creates a quiz from a valid QTI 2.2 file, using its declared title', async () => {
+  it('creates a quiz from a valid QTI 3.0 file, using its declared title', async () => {
     // given: a signed-in trainer with a course
     const { app, users } = createTestApp()
     const agent = await signInAgent(users, app, 'trainer@example.com')
     const courseId = await createCourse(agent)
 
-    // when: uploading a well-formed QTI 2.2 item
+    // when: uploading a well-formed QTI 3.0 item
     const response = await agent.post(`/api/courses/${courseId}/quizzes`).attach('file', Buffer.from(VALID_QTI_ITEM), 'question1.xml')
 
     // then: it is created, titled from the file's own "title" attribute
@@ -169,7 +170,7 @@ describe('POST /api/courses/:courseId/quizzes (QTI-22-IMPORT)', () => {
     const { app, users } = createTestApp()
     const agent = await signInAgent(users, app, 'trainer@example.com')
     const courseId = await createCourse(agent)
-    const invalid = '<assessmentItem xmlns="http://www.imsglobal.org/xsd/imsqti_v2p2" title="No id"><itemBody/></assessmentItem>'
+    const invalid = '<qti-assessment-item xmlns="http://www.imsglobal.org/xsd/imsqtiasi_v3p0" title="No id"><qti-item-body/></qti-assessment-item>'
 
     // when: uploading it
     const response = await agent.post(`/api/courses/${courseId}/quizzes`).attach('file', Buffer.from(invalid), 'bad.xml')
