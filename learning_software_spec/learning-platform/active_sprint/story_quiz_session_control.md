@@ -74,23 +74,58 @@ none blocking grooming.
 
 Technical plan (sprint planning, 2026-08-23):
 * new `quiz_sessions` Drizzle table (`server/src/db/schema.ts`, migration applied at startup
-  per existing convention): `id` (uuid pk), `quizId` (fk to `quizzes`), `status` (text:
-  `closed` | `running` | `stopped`), `timeLimitSeconds` (nullable int), `startedAt`/`closesAt`
-  (nullable timestamps — `closesAt` computed at start time from `startedAt +
-  timeLimitSeconds`), `stoppedAt` (nullable), `createdAt`/`updatedAt`. Tenancy is proven by
-  joining `quizzes -> courses -> tenants` (same pattern `quizzes.ts` already uses for course
-  scoping), not a denormalized `tenantId` column on this table.
+  per existing convention): `id` (uuid pk), `quizId` (fk to `quizzes`), `timeLimitSeconds`
+  (nullable int — no limit set means "run until stopped"), `startedAt`/`closesAt` (nullable
+  timestamps — `closesAt` computed at start/reopen time from `startedAt + timeLimitSeconds`,
+  left null if no limit was set), `stoppedAt` (nullable), `createdAt`/`updatedAt`. Tenancy is
+  proven by joining `quizzes -> courses -> tenants` (same pattern `quizzes.ts` already uses
+  for course scoping), not a denormalized `tenantId` column on this table.
+* **no stored `status` column.** Status (`closed` | `running` | `stopped`) is derived on read
+  from the timestamp columns: no `startedAt` -> `closed`; `startedAt` set, `stoppedAt` null,
+  and (`closesAt` null or `closesAt` still in the future) -> `running`; `startedAt` set and
+  either `stoppedAt` set or `closesAt` has passed -> `stopped` (auto-close on deadline, not
+  just on an explicit Stop). This is what ADR-0009's "no new server infrastructure" actually
+  requires here too — a background job to flip a stored status at `closesAt` would be exactly
+  the kind of new infrastructure that ADR argues against; deriving it on every read needs
+  none. `GET /api/quiz-sessions/:sessionId` (and any endpoint returning a session) returns
+  this derived status, not a raw column.
+* **time-limit parsing**: server-side only (client input is not a guard, same principle as
+  `courses.ts`'s `isValidTitle`). Accepts `<positive integer>h` or `<positive integer>m`
+  (case-insensitive), e.g. `3h`, `75m`; rejects anything else (`banana`, `0m`, `-5h`, empty,
+  no unit) with 400. The field is optional — omitting it entirely means no time limit, not a
+  validation error.
+* **reopening a stopped session** (`POST .../start` again, same endpoint as the first start —
+  the DoD's "always reopenable" is just "start" being callable when `stoppedAt` is already
+  set): clears `stoppedAt`, re-sets `startedAt` to now, recomputes `closesAt` from whatever
+  time limit is given at that call (a fresh or extended limit, per the DoD) — a full restart
+  of the deadline, not a resume of the old one. Does not touch anything in
+  QUIZ-SESSION-LIVE-STATUS-001's connections table, which is how that story's "keeps
+  accumulating" DoD item is satisfied for free.
 * new `SessionRepository` (`server/src/db/quizSessions.ts`), following the existing
   `CourseRepository`/`QuizRepository` shape.
 * new route file `server/src/routes/quizSessions.ts`: `POST /api/quizzes/:quizId/sessions`
-  (create), `POST /api/quiz-sessions/:sessionId/start`, `POST /api/quiz-sessions/:sessionId
-  /stop` (also used for reopen — reopening is `POST .../start` again on a `stopped` session),
-  `GET /api/quiz-sessions/:sessionId` (monitor page's initial load). All of these take an id
-  from the URL and look up through to a tenant, so they're written using
-  ROUTE-ID-GUARD-001's just-established pattern (try/catch around the lookup, 404 on a
-  malformed id) from the start, not copied from the buggy `authorizeCourse` code.
+  (create), `POST /api/quiz-sessions/:sessionId/start` (also handles reopen, see above),
+  `POST /api/quiz-sessions/:sessionId/stop`, `GET /api/quiz-sessions/:sessionId` (monitor
+  page's initial load). All of these take an id from the URL and look up through to a tenant,
+  so they're written using ROUTE-ID-GUARD-001's just-established pattern (try/catch around
+  the lookup, 404 on a malformed id) from the start, not copied from the buggy
+  `authorizeCourse` code — and per that story's own lesson, `testSupport/fakes.ts`'s new
+  `createFakeSessionRepository` generates real UUID-shaped ids and throws the same wrapped
+  `22P02` shape for a non-UUID id, so these new guards are actually exercised by a test, not
+  just structurally present.
+* **session URL** (ADR-0008, revised 2026-08-23): the server computes `takeUrl` from
+  `APP_BASE_URL` (same `appBaseUrl()` pattern as `signup.ts`) and includes it on every session
+  response. The client never builds this URL itself.
 * new client page `QuizSessionMonitorPage.tsx` at route `/quiz-sessions/:sessionId`
-  (`main.tsx`'s route table), rendering the QR (ADR-0008, `qrcode` package) + URL + Block #1
-  + a static Block #2 placeholder.
+  (`main.tsx`'s route table), rendering the QR (ADR-0008, `qrcode`'s `toString(..., { type:
+  'svg' })` inline-SVG output — no canvas, so it renders and is assertable under jsdom) + the
+  `takeUrl` as plain text + Block #1 + a static Block #2 placeholder. Reached from
+  `QuizzesSection.tsx` (a "create session" action per quiz row — that component and its
+  tests are touched by this story too, not just the new page).
+* Block #1's "running" display (clock time + duration remaining) is a simple client-side
+  countdown computed from `closesAt` — no polling needed for this story (ADR-0009's polling
+  decision is for QUIZ-SESSION-LIVE-STATUS-001's Block #2 counts, not this). When no time
+  limit was set, the block shows the running state without a clock/duration readout (nothing
+  to count down to) — just the "running" state and the Stop button.
 * sequenced **after** ROUTE-ID-GUARD-001, **before** QUIZ-SESSION-LIVE-STATUS-001 (which
   depends on this story's session/Block #1 existing).
