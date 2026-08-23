@@ -133,3 +133,43 @@ Technical plan (sprint planning, 2026-08-23):
   QUIZ-SESSION-CONTROL-001, now committed instead of thrown away).
 * sequenced **last** in this sprint — depends on QUIZ-SESSION-CONTROL-001's session/Block #1
   and route-guard pattern.
+
+Verification (development, 2026-08-23):
+* implementation: `quiz_session_connections` table + migration
+  (`drizzle/0008_steady_thunderbolt_ross.sql`), `ConnectionRepository` (`db/
+  quizSessionConnections.ts`), two new anonymous routes on the existing `quizSessions`
+  router (`POST .../connections`, `POST .../connections/:connectionId/submit` — no
+  `sessionMiddleware`, `markSubmitted` scoped to both `connectionId` and `sessionId`).
+  `GET /api/quiz-sessions/:sessionId` (and every other session response) now includes
+  `joinedCount`/`submittedCount` — folded into the existing response rather than a separate
+  `/status` endpoint, a simplification from the technical plan's original sketch, since
+  nothing else needs a session without its counts. Client: `QuizSessionTakePage.tsx` (the
+  placeholder, no sign-in of any kind) at `/quiz-sessions/:sessionId/take`, and
+  `QuizSessionMonitorPage`'s Block #2 now shows real counts and polls while `closed` or
+  `running` (stops once `stopped`).
+* automated: 128/128 server tests green (7 new: anonymous join/submit, malformed ids,
+  cross-session-connection rejection, accumulation-through-reopen), 69/69 client tests green
+  (4 new in `QuizSessionTakePage.test.tsx`; 8 new in `QuizSessionMonitorPage.test.tsx` for
+  Block #2's three states and the polling behavior, using `vi.useFakeTimers`). `tsc --noEmit`/
+  `tsc -b`/`vite build` all clean.
+* automated (E2E-BROWSER-001 debt paid off): two new Playwright specs committed to
+  `client/e2e/` — `quiz-session-monitor.spec.ts` (the screen QUIZ-SESSION-CONTROL-001 shipped
+  without one) and `quiz-session-take.spec.ts` (two separate browser contexts — trainer +
+  anonymous student — proving a real join/submit through the actual UI reaches the trainer's
+  monitor). Both pass; full e2e suite (10 specs) passes.
+* manual, real browser, against a disposable Postgres + server (isolated ports, dev stack
+  confirmed untouched via `docker ps` before/after): (1) started a session with a 1-minute
+  limit and, with **no page reload or re-navigation**, waited for the poll tick to flip
+  Block #1 from Stop to Reopen on its own once `closesAt` passed — confirms the
+  self-correction side effect flagged at planning; (2) full anonymous-student flow across two
+  separate browser contexts (no shared cookies): joined via the placeholder page, watched the
+  trainer's Block #2 pick up "1 joined" within one poll tick with no manual refresh, submitted
+  via the stub button, started the session, and watched "1/1 answered" appear the same way.
+* one pre-existing, unrelated issue surfaced while running the e2e suite for this story:
+  Playwright's `webServer` teardown crashes the server process with an unhandled `error`
+  event on the pg pool ("terminating connection due to administrator command") when the
+  disposable Postgres container is torn down before the server process exits. Confirmed this
+  predates this story — the same crash reproduces running only the pre-existing
+  `courses.spec.ts` alone, unmodified. Out of scope here (a pool-level error-handling gap in
+  `server/src/db/client.ts`, nothing to do with quiz sessions); flagging for sprint review
+  rather than fixing under this story's DoD.

@@ -18,7 +18,11 @@ interface QuizSession {
   closesAt: string | null
   stoppedAt: string | null
   takeUrl: string
+  joinedCount: number
+  submittedCount: number
 }
+
+const POLL_INTERVAL_MS = 3000
 
 function formatClockTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -33,6 +37,17 @@ function formatDurationRemaining(closesAtIso: string, now: Date) {
   return hours > 0 ? `${hours}h ${String(minutes).padStart(2, '0')}m` : `${minutes}m`
 }
 
+/** Block #2's time-remaining bar: 100% at start, 0% once closesAt passes. */
+function timeRemainingPercent(startedAtIso: string | null, closesAtIso: string, now: Date) {
+  if (!startedAtIso) return 0
+  const startedAt = new Date(startedAtIso).getTime()
+  const closesAt = new Date(closesAtIso).getTime()
+  const total = closesAt - startedAt
+  if (total <= 0) return 0
+  const remaining = Math.max(0, closesAt - now.getTime())
+  return Math.round((remaining / total) * 100)
+}
+
 /**
  * `/quiz-sessions/:sessionId` (QUIZ-SESSION-CONTROL-001): the "Quiz
  * Session Monitor" page — a QR code + plain-text URL for students to
@@ -43,6 +58,14 @@ function formatDurationRemaining(closesAtIso: string, now: Date) {
  * `takeUrl` is never built client-side (ADR-0008) — it comes from the
  * server, computed from `APP_BASE_URL`, since a phone scanning the QR
  * code can't resolve this browser's own `window.location.origin`.
+ *
+ * Block #2's counts (QUIZ-SESSION-LIVE-STATUS-001) are polled — per
+ * ADR-0009, revised at that story's sprint planning to poll while
+ * `closed` too, not just `running`, since a joined count before start is
+ * part of the DoD. Polling stops once `stopped`. A side effect: this also
+ * self-corrects Block #1 if `closesAt` passes without an explicit Stop —
+ * the server derives `stopped` on its next poll response, where a
+ * client-only countdown alone would never notice.
  */
 function QuizSessionMonitorPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
@@ -69,6 +92,12 @@ function QuizSessionMonitorPage() {
   useEffect(() => {
     loadSession()
   }, [loadSession])
+
+  useEffect(() => {
+    if (!session || session.status === 'stopped') return
+    const interval = setInterval(loadSession, POLL_INTERVAL_MS)
+    return () => clearInterval(interval)
+  }, [session?.status, loadSession])
 
   // Block #1's clock/duration-remaining display ticks on its own —
   // ADR-0009's polling decision is for QUIZ-SESSION-LIVE-STATUS-001's
@@ -185,11 +214,37 @@ function QuizSessionMonitorPage() {
               </Card>
             </div>
 
-            <Card data-testid="block-2-placeholder">
+            <Card data-testid="block-2-live-status">
               <h2 className="mb-3 text-sm font-medium text-ink">Live status</h2>
-              {session.status === 'closed' && <p className="text-sm text-ink/70">Quiz not yet started.</p>}
-              {session.status === 'running' && <p className="text-sm text-ink/70">Running — live counts are not available yet.</p>}
-              {session.status === 'stopped' && <p className="text-sm text-ink/70">Session ended.</p>}
+              {session.status === 'closed' && (
+                <p className="text-sm text-ink/70">Quiz not yet started. {session.joinedCount} joined so far.</p>
+              )}
+              {session.status === 'running' && (
+                <div className="flex flex-col gap-2">
+                  <p className="text-sm text-ink/70">
+                    {session.submittedCount}/{session.joinedCount} answered
+                  </p>
+                  <div className="h-2 w-full rounded bg-ink-50" role="progressbar" aria-label="Answers submitted">
+                    <div
+                      className="h-2 rounded bg-brass"
+                      style={{ width: `${session.joinedCount > 0 ? Math.round((session.submittedCount / session.joinedCount) * 100) : 0}%` }}
+                    />
+                  </div>
+                  {session.closesAt && (
+                    <div className="h-2 w-full rounded bg-ink-50" role="progressbar" aria-label="Time remaining">
+                      <div
+                        className="h-2 rounded bg-ink"
+                        style={{ width: `${timeRemainingPercent(session.startedAt, session.closesAt, now)}%` }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+              {session.status === 'stopped' && (
+                <p className="text-sm text-ink/70">
+                  Session ended. {session.submittedCount}/{session.joinedCount} submitted.
+                </p>
+              )}
             </Card>
           </div>
         )}

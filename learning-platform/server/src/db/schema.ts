@@ -154,6 +154,30 @@ export const quizSessions = pgTable('quiz_sessions', {
 })
 
 /**
+ * QUIZ-SESSION-LIVE-STATUS-001: one row per placeholder-page load — an
+ * anonymous student's "join" signal, since no real student identity or
+ * quiz-taking flow exists yet (the QR/URL target is a placeholder, per
+ * QUIZ-SESSION-CONTROL-001). A page reload creates a second row, and
+ * therefore counts as a second join — an accepted limitation of a
+ * load-registers-presence model (see this story's Notes on why Block #2
+ * says "joined", not "connected now"). No tenant/session check applies
+ * to creating or updating a row here (`routes/quizSessions.ts`'s connect/
+ * submit endpoints) — a student's phone has no login of any kind.
+ */
+export const quizSessionConnections = pgTable('quiz_session_connections', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  sessionId: uuid('session_id')
+    .notNull()
+    .references(() => quizSessions.id),
+  connectedAt: timestamp('connected_at', { withTimezone: true }).defaultNow().notNull(),
+  // Nullable: unset until the stub "submit" action is used. Nothing ever
+  // resets this to null — reopening a session (QUIZ-SESSION-CONTROL-001)
+  // never touches this table, which is exactly how "keeps accumulating
+  // rather than resetting" is satisfied without extra logic.
+  submittedAt: timestamp('submitted_at', { withTimezone: true }),
+})
+
+/**
  * AUTH-UX-001 / ADR-0005: session store for `express-session`, managed by
  * `connect-pg-simple`. Column names/types (`sid`/`sess`/`expire`) and the
  * `expire` index match `connect-pg-simple`'s own expected schema exactly —

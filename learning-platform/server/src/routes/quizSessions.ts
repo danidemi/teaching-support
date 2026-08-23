@@ -1,5 +1,6 @@
 import { Router, type RequestHandler } from 'express'
 import type { SessionRepository, QuizSession } from '../db/quizSessions.js'
+import type { ConnectionRepository } from '../db/quizSessionConnections.js'
 import { isInvalidIdError } from '../db/errors.js'
 import { appBaseUrl } from '../config.js'
 
@@ -14,6 +15,12 @@ export interface QuizSessionResponse {
   closesAt: string | null
   stoppedAt: string | null
   takeUrl: string
+  // QUIZ-SESSION-LIVE-STATUS-001: folded into this same response rather
+  // than a separate `/status` endpoint — the monitor page already polls
+  // this one, and there's no other consumer that wants a session without
+  // its counts.
+  joinedCount: number
+  submittedCount: number
 }
 
 /**
@@ -31,7 +38,7 @@ export function deriveStatus(session: Pick<QuizSession, 'startedAt' | 'closesAt'
   return 'running'
 }
 
-function toResponse(session: QuizSession, now: Date): QuizSessionResponse {
+function toResponse(session: QuizSession, now: Date, counts: { joinedCount: number; submittedCount: number }): QuizSessionResponse {
   return {
     id: session.id,
     quizId: session.quizId,
@@ -41,6 +48,8 @@ function toResponse(session: QuizSession, now: Date): QuizSessionResponse {
     closesAt: session.closesAt?.toISOString() ?? null,
     stoppedAt: session.stoppedAt?.toISOString() ?? null,
     takeUrl: `${appBaseUrl()}/quiz-sessions/${session.id}/take`,
+    joinedCount: counts.joinedCount,
+    submittedCount: counts.submittedCount,
   }
 }
 
@@ -67,12 +76,20 @@ export function parseTimeLimit(input: unknown): number | null | 'invalid' {
  * `POST /api/quizzes/:quizId/sessions` (create), `POST
  * /api/quiz-sessions/:sessionId/start` (also reopen — see
  * `db/quizSessions.ts`'s `start`), `POST /api/quiz-sessions/:sessionId
- * /stop`, `GET /api/quiz-sessions/:sessionId`. Every id-in-URL lookup
- * here follows ROUTE-ID-GUARD-001's pattern from the start: wrapped in
- * try/catch, a malformed id folded into the same 404 as a genuinely
- * missing session.
+ * /stop`, `GET /api/quiz-sessions/:sessionId` — every one of these is
+ * trainer-facing and requires a tenant. `POST .../connections` and `POST
+ * .../connections/:connectionId/submit` (QUIZ-SESSION-LIVE-STATUS-001)
+ * are the opposite: an anonymous student's phone hit these after
+ * scanning a QR code, with no session/tenant of any kind, so they skip
+ * `sessionMiddleware` entirely and accept a connection regardless of the
+ * session's own status (joining before start is exactly what the DoD
+ * wants counted).
+ *
+ * Every id-in-URL lookup here — tenant-scoped or not — follows
+ * ROUTE-ID-GUARD-001's pattern: wrapped in try/catch, a malformed id
+ * folded into the same 404 as a genuinely missing row.
  */
-export function createQuizSessionsRouter(sessions: SessionRepository, sessionMiddleware: RequestHandler): Router {
+export function createQuizSessionsRouter(sessions: SessionRepository, connections: ConnectionRepository, sessionMiddleware: RequestHandler): Router {
   const router = Router()
 
   function requireTenant(req: import('express').Request, res: import('express').Response): string | null {
@@ -92,7 +109,7 @@ export function createQuizSessionsRouter(sessions: SessionRepository, sessionMid
         res.status(404).json({ error: 'quiz_not_found' })
         return
       }
-      res.status(201).json(toResponse(created, new Date()))
+      res.status(201).json(toResponse(created, new Date(), { joinedCount: 0, submittedCount: 0 }))
     } catch (err) {
       if (isInvalidIdError(err)) {
         res.status(404).json({ error: 'quiz_not_found' })
@@ -119,7 +136,8 @@ export function createQuizSessionsRouter(sessions: SessionRepository, sessionMid
         res.status(404).json({ error: 'session_not_found' })
         return
       }
-      res.status(200).json(toResponse(started, new Date()))
+      const counts = await connections.countsForSession(started.id)
+      res.status(200).json(toResponse(started, new Date(), counts))
     } catch (err) {
       if (isInvalidIdError(err)) {
         res.status(404).json({ error: 'session_not_found' })
@@ -139,7 +157,8 @@ export function createQuizSessionsRouter(sessions: SessionRepository, sessionMid
         res.status(404).json({ error: 'session_not_found' })
         return
       }
-      res.status(200).json(toResponse(stopped, new Date()))
+      const counts = await connections.countsForSession(stopped.id)
+      res.status(200).json(toResponse(stopped, new Date(), counts))
     } catch (err) {
       if (isInvalidIdError(err)) {
         res.status(404).json({ error: 'session_not_found' })
@@ -159,13 +178,53 @@ export function createQuizSessionsRouter(sessions: SessionRepository, sessionMid
         res.status(404).json({ error: 'session_not_found' })
         return
       }
-      res.status(200).json(toResponse(session, new Date()))
+      const counts = await connections.countsForSession(session.id)
+      res.status(200).json(toResponse(session, new Date(), counts))
     } catch (err) {
       if (isInvalidIdError(err)) {
         res.status(404).json({ error: 'session_not_found' })
         return
       }
       console.error('get quiz session failed:', err)
+      res.status(500).json({ error: 'internal_error' })
+    }
+  })
+
+  // QUIZ-SESSION-LIVE-STATUS-001: anonymous — no sessionMiddleware, no
+  // tenant. Accepts a join in any session status (a `closed` session's
+  // joined count is part of the DoD).
+  router.post('/api/quiz-sessions/:sessionId/connections', async (req, res) => {
+    try {
+      const connection = await connections.create(req.params.sessionId)
+      if (!connection) {
+        res.status(404).json({ error: 'session_not_found' })
+        return
+      }
+      res.status(201).json({ id: connection.id })
+    } catch (err) {
+      if (isInvalidIdError(err)) {
+        res.status(404).json({ error: 'session_not_found' })
+        return
+      }
+      console.error('create quiz session connection failed:', err)
+      res.status(500).json({ error: 'internal_error' })
+    }
+  })
+
+  router.post('/api/quiz-sessions/:sessionId/connections/:connectionId/submit', async (req, res) => {
+    try {
+      const submitted = await connections.markSubmitted(req.params.connectionId, req.params.sessionId)
+      if (!submitted) {
+        res.status(404).json({ error: 'connection_not_found' })
+        return
+      }
+      res.status(200).json({ ok: true })
+    } catch (err) {
+      if (isInvalidIdError(err)) {
+        res.status(404).json({ error: 'connection_not_found' })
+        return
+      }
+      console.error('submit quiz session connection failed:', err)
       res.status(500).json({ error: 'internal_error' })
     }
   })

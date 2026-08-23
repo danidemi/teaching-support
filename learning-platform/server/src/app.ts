@@ -12,6 +12,7 @@ import { createQuizzesRouter } from './routes/quizzes.js'
 import { createQuizRepository, type QuizRepository } from './db/quizzes.js'
 import { createQuizSessionsRouter } from './routes/quizSessions.js'
 import { createSessionRepository, type SessionRepository } from './db/quizSessions.js'
+import { createConnectionRepository, type ConnectionRepository } from './db/quizSessionConnections.js'
 import { createMailer, type Mailer } from './email/mailer.js'
 import { createSessionMiddleware } from './auth/session.js'
 
@@ -26,6 +27,7 @@ export interface AppDeps {
   courses: CourseRepository
   quizzes: QuizRepository
   quizSessions: SessionRepository
+  quizSessionConnections: ConnectionRepository
   // AUTH-UX-001: applied only to the login router's own routes (see
   // routes/login.ts) — pass a fake (e.g. `express-session` with its
   // default in-memory store) in tests, so exercising /api/login doesn't
@@ -59,6 +61,7 @@ export function createApp(deps?: Partial<AppDeps>): Express {
   const courses = deps?.courses ?? lazyCourseRepository()
   const quizzes = deps?.quizzes ?? lazyQuizRepository()
   const quizSessions = deps?.quizSessions ?? lazySessionRepository()
+  const quizSessionConnections = deps?.quizSessionConnections ?? lazyConnectionRepository()
   const sessionMiddleware = deps?.sessionMiddleware ?? lazySessionMiddleware()
 
   app.get('/healthz', (_req, res) => {
@@ -73,7 +76,7 @@ export function createApp(deps?: Partial<AppDeps>): Express {
   app.use(createLoginRouter(users, tenants, sessionMiddleware))
   app.use(createCoursesRouter(courses, sessionMiddleware))
   app.use(createQuizzesRouter(courses, quizzes, sessionMiddleware))
-  app.use(createQuizSessionsRouter(quizSessions, sessionMiddleware))
+  app.use(createQuizSessionsRouter(quizSessions, quizSessionConnections, sessionMiddleware))
 
   app.use(express.static(CLIENT_DIST))
 
@@ -228,6 +231,27 @@ function lazySessionRepository(): SessionRepository {
     start: (sessionId, tenantId, timeLimitSeconds) => resolve().start(sessionId, tenantId, timeLimitSeconds),
     stop: (sessionId, tenantId) => resolve().stop(sessionId, tenantId),
     findByIdForTenant: (sessionId, tenantId) => resolve().findByIdForTenant(sessionId, tenantId),
+  }
+}
+
+function lazyConnectionRepository(): ConnectionRepository {
+  let real: ConnectionRepository | undefined
+
+  function resolve(): ConnectionRepository {
+    if (!real) {
+      const databaseUrl = process.env.DATABASE_URL
+      if (!databaseUrl) {
+        throw new Error('DATABASE_URL is not set — copy server/.env.example to server/.env first')
+      }
+      real = createConnectionRepository(databaseUrl)
+    }
+    return real
+  }
+
+  return {
+    create: (sessionId) => resolve().create(sessionId),
+    markSubmitted: (connectionId, sessionId) => resolve().markSubmitted(connectionId, sessionId),
+    countsForSession: (sessionId) => resolve().countsForSession(sessionId),
   }
 }
 

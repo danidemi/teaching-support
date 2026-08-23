@@ -8,6 +8,7 @@ import type { Course, CourseRepository, CourseSort, NewCourse } from '../db/cour
 import type { Tenant, TenantRepository } from '../db/tenants.js'
 import type { NewQuiz, Quiz, QuizFileUpdate, QuizRepository } from '../db/quizzes.js'
 import type { QuizSession, SessionRepository } from '../db/quizSessions.js'
+import type { ConnectionRepository, QuizSessionConnection } from '../db/quizSessionConnections.js'
 import { INVALID_TEXT_REPRESENTATION } from '../db/errors.js'
 
 /**
@@ -217,6 +218,45 @@ export function createFakeSessionRepository(
     },
     async findByIdForTenant(sessionId: string, tenantId: string) {
       return findRowForTenant(sessionId, tenantId)
+    },
+  }
+}
+
+/**
+ * QUIZ-SESSION-LIVE-STATUS-001: mirrors the real repository's lack of a
+ * tenant dimension (an anonymous student's phone has none) — `create`
+ * only checks the session exists (via the sessions fake's own `rows`),
+ * `markSubmitted` checks a connection belongs to the given session id.
+ * Both still throw the wrapped `22P02` shape for a non-UUID-shaped id,
+ * per ROUTE-ID-GUARD-001's pattern.
+ */
+export function createFakeConnectionRepository(sessions: SessionRepository & { rows: QuizSession[] }): ConnectionRepository & { rows: QuizSessionConnection[] } {
+  const rows: QuizSessionConnection[] = []
+  let nextId = 1
+
+  return {
+    rows,
+    async create(sessionId: string) {
+      throwIfNotUuidShaped(sessionId)
+      if (!sessions.rows.some((row) => row.id === sessionId)) return null
+      const created: QuizSessionConnection = { id: fakeUuid(nextId++), sessionId, connectedAt: new Date(), submittedAt: null }
+      rows.push(created)
+      return created
+    },
+    async markSubmitted(connectionId: string, sessionId: string) {
+      throwIfNotUuidShaped(connectionId)
+      throwIfNotUuidShaped(sessionId)
+      const row = rows.find((row) => row.id === connectionId && row.sessionId === sessionId)
+      if (!row) return false
+      row.submittedAt = new Date()
+      return true
+    },
+    async countsForSession(sessionId: string) {
+      const forSession = rows.filter((row) => row.sessionId === sessionId)
+      return {
+        joinedCount: forSession.length,
+        submittedCount: forSession.filter((row) => row.submittedAt !== null).length,
+      }
     },
   }
 }

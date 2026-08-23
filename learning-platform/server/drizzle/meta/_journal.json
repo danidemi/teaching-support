@@ -57,6 +57,13 @@
       "when": 1787512804706,
       "tag": "0007_nosy_unicorn",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787514758887,
+      "tag": "0008_steady_thunderbolt_ross",
+      "breakpoints": true
     }
   ]
 }

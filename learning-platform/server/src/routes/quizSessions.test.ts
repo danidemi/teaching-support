@@ -7,6 +7,7 @@ import {
   createFakeCourseRepository,
   createFakeQuizRepository,
   createFakeSessionRepository,
+  createFakeConnectionRepository,
   createTestSessionMiddleware,
   signInAgent,
 } from '../testSupport/fakes.js'
@@ -16,7 +17,11 @@ import { deriveStatus, parseTimeLimit } from './quizSessions.js'
 // (active_sprint/story_quiz_session_control.md): create/start/stop/reopen
 // a quiz session, status derived on read (no stored status column, see
 // deriveStatus's own doc comment), and ROUTE-ID-GUARD-001's guard pattern
-// applied to every new id-in-URL route here from the start.
+// applied to every new id-in-URL route here from the start. Also covers
+// QUIZ-SESSION-LIVE-STATUS-001's DoD
+// (active_sprint/story_quiz_session_live_status.md): anonymous join/
+// submit signals folded into this same session response as
+// joinedCount/submittedCount.
 
 function createTestApp() {
   const users = createFakeUserRepository()
@@ -24,8 +29,9 @@ function createTestApp() {
   const courses = createFakeCourseRepository()
   const quizzes = createFakeQuizRepository()
   const quizSessions = createFakeSessionRepository(quizzes, courses)
-  const app = createApp({ users, tenants, courses, quizzes, quizSessions, sessionMiddleware: createTestSessionMiddleware() })
-  return { app, users, courses, quizzes, quizSessions }
+  const quizSessionConnections = createFakeConnectionRepository(quizSessions)
+  const app = createApp({ users, tenants, courses, quizzes, quizSessions, quizSessionConnections, sessionMiddleware: createTestSessionMiddleware() })
+  return { app, users, courses, quizzes, quizSessions, quizSessionConnections }
 }
 
 async function createCourseAndQuiz(agent: ReturnType<typeof request.agent>) {
@@ -298,5 +304,105 @@ describe('GET /api/quiz-sessions/:sessionId', () => {
     const response = await agent.get('/api/quiz-sessions/does-not-exist')
 
     expect(response.status).toBe(404)
+  })
+})
+
+describe('POST /api/quiz-sessions/:sessionId/connections (QUIZ-SESSION-LIVE-STATUS-001)', () => {
+  it('joins a session with no session/tenant of any kind, even before it is started', async () => {
+    // given: a trainer's closed session
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { quizId } = await createCourseAndQuiz(agent)
+    const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
+
+    // when: an anonymous request (no cookies at all) joins it
+    const response = await request(app).post(`/api/quiz-sessions/${created.body.id}/connections`)
+
+    // then: it succeeds
+    expect(response.status).toBe(201)
+    expect(response.body.id).toBeTruthy()
+
+    // and: the trainer's own session view reflects the join
+    const sessionResponse = await agent.get(`/api/quiz-sessions/${created.body.id}`)
+    expect(sessionResponse.body.joinedCount).toBe(1)
+  })
+
+  it('returns 404, not a crash, for a malformed session id', async () => {
+    const { app } = createTestApp()
+    const response = await request(app).post('/api/quiz-sessions/does-not-exist/connections')
+    expect(response.status).toBe(404)
+  })
+
+  it('returns 404 for a session id that does not exist', async () => {
+    const { app } = createTestApp()
+    const response = await request(app).post('/api/quiz-sessions/00000000-0000-4000-8000-000000000999/connections')
+    expect(response.status).toBe(404)
+  })
+})
+
+describe('POST /api/quiz-sessions/:sessionId/connections/:connectionId/submit (QUIZ-SESSION-LIVE-STATUS-001)', () => {
+  async function createSessionAndJoin(agent: ReturnType<typeof request.agent>, app: ReturnType<typeof createTestApp>['app']) {
+    const { quizId } = await createCourseAndQuiz(agent)
+    const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
+    const joined = await request(app).post(`/api/quiz-sessions/${created.body.id}/connections`)
+    return { sessionId: created.body.id as string, connectionId: joined.body.id as string }
+  }
+
+  it('marks a connection as submitted, reflected in the trainer session view', async () => {
+    // given: a session with one joined connection
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { sessionId, connectionId } = await createSessionAndJoin(agent, app)
+
+    // when: the anonymous student submits
+    const response = await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${connectionId}/submit`)
+
+    // then: it succeeds, and the trainer sees it counted
+    expect(response.status).toBe(200)
+    const sessionResponse = await agent.get(`/api/quiz-sessions/${sessionId}`)
+    expect(sessionResponse.body.joinedCount).toBe(1)
+    expect(sessionResponse.body.submittedCount).toBe(1)
+  })
+
+  it('returns 404 for a connection that does not belong to the given session', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { connectionId } = await createSessionAndJoin(agent, app)
+    const { sessionId: otherSessionId } = await createSessionAndJoin(agent, app)
+
+    const response = await request(app).post(`/api/quiz-sessions/${otherSessionId}/connections/${connectionId}/submit`)
+
+    expect(response.status).toBe(404)
+  })
+
+  it('returns 404, not a crash, for a malformed connection id', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { sessionId } = await createSessionAndJoin(agent, app)
+
+    const response = await request(app).post(`/api/quiz-sessions/${sessionId}/connections/does-not-exist/submit`)
+
+    expect(response.status).toBe(404)
+  })
+})
+
+describe('reopening keeps Block #2 counts accumulating (QUIZ-SESSION-LIVE-STATUS-001)', () => {
+  it('does not reset joined/submitted counts on reopen', async () => {
+    // given: a session with a join and a submit, then stopped
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { quizId } = await createCourseAndQuiz(agent)
+    const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
+    await agent.post(`/api/quiz-sessions/${created.body.id}/start`).send({})
+    const joined = await request(app).post(`/api/quiz-sessions/${created.body.id}/connections`)
+    await request(app).post(`/api/quiz-sessions/${created.body.id}/connections/${joined.body.id}/submit`)
+    await agent.post(`/api/quiz-sessions/${created.body.id}/stop`)
+
+    // when: reopening it
+    const response = await agent.post(`/api/quiz-sessions/${created.body.id}/start`).send({})
+
+    // then: the counts are unchanged, not reset to zero
+    expect(response.body.joinedCount).toBe(1)
+    expect(response.body.submittedCount).toBe(1)
   })
 })

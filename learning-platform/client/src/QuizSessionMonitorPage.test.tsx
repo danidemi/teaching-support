@@ -6,7 +6,9 @@ import QuizSessionMonitorPage from './QuizSessionMonitorPage'
 // Covers QUIZ-SESSION-CONTROL-001's DoD
 // (active_sprint/story_quiz_session_control.md): the Quiz Session Monitor
 // page — QR + URL, Block #1's closed/running states and start/stop
-// transitions, and a static Block #2 placeholder.
+// transitions. Also covers QUIZ-SESSION-LIVE-STATUS-001's DoD
+// (active_sprint/story_quiz_session_live_status.md): Block #2's real
+// joined/submitted counts in all three states.
 
 const SIGNED_IN_USER = { id: '1', email: 'trainer@example.com', tenant: { id: 't1', name: "trainer@example.com's workspace" } }
 
@@ -70,6 +72,8 @@ const BASE_SESSION = {
   closesAt: null,
   stoppedAt: null,
   takeUrl: 'http://localhost:3000/quiz-sessions/session-1/take',
+  joinedCount: 0,
+  submittedCount: 0,
 }
 
 describe('QuizSessionMonitorPage (QUIZ-SESSION-CONTROL-001)', () => {
@@ -151,10 +155,57 @@ describe('QuizSessionMonitorPage (QUIZ-SESSION-CONTROL-001)', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: /stop/i })).toBeInTheDocument())
   })
 
-  it('shows Block #2 as a static placeholder, not real counts', async () => {
-    stubFetch({ me: SIGNED_IN_USER, session: BASE_SESSION })
+  it('shows the joined count before start (QUIZ-SESSION-LIVE-STATUS-001)', async () => {
+    stubFetch({ me: SIGNED_IN_USER, session: { ...BASE_SESSION, joinedCount: 3 } })
     renderAt('session-1')
-    await waitFor(() => expect(screen.getByTestId('block-2-placeholder')).toHaveTextContent(/quiz not yet started/i))
+    await waitFor(() => expect(screen.getByTestId('block-2-live-status')).toHaveTextContent(/quiz not yet started.*3 joined/i))
+  })
+
+  it('shows the answers progress while running (QUIZ-SESSION-LIVE-STATUS-001)', async () => {
+    stubFetch({ me: SIGNED_IN_USER, session: { ...BASE_SESSION, status: 'running', startedAt: '2026-08-23T12:00:00Z', closesAt: '2026-08-23T13:00:00Z', joinedCount: 4, submittedCount: 2 } })
+    renderAt('session-1')
+    await waitFor(() => expect(screen.getByTestId('block-2-live-status')).toHaveTextContent('2/4 answered'))
+    expect(screen.getAllByRole('progressbar')).toHaveLength(2)
+  })
+
+  it('shows the submission tally, not an answered percentage, after stop (revised at sprint planning)', async () => {
+    stubFetch({ me: SIGNED_IN_USER, session: { ...BASE_SESSION, status: 'stopped', joinedCount: 10, submittedCount: 7 } })
+    renderAt('session-1')
+    await waitFor(() => expect(screen.getByTestId('block-2-live-status')).toHaveTextContent('7/10 submitted'))
+  })
+
+  it('polls for updated counts while closed (not just while running)', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const fetchMock = vi.fn((url: string) => {
+      if (url === '/api/me') return Promise.resolve({ status: 200, json: () => Promise.resolve(SIGNED_IN_USER) })
+      return Promise.resolve({ status: 200, json: () => Promise.resolve(BASE_SESSION) })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    renderAt('session-1')
+    await vi.waitFor(() => expect(screen.getByTestId('block-2-live-status')).toBeInTheDocument())
+
+    const callsAfterLoad = fetchMock.mock.calls.length
+    await vi.advanceTimersByTimeAsync(10000)
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(callsAfterLoad)
+    vi.useRealTimers()
+  })
+
+  it('stops polling once the session is stopped', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const fetchMock = vi.fn((url: string) => {
+      if (url === '/api/me') return Promise.resolve({ status: 200, json: () => Promise.resolve(SIGNED_IN_USER) })
+      return Promise.resolve({ status: 200, json: () => Promise.resolve({ ...BASE_SESSION, status: 'stopped' }) })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    renderAt('session-1')
+    await vi.waitFor(() => expect(screen.getByTestId('block-2-live-status')).toBeInTheDocument())
+
+    const callsAfterLoad = fetchMock.mock.calls.length
+    await vi.advanceTimersByTimeAsync(10000)
+    // already stopped on the very first load, so no interval should have
+    // been started at all
+    expect(fetchMock.mock.calls.length).toBe(callsAfterLoad)
+    vi.useRealTimers()
   })
 
   it('shows an error when the session cannot be loaded', async () => {
