@@ -5,7 +5,7 @@
 :node_ref: PRQ-COMPOSE-REPLICAS
 :target_minutes: 20
 :language: it
-
+  dd
 // CURRICULUM: sessione 7, item sequence "49", didactic_activity "demo", duration_minutes 20.
 // DESIGN: nodo PRQ-COMPOSE-REPLICAS — "Eseguire più repliche di uno stesso servizio con Docker
 // Compose (scalabilità di base)." knowledge_type: procedural. provenance_tags: ["inferred"] —
