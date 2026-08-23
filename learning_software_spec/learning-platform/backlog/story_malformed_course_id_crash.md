@@ -1,11 +1,13 @@
 ID: ROUTE-ID-GUARD-001
 
-Status: DRAFT
+Status: READY
 
 Priority: High (a single bad request currently takes the whole server down for every
 tenant, not just the caller who sent it)
 
-Effort: [set at grooming]
+Effort: Small — scope confirmed at grooming (2026-08-23) to be exactly 2 call sites
+(`quizzes.ts`'s `authorizeCourse` and `courses.ts`'s `GET /api/courses/:courseId`), plus
+updating the fake repositories and their tests.
 
 As:
 a `trainer` (and, by extension, every other tenant sharing the same running server)
@@ -20,7 +22,6 @@ one bad request from one user can't take the platform down for every other signe
 the same time
 
 Definition of Done:
-* [to be refined at grooming — starting point below]
 * a request with a non-UUID course id segment (any route under `/api/courses/:courseId...`)
   returns a normal 4xx JSON error (404, matching the "course not found" shape already used
   for a valid-but-nonexistent id, so a caller can't distinguish "malformed" from "doesn't
@@ -31,7 +32,10 @@ Definition of Done:
 * every route handler that calls `CourseRepository.findByIdForTenant` (or any other
   DB-lookup-by-id-from-a-route-param) is audited for the same unguarded-await pattern, not
   just the one instance found — fix all instances found, not just the one that happened to
-  get noticed
+  get noticed. **Scope confirmed at grooming (2026-08-23)**: exactly 2 call sites exist today
+  — `quizzes.ts`'s `authorizeCourse` (unguarded, crashes) and `courses.ts`'s
+  `GET /api/courses/:courseId` (already try/catch-guarded, but returns 500 rather than the
+  404 shape this DoD requires — also needs fixing, just not for the crash).
 * verified automatically: decided during the 2026-08-23 backlog interview — the fake
   repositories in `testSupport/fakes.ts` (`createFakeCourseRepository` etc.) are updated to
   `throw` for a non-UUID-shaped id, the same way real Postgres does, instead of just
