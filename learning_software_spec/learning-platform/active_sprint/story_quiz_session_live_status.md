@@ -74,3 +74,26 @@ QUIZ-SESSION-CONTROL-001 (needs a real session and Block #1 to exist first).
 
 Open questions:
 none blocking grooming.
+
+Technical plan (sprint planning, 2026-08-23):
+* new `quiz_session_connections` Drizzle table: `id` (uuid pk), `sessionId` (fk to
+  `quiz_sessions`), `connectedAt` (timestamp, default now), `submittedAt` (nullable
+  timestamp). One row per placeholder-page load — a page reload creates a second row (and
+  therefore counts as a second "connection"); this is a known, accepted limitation of a
+  load-registers-presence model, not something this story's DoD asks to solve (no real
+  student identity exists yet to dedupe against).
+* new client route `/quiz-sessions/:sessionId/take` — the placeholder page. On mount, `POST
+  /api/quiz-sessions/:sessionId/connections` (creates a connection row, returns its id, held
+  in the placeholder page's component state); a "Submit" button calls `POST
+  /api/quiz-sessions/:sessionId/connections/:connectionId/submit` (sets `submittedAt`).
+* new `GET /api/quiz-sessions/:sessionId/status` endpoint returning the session's own state
+  (per QUIZ-SESSION-CONTROL-001) plus `connectedCount` and `submittedCount` derived from this
+  table — the single source Block #2 reads from in all three of its states.
+* per ADR-0009: `QuizSessionMonitorPage`'s Block #2 polls this status endpoint on a short
+  interval while the session is `running`, and fetches it once (no polling) in the other two
+  states.
+* reopening a session (already wired by QUIZ-SESSION-CONTROL-001) does not touch this table
+  at all — old connection rows stay as they are, so counts naturally keep accumulating rather
+  than resetting, satisfying the grooming decision without any extra reset-avoidance logic.
+* sequenced **last** in this sprint — depends on QUIZ-SESSION-CONTROL-001's session/Block #1
+  and route-guard pattern.

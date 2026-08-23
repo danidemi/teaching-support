@@ -71,3 +71,26 @@ none — builds on the existing course detail / quizzes section pages.
 
 Open questions:
 none blocking grooming.
+
+Technical plan (sprint planning, 2026-08-23):
+* new `quiz_sessions` Drizzle table (`server/src/db/schema.ts`, migration applied at startup
+  per existing convention): `id` (uuid pk), `quizId` (fk to `quizzes`), `status` (text:
+  `closed` | `running` | `stopped`), `timeLimitSeconds` (nullable int), `startedAt`/`closesAt`
+  (nullable timestamps — `closesAt` computed at start time from `startedAt +
+  timeLimitSeconds`), `stoppedAt` (nullable), `createdAt`/`updatedAt`. Tenancy is proven by
+  joining `quizzes -> courses -> tenants` (same pattern `quizzes.ts` already uses for course
+  scoping), not a denormalized `tenantId` column on this table.
+* new `SessionRepository` (`server/src/db/quizSessions.ts`), following the existing
+  `CourseRepository`/`QuizRepository` shape.
+* new route file `server/src/routes/quizSessions.ts`: `POST /api/quizzes/:quizId/sessions`
+  (create), `POST /api/quiz-sessions/:sessionId/start`, `POST /api/quiz-sessions/:sessionId
+  /stop` (also used for reopen — reopening is `POST .../start` again on a `stopped` session),
+  `GET /api/quiz-sessions/:sessionId` (monitor page's initial load). All of these take an id
+  from the URL and look up through to a tenant, so they're written using
+  ROUTE-ID-GUARD-001's just-established pattern (try/catch around the lookup, 404 on a
+  malformed id) from the start, not copied from the buggy `authorizeCourse` code.
+* new client page `QuizSessionMonitorPage.tsx` at route `/quiz-sessions/:sessionId`
+  (`main.tsx`'s route table), rendering the QR (ADR-0008, `qrcode` package) + URL + Block #1
+  + a static Block #2 placeholder.
+* sequenced **after** ROUTE-ID-GUARD-001, **before** QUIZ-SESSION-LIVE-STATUS-001 (which
+  depends on this story's session/Block #1 existing).

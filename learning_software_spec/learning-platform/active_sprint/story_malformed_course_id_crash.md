@@ -75,3 +75,21 @@ Open questions:
 * none blocking grooming — both open questions from this story's original filing (test
   reproduction approach, fix location) were resolved during the 2026-08-23 backlog interview,
   see the DoD and Notes above.
+
+Technical plan (sprint planning, 2026-08-23):
+* `quizzes.ts`'s `authorizeCourse`: wrap the `courses.findByIdForTenant` call in try/catch;
+  on a caught error, respond the same way as the existing "course not found" branch (404,
+  same JSON shape) rather than letting it propagate.
+* `courses.ts`'s `GET /api/courses/:courseId`: its catch branch currently always returns 500;
+  narrow it so a malformed-id failure (Postgres `22P02`) returns 404 like the other route,
+  while a genuine unexpected error still returns 500.
+* both fixes recognize the same failure by checking for Postgres's `22P02` error code (via
+  Drizzle's wrapped error), not by pre-validating UUID shape with a regex — keeps the check
+  in one place (whatever Postgres itself considers invalid) rather than duplicating UUID
+  format rules client-side.
+* `testSupport/fakes.ts`: `createFakeCourseRepository`'s `findByIdForTenant` throws an error
+  shaped like the real `22P02` case when given a non-UUID-shaped id (matching the interview
+  decision), so the route-level try/catch is exercised without a real Postgres instance.
+* sequenced **first** in this sprint — the two upcoming quiz-session stories add new
+  id-in-URL routes; fixing this pattern first means those new routes can be written
+  correctly from the start instead of copying the bug forward.
