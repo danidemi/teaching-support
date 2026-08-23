@@ -286,3 +286,34 @@ describe('PUT /api/courses/:courseId/quizzes/:quizId/file (QUIZ-DASHBOARD-001)',
     expect(response.status).toBe(404)
   })
 })
+
+describe('malformed course id (ROUTE-ID-GUARD-001)', () => {
+  it('returns 404, not a crash, for a non-UUID-shaped course id', async () => {
+    // given: a signed-in trainer
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+
+    // when: listing quizzes for a malformed (non-UUID) course id — the
+    // fake repository throws for this, the same way real Postgres does
+    // for a value it can't parse as a `uuid` (SQLSTATE 22P02)
+    const response = await agent.get('/api/courses/does-not-exist/quizzes')
+
+    // then: it is rejected as not found, same shape as a valid-but-missing
+    // id — not an unhandled rejection that would crash the process
+    expect(response.status).toBe(404)
+    expect(response.body).toEqual({ error: 'course_not_found' })
+  })
+
+  it('leaves the server able to answer a following request', async () => {
+    // given: a signed-in trainer
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+
+    // when: a malformed-id request is immediately followed by a normal one
+    await agent.get('/api/courses/does-not-exist/quizzes')
+    const response = await agent.get('/api/courses')
+
+    // then: the second request is served normally
+    expect(response.status).toBe(200)
+  })
+})

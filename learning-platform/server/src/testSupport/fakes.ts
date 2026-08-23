@@ -6,6 +6,32 @@ import type { NewUser, UserForLogin, UserRepository } from '../db/users.js'
 import { UNIQUE_VIOLATION } from '../db/users.js'
 import type { Course, CourseRepository, CourseSort, NewCourse } from '../db/courses.js'
 import type { Tenant, TenantRepository } from '../db/tenants.js'
+import { INVALID_TEXT_REPRESENTATION } from '../db/errors.js'
+
+/**
+ * ROUTE-ID-GUARD-001: real Postgres rejects a non-UUID-shaped value given
+ * to a `uuid` column with SQLSTATE 22P02 before any row lookup happens —
+ * `findByIdForTenant('does-not-exist', ...)` never gets as far as "no
+ * matching row", it throws first. `createFakeCourseRepository` now hands
+ * out real UUID-shaped ids (`fakeUuid`, below) instead of plain
+ * incrementing integers, so it can draw the same distinction: a
+ * UUID-shaped id that matches no row is a normal miss (-> `null`); an id
+ * that isn't UUID-shaped at all throws, the same way Postgres does.
+ */
+const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+function fakeUuid(n: number): string {
+  const hex = n.toString(16).padStart(12, '0')
+  return `00000000-0000-4000-8000-${hex}`
+}
+
+function throwIfNotUuidShaped(id: string): void {
+  if (!UUID_SHAPE.test(id)) {
+    throw Object.assign(new Error('invalid input syntax for type uuid'), {
+      cause: { code: INVALID_TEXT_REPRESENTATION },
+    })
+  }
+}
 
 /**
  * Shared in-memory fakes for route tests, factored out of
@@ -73,11 +99,12 @@ export function createFakeCourseRepository(): CourseRepository & { rows: (Course
         })
       }
       const now = new Date(Date.now() + rows.length) // stable, increasing across calls in one test
-      const created = { id: String(nextId++), tenantId: course.tenantId, title: course.title, createdAt: now, updatedAt: now }
+      const created = { id: fakeUuid(nextId++), tenantId: course.tenantId, title: course.title, createdAt: now, updatedAt: now }
       rows.push(created)
       return { id: created.id, title: created.title, createdAt: created.createdAt, updatedAt: created.updatedAt }
     },
     async findByIdForTenant(courseId: string, tenantId: string) {
+      throwIfNotUuidShaped(courseId)
       const row = rows.find((row) => row.id === courseId && row.tenantId === tenantId)
       return row ? { id: row.id, title: row.title, createdAt: row.createdAt, updatedAt: row.updatedAt } : null
     },

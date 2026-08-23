@@ -4,6 +4,7 @@ import path from 'node:path'
 import type { CourseRepository } from '../db/courses.js'
 import type { QuizRepository } from '../db/quizzes.js'
 import { validateQti3 } from '../qti/validateQti3.js'
+import { isInvalidIdError } from '../db/errors.js'
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } })
 
@@ -26,20 +27,40 @@ export function createQuizzesRouter(courses: CourseRepository, quizzes: QuizRepo
    * 401 (no session) and 404 (course doesn't exist, or belongs to a
    * different tenant) are kept distinct — unlike the course-vs-tenant
    * case, "are you signed in at all" is not information worth hiding.
+   *
+   * ROUTE-ID-GUARD-001: the `findByIdForTenant` lookup is wrapped in its
+   * own try/catch, not left to propagate — a malformed (non-UUID)
+   * `:courseId` used to make Postgres raise an uncaught rejection here,
+   * which crashed the whole server process for every tenant, not just the
+   * caller who sent it. A malformed id is folded into the same 'not_found'
+   * outcome as a genuinely missing course (same information-hiding
+   * rationale as the tenant-mismatch case above); any other,
+   * genuinely-unexpected error still surfaces as 'error' -> 500, not a
+   * silent 404.
    */
-  async function authorizeCourse(req: Request): Promise<'unauthenticated' | 'not_found' | 'ok'> {
+  async function authorizeCourse(req: Request): Promise<'unauthenticated' | 'not_found' | 'error' | 'ok'> {
     if (!req.session.tenantId) return 'unauthenticated'
-    const course = await courses.findByIdForTenant(req.params.courseId, req.session.tenantId)
-    return course ? 'ok' : 'not_found'
+    try {
+      const course = await courses.findByIdForTenant(req.params.courseId, req.session.tenantId)
+      return course ? 'ok' : 'not_found'
+    } catch (err) {
+      if (isInvalidIdError(err)) return 'not_found'
+      console.error('authorize course failed:', err)
+      return 'error'
+    }
   }
 
-  function rejectIfUnauthorized(authResult: 'unauthenticated' | 'not_found' | 'ok', res: Response): boolean {
+  function rejectIfUnauthorized(authResult: 'unauthenticated' | 'not_found' | 'error' | 'ok', res: Response): boolean {
     if (authResult === 'unauthenticated') {
       res.status(401).json({ error: 'not_signed_in' })
       return true
     }
     if (authResult === 'not_found') {
       res.status(404).json({ error: 'course_not_found' })
+      return true
+    }
+    if (authResult === 'error') {
+      res.status(500).json({ error: 'internal_error' })
       return true
     }
     return false

@@ -93,3 +93,35 @@ Technical plan (sprint planning, 2026-08-23):
 * sequenced **first** in this sprint — the two upcoming quiz-session stories add new
   id-in-URL routes; fixing this pattern first means those new routes can be written
   correctly from the start instead of copying the bug forward.
+
+Verification (development, 2026-08-23):
+* implementation: added `server/src/db/errors.ts` (`INVALID_TEXT_REPRESENTATION` = `22P02`,
+  `isInvalidIdError`, mirroring `db/users.ts`'s `isUniqueViolation` pattern). `quizzes.ts`'s
+  `authorizeCourse` now wraps the lookup in try/catch, returning `'not_found'` for an
+  invalid-id error and a new `'error'` outcome (-> 500) for anything else, instead of letting
+  either propagate. `courses.ts`'s `GET /api/courses/:courseId` catch branch now checks
+  `isInvalidIdError` and returns 404 for that case, 500 otherwise (it was previously an
+  unconditional 500).
+* `testSupport/fakes.ts`: `createFakeCourseRepository` now generates real UUID-shaped ids
+  (`fakeUuid`, replacing the old plain-integer `String(nextId++)`) and its `findByIdForTenant`
+  throws the wrapped `22P02` shape for any id that isn't UUID-shaped — this is what actually
+  lets a unit test exercise the crash-prevention path, since a fake that never throws can't
+  prove the guard does anything.
+* automated: 91/91 server tests green (`npm test`), including two new tests in
+  `quizzes.test.ts` ("malformed course id (ROUTE-ID-GUARD-001)": returns 404 not a crash, and
+  a following request is still served) and `courses.test.ts`'s existing "does not exist" test
+  now doubles as this route's own regression test (annotated in place, same assertions).
+  `npm run build` (`tsc -b`) is clean.
+* manual: verified against a disposable Postgres + server instance on isolated ports (db
+  5434, server 3101, via `client/e2e/docker-compose.e2e.yml` under a separate compose project
+  name), never touching the already-running dev stack on 5432/3000 — confirmed via `docker
+  ps` before and after that only the manual-verify containers were created/removed. Signed up
+  + logged in via `/api/signup/expedite`, then sent the exact original repro request
+  (`GET /api/courses/does-not-exist/quizzes`): got `404 {"error":"course_not_found"}`, and an
+  immediately following `GET /api/courses` returned `200 []` — the server was still up and
+  answering, with nothing unusual in its log. Also checked `GET /api/courses/does-not-exist`
+  (the `courses.ts` route): `404 {"error":"course_not_found"}` (previously would have been
+  500). Disposable instance torn down afterward (`docker compose ... down -v`); the
+  pre-existing dev containers were confirmed untouched.
+* DoD's "audit every call site" item: confirmed at sprint planning (see Technical plan above)
+  that exactly these 2 call sites exist; both are now fixed.

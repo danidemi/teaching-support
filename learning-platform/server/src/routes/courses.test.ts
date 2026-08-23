@@ -217,7 +217,13 @@ describe('GET /api/courses/:courseId (COURSE-DETAIL-001)', () => {
     expect(response.body).toEqual({ error: 'course_not_found' })
   })
 
-  it('returns 404 for a course id that does not exist', async () => {
+  // 'does-not-exist' is not UUID-shaped, so the fake repository throws for
+  // it (the same way real Postgres does for a non-UUID value against a
+  // `uuid` column, SQLSTATE 22P02) rather than just returning null. This
+  // doubles as ROUTE-ID-GUARD-001's regression test for this route: its
+  // catch branch has to map that specific error to this same 404, not the
+  // generic 500 it used to return for it before that fix.
+  it('returns 404 for a course id that does not exist (or is malformed)', async () => {
     // given: a signed-in trainer
     const { app, users } = createTestApp()
     const agent = await signInAgent(users, app, 'trainer@example.com')
@@ -225,7 +231,7 @@ describe('GET /api/courses/:courseId (COURSE-DETAIL-001)', () => {
     // when: fetching a made-up id
     const response = await agent.get('/api/courses/does-not-exist')
 
-    // then: it is rejected as not found
+    // then: it is rejected as not found, not a server error
     expect(response.status).toBe(404)
     expect(response.body).toEqual({ error: 'course_not_found' })
   })
