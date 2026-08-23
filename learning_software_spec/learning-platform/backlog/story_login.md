@@ -1,11 +1,14 @@
 ID: LOGIN-001
 
-Status: DRAFT
+Status: WON'T DO — Google OAuth sign-in dropped (backlog grooming, 2026-08-23); AUTH-UX-001's
+email/password login (`past_sprints/sprint_26_08_23_12_32/story_auth_ux.md`, DONE) is the
+platform's only sign-in method going forward. Kept in `backlog/` rather than deleted, as a
+record of the decision and its reasoning — not eligible for any future sprint.
 
 Priority: High
 
 Effort: 5 (added during grooming, 2026-08-21: OAuth flow wiring + header changes + error
-state; no persistence yet)
+state; no persistence yet) — moot, story dropped
 
 As:
 an `unregistered user`
@@ -36,3 +39,7 @@ Notes:
   be reconciled with AUTH-UX-001's `/login` page once both are groomed (Google becomes one
   more option on that page rather than its own flow entry point)
 * log-out is LOGOUT-001's (`story_logout.md`) job, not this story's
+* **dropped at backlog refinement (2026-08-23)**: the human decided against Google OAuth
+  sign-in entirely, rather than clearing the blocked OAuth-credentials dependency — the
+  DoR "cleared dependencies" gap noted below is now moot, since there's nothing left to
+  clear. Email/password (AUTH-UX-001) is the platform's only sign-in method.

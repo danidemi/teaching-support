@@ -1,10 +1,11 @@
 ID: E2E-BROWSER-001
 
-Status: DRAFT
+Status: READY
 
 Priority: Medium
 
-Effort: [to be estimated at grooming]
+Effort: 5 (set during grooming, 2026-08-23: Playwright config + disposable-server wiring +
+one click-through test per shipped screen)
 
 As:
 a `developer` (and, by extension, the human reviewing sprint work)
