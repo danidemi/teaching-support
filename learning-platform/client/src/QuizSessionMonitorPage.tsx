@@ -84,7 +84,12 @@ function QuizSessionMonitorPage() {
       return
     }
     QRCode.toString(session.takeUrl, { type: 'svg' }).then(setQrSvg)
-  }, [session])
+    // Depends on takeUrl specifically, not the whole session object — once
+    // QUIZ-SESSION-LIVE-STATUS-001 starts polling this page for live
+    // counts, `session` is a new object every poll tick even though the
+    // URL never changes; regenerating the QR SVG every cycle would be
+    // wasted work for no visible difference.
+  }, [session?.takeUrl])
 
   async function handleStart() {
     if (!sessionId) return
