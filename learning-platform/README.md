@@ -7,7 +7,7 @@ Stack decision: `../learning_software_spec/learning-platform/adr/ADR-0001-tech-s
 ## Layout
 * `client/` — React + TypeScript, built with Vite.
 * `server/` — Node.js + TypeScript + Express. Serves the built client and
-  will host the Google OAuth endpoints (LOGIN-001).
+  hosts the API (email/password auth, courses, quizzes).
 
 ## Develop
 
@@ -23,6 +23,26 @@ cd server && npm run db:up             # starts Postgres + Mailpit (docker-compo
 cd client && npm run build             # produces client/dist
 cd server && npm run build && npm start   # serves the built client on :3000
 ```
+
+## Human-led UAT (UAT-BOOTSTRAP-001)
+
+```bash
+./scripts/uat.sh
+```
+
+One script does everything a human needs for a UAT session, from a clean
+checkout: tears down and recreates Postgres/mailpit, waits for Postgres to
+be healthy, builds the server and the client, then starts the built server
+in the foreground (Ctrl-C to stop). No other setup step is needed — the
+server runs pending DB migrations itself on startup.
+
+Once it logs `learning-platform server listening on port 3000`, open
+http://localhost:3000 in a browser. Captured emails (e.g. sign-up
+confirmation links) are at http://localhost:8025.
+
+Safe to re-run: each run starts from a clean container/volume state.
+Whenever a change alters how the app is built, started, or migrated,
+update this script in the same change.
 
 ## Local email testing (Mailpit)
 

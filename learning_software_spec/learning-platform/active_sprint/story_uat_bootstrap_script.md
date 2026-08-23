@@ -74,3 +74,29 @@ Technical plan (sprint planning, 2026-08-23):
 * README.md gets a new section: what the script does, how to run it, and which port to open
   once it's running
 * no ADR needed — orchestrates existing commands only, no new tech-stack element
+
+Verification (development, 2026-08-23):
+* implemented: `scripts/uat.sh` (new, POSIX `sh`, executable) does exactly the steps in the
+  technical plan above — `docker compose down -v` then `up -d` against
+  `server/docker-compose.yml`, polls `docker inspect`'s health status for the `postgres`
+  service until `healthy` (60s timeout), copies `server/.env.example` to `server/.env` if
+  missing (clean-checkout case), `npm ci && npm run build` in `server/`, `npm ci && npm run
+  build` in `client/`, then `exec npm start` in `server/` in the foreground
+* README.md updated with a "Human-led UAT" section: what the script does, how to run it,
+  which port to open (`:3000`) and where captured emails show up (`:8025`); also fixed one
+  now-stale line ("will host the Google OAuth endpoints (LOGIN-001)") since that story was
+  dropped at backlog grooming this same sprint
+* manual, actually run twice against this machine's Docker: first run hit a pre-existing
+  stray `node dist/index.js` process squatting on port `:3000` from earlier unrelated work —
+  not a script defect, killed it and reran; second run completed clean end-to-end (compose
+  down/up, health poll, both builds, server start), logged `learning-platform server
+  listening on port 3000`; confirmed via curl: `GET /` → 200 (serves the built SPA shell),
+  `GET /courses` → 200 (SPA fallback), `GET /api/me` → 401 (API reachable, no session) — all
+  without running any command by hand beyond the one script
+* idempotency: confirmed by the two runs above — the second run's `down -v` cleanly tore
+  down the first run's containers before recreating them, no manual cleanup needed
+  in between
+* not verified: a true from-scratch clean checkout (no `node_modules` anywhere yet) — both
+  runs happened on a machine that already had dependencies installed once; `npm ci` covers
+  the "no `node_modules`" case in principle, but this wasn't tested from an actual fresh
+  `git clone`
