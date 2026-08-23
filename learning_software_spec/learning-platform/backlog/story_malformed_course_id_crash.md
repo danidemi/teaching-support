@@ -32,11 +32,11 @@ Definition of Done:
   DB-lookup-by-id-from-a-route-param) is audited for the same unguarded-await pattern, not
   just the one instance found — fix all instances found, not just the one that happened to
   get noticed
-* verified automatically: a test that exercises this against something closer to the real
-  failure mode than the fake in-memory repositories already used in `courses.test.ts`/
-  `quizzes.test.ts` — those fakes never throw on a malformed id, so they can't currently
-  catch this bug; needs a decision at grooming on how (e.g. a fake that throws for a
-  non-UUID-shaped id the way Postgres does, or a real-Postgres-backed test)
+* verified automatically: decided during the 2026-08-23 backlog interview — the fake
+  repositories in `testSupport/fakes.ts` (`createFakeCourseRepository` etc.) are updated to
+  `throw` for a non-UUID-shaped id, the same way real Postgres does, instead of just
+  returning `null`. This keeps the reproduction fast/in-memory while actually exercising the
+  bug's failure mode, rather than a real-Postgres-backed test
 * verified manually: send a request with a hand-typed non-UUID course id against a running
   disposable server instance, confirm a 404 (not a crash), confirm the server is still up
   and answering other requests afterward
@@ -55,13 +55,19 @@ Notes:
   crashing. That's still not the DoD's "same 404 as any other malformed-input case" shape,
   and it's not proof no other call site has the unguarded version — the point of this
   story's "audit every call site" DoD item is to not rely on having found all of them by luck.
-* likely fix shape: either (a) validate the id looks like a UUID before querying at all
-  (reject early with 404, cheapest and avoids relying on every repository method being
-  crash-safe), or (b) wrap every `findByIdForTenant`-style call in try/catch at the route
-  layer. Which one (or both) is a grooming/planning decision, not decided here.
+* **fix location, decided during the 2026-08-23 backlog interview**: at the route-handler
+  layer — this stack's equivalent of a "controller" (there's no separate controller class
+  here the way there would be in e.g. Spring Boot). The three layers in this codebase map
+  as: `server/src/routes/*.ts` (route handlers — receive the request, orchestrate calls,
+  shape the response: the "controller" role) call into `server/src/db/*.ts`
+  (`CourseRepository` etc. — the "repository"/data-access role); there is no separate
+  "entity" class layer, Drizzle's inferred row types fill that role. So each route handler
+  (`quizzes.ts`'s `authorizeCourse`, and any other call site the audit turns up) validates
+  the id shape or wraps the lookup in try/catch itself — matching the pattern
+  COURSE-DETAIL-001's own new `GET /api/courses/:courseId` route already uses correctly —
+  rather than pushing the guard down into the repository methods.
 
 Open questions:
-* how to make this reproducible in a fast automated test without a real Postgres instance —
-  see the DoD's own note on why the existing fake repositories can't currently catch it
-* whether the fix belongs in each repository method (defensive at the data layer) or each
-  route handler (defensive at the boundary) or both — grooming/planning decision
+* none blocking grooming — both open questions from this story's original filing (test
+  reproduction approach, fix location) were resolved during the 2026-08-23 backlog interview,
+  see the DoD and Notes above.
