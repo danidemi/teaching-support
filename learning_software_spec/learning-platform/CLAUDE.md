@@ -8,7 +8,7 @@ The folder is organizes as a classical project managed by SCRUM plus some specif
 
 contains stories that yet need to be developed
 
-# `reference/` folder
+# `references/` folder
 
 contains reference files:
 * `vision.md`: as "the vision" of the resulting product and other references that stay constant during the development.
@@ -94,6 +94,6 @@ During the interview:
 ## 5. Sprint Retrospective
 
 Remember what has been done in the sprint and think about what you think it worked good, what should be changed. Ask human feedback too.
-Select one good thing, one bad thing and extract the good practice that should be replicated in the next sprint, the bad practice that must not be repeated and append them to `reference/do_and_donts.md`, in order to apply it next time.
-Keep the `reference/do_and_donts.md` short, actionable, brief, meaningful.
+Select one good thing, one bad thing and extract the good practice that should be replicated in the next sprint, the bad practice that must not be repeated and append them to `references/do_and_donts.md`, in order to apply it next time.
+Keep the `references/do_and_donts.md` short, actionable, brief, meaningful.
 Don't let the file to grow too much, compact it if it's too big keeping the more meaningful DOs and DONTs.

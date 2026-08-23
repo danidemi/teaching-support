@@ -1,6 +1,6 @@
 ID: COURSE-001
 
-Status: READY
+Status: IN PROGRESS
 
 Priority: Medium
 
@@ -20,7 +20,11 @@ I can find, start, and switch between the courses I manage, all from one screen
 Definition of Done:
 * the dashboard shows all courses that belong to my `current tenant` (see `story_tenant_creation.md` —
   this story depends on TENANT-001; "all courses" never means courses outside my tenant)
-* I can sort the list by title, creation date, or last update date
+* I can sort the list by title, creation date, or last update date by clicking the column
+  header, not a separate "Sort by" dropdown: 1st click on a header sorts ascending, 2nd
+  click on the same header sorts descending, 3rd click removes sorting on that column; the
+  currently active column shows a graphical indicator (e.g. an arrow) of its current sort
+  direction (rejected at sprint review, 2026-08-23 — see "Sprint review feedback" below)
 * a visible action ("New course") opens a form asking for the course's name before creating it
 * two courses in the same tenant cannot share the same name (uniqueness is scoped to the
   tenant, not global)
@@ -115,3 +119,12 @@ Verification (development, 2026-08-22):
   `GET /api/courses` is a flat 401, and confirmed `/courses` serves the SPA shell (200)
 * same gap as every other story this sprint: no browser/Playwright click-through, no visual
   review of the rendered table/modal — HTTP/API-level verification only
+
+Sprint review feedback (2026-08-23) — rejected, not accepted as DONE:
+* the built sorting UI is a "Sort by:" dropdown (per the wireframe drawn at grooming); the
+  human wants column-header click-to-sort instead, with standard tri-state cycling
+  (ascending → descending → unsorted) and a visible sort-direction indicator on the active
+  header. The wireframe above is now stale on this point and needs correcting before rework
+  starts.
+* carried into the next sprint as unfinished work, not returned to `backlog/` as new
+  grooming — the DoD is now specific enough; this only needs implementation.

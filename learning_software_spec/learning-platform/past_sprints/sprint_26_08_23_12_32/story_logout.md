@@ -1,6 +1,6 @@
 ID: LOGOUT-001
 
-Status: READY
+Status: DONE
 
 Priority: Medium
 

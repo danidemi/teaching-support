@@ -48,3 +48,28 @@ Newest entries at the bottom.
   `dist/` entirely so this went unnoticed. Always run the actual documented command (`npm run
   build && npm start`) at least once before calling that behavior verified — this bug was only
   caught because the human ran that exact command.
+
+## sprint_26_08_22_15_56
+
+* **DO** verify against a disposable server instance on its own port, with matching
+  `APP_BASE_URL`, instead of the human's long-running dev server — a stale process can
+  silently 200 unroutable paths via the SPA fallback and produce a false pass.
+* **DON'T** run `npm run db:migrate` manually before starting the server — migrations
+  already run automatically on startup (`server/src/index.ts`); a manual run is redundant
+  and adds a step that can drift from what actually happens in production-like startup.
+
+## sprint_26_08_23_12_32
+
+* **DO** flag cross-cutting gaps once in the sprint-level file (`sprint.md`), not buried
+  separately inside every story's own Verification section — this sprint's two flagged gaps
+  (no browser click-through anywhere; no visual sign-off on UI-FOUNDATION-001) both got
+  resolved at review because they were visible in one place, not lost in eight copies.
+* **DON'T** assume a tool, dependency, or environment capability (browser-automation
+  tooling, network/internet access, etc.) is unavailable without checking it live at the
+  time it matters. This sprint asserted twice, across all 8 stories, that "no
+  browser-automation tooling exists in this repo" and that QTI-22-IMPORT had "no network
+  access to fetch the schema" — both were wrong (`npx playwright --version` returned
+  `1.62.1`; internet access was in fact available), and neither was re-checked before being
+  repeated story after story. The environment can also change mid-session (e.g. a tool
+  installed after the check was last made) — re-verify rather than trust a stale
+  assumption or a memory of an earlier check.

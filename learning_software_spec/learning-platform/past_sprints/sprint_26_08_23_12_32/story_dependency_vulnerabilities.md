@@ -1,6 +1,6 @@
 ID: DEPS-001
 
-Status: READY
+Status: DONE
 
 Priority: Low
 

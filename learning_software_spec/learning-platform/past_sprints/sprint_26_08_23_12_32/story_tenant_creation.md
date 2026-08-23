@@ -1,6 +1,6 @@
 ID: TENANT-001
 
-Status: READY
+Status: DONE
 
 Priority: High
 

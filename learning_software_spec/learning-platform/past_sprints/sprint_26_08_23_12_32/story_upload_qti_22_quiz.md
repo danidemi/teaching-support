@@ -1,6 +1,6 @@
 ID: QTI-22-IMPORT
 
-Status: READY
+Status: DONE
 
 Priority: Medium
 
