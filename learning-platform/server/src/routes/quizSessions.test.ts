@@ -1,0 +1,302 @@
+import { describe, it, expect, afterEach } from 'vitest'
+import request from 'supertest'
+import { createApp } from '../app.js'
+import {
+  createFakeUserRepository,
+  createFakeTenantRepository,
+  createFakeCourseRepository,
+  createFakeQuizRepository,
+  createFakeSessionRepository,
+  createTestSessionMiddleware,
+  signInAgent,
+} from '../testSupport/fakes.js'
+import { deriveStatus, parseTimeLimit } from './quizSessions.js'
+
+// Covers QUIZ-SESSION-CONTROL-001's DoD
+// (active_sprint/story_quiz_session_control.md): create/start/stop/reopen
+// a quiz session, status derived on read (no stored status column, see
+// deriveStatus's own doc comment), and ROUTE-ID-GUARD-001's guard pattern
+// applied to every new id-in-URL route here from the start.
+
+function createTestApp() {
+  const users = createFakeUserRepository()
+  const tenants = createFakeTenantRepository()
+  const courses = createFakeCourseRepository()
+  const quizzes = createFakeQuizRepository()
+  const quizSessions = createFakeSessionRepository(quizzes, courses)
+  const app = createApp({ users, tenants, courses, quizzes, quizSessions, sessionMiddleware: createTestSessionMiddleware() })
+  return { app, users, courses, quizzes, quizSessions }
+}
+
+async function createCourseAndQuiz(agent: ReturnType<typeof request.agent>) {
+  const courseResponse = await agent.post('/api/courses').send({ title: 'Intro to Python' })
+  const courseId = courseResponse.body.id as string
+  const quizResponse = await agent
+    .post(`/api/courses/${courseId}/quizzes`)
+    .attach(
+      'file',
+      Buffer.from(
+        `<qti-assessment-item xmlns="http://www.imsglobal.org/xsd/imsqtiasi_v3p0" identifier="q1" title="Sample question"><qti-item-body><p>2+2?</p></qti-item-body></qti-assessment-item>`,
+      ),
+      'quiz.xml',
+    )
+  return { courseId, quizId: quizResponse.body.id as string }
+}
+
+const ORIGINAL_APP_BASE_URL = process.env.APP_BASE_URL
+
+afterEach(() => {
+  process.env.APP_BASE_URL = ORIGINAL_APP_BASE_URL
+})
+
+describe('deriveStatus (pure)', () => {
+  const now = new Date('2026-08-23T12:00:00Z')
+
+  it('is closed when never started', () => {
+    // given: a session that was never started
+    const session = { startedAt: null, closesAt: null, stoppedAt: null }
+    // then: it is closed
+    expect(deriveStatus(session, now)).toBe('closed')
+  })
+
+  it('is running once started with no limit', () => {
+    const session = { startedAt: new Date('2026-08-23T11:00:00Z'), closesAt: null, stoppedAt: null }
+    expect(deriveStatus(session, now)).toBe('running')
+  })
+
+  it('is running while the deadline has not passed', () => {
+    const session = { startedAt: new Date('2026-08-23T11:00:00Z'), closesAt: new Date('2026-08-23T13:00:00Z'), stoppedAt: null }
+    expect(deriveStatus(session, now)).toBe('running')
+  })
+
+  it('is stopped once the deadline has passed, with no explicit stop', () => {
+    const session = { startedAt: new Date('2026-08-23T11:00:00Z'), closesAt: new Date('2026-08-23T11:30:00Z'), stoppedAt: null }
+    expect(deriveStatus(session, now)).toBe('stopped')
+  })
+
+  it('is stopped once explicitly stopped', () => {
+    const session = { startedAt: new Date('2026-08-23T11:00:00Z'), closesAt: null, stoppedAt: new Date('2026-08-23T11:45:00Z') }
+    expect(deriveStatus(session, now)).toBe('stopped')
+  })
+})
+
+describe('parseTimeLimit (pure)', () => {
+  it('accepts hours', () => {
+    expect(parseTimeLimit('3h')).toBe(3 * 3600)
+  })
+
+  it('accepts minutes', () => {
+    expect(parseTimeLimit('75m')).toBe(75 * 60)
+  })
+
+  it('is case-insensitive', () => {
+    expect(parseTimeLimit('2H')).toBe(2 * 3600)
+  })
+
+  it('treats an omitted value as no limit', () => {
+    expect(parseTimeLimit(undefined)).toBeNull()
+    expect(parseTimeLimit('')).toBeNull()
+  })
+
+  it.each(['banana', '0m', '-5h', '5', 'h', '5x'])('rejects %s as invalid', (input) => {
+    expect(parseTimeLimit(input)).toBe('invalid')
+  })
+})
+
+describe('POST /api/quizzes/:quizId/sessions', () => {
+  it('returns 401 when not signed in', async () => {
+    const { app } = createTestApp()
+    const response = await request(app).post('/api/quizzes/some-id/sessions')
+    expect(response.status).toBe(401)
+  })
+
+  it('creates a closed session for a quiz the caller owns', async () => {
+    // given: a signed-in trainer with a quiz
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { quizId } = await createCourseAndQuiz(agent)
+
+    // when: creating a session for it
+    const response = await agent.post(`/api/quizzes/${quizId}/sessions`)
+
+    // then: a closed session is created, with a take URL
+    expect(response.status).toBe(201)
+    expect(response.body.status).toBe('closed')
+    expect(response.body.quizId).toBe(quizId)
+    expect(response.body.takeUrl).toContain(`/quiz-sessions/${response.body.id}/take`)
+  })
+
+  it('returns 404 for a quiz belonging to a different tenant', async () => {
+    const { app, users } = createTestApp()
+    const agentA = await signInAgent(users, app, 'trainer-a@example.com')
+    const { quizId } = await createCourseAndQuiz(agentA)
+    const agentB = await signInAgent(users, app, 'trainer-b@example.com')
+
+    const response = await agentB.post(`/api/quizzes/${quizId}/sessions`)
+
+    expect(response.status).toBe(404)
+  })
+
+  it('returns 404, not a crash, for a malformed quiz id (ROUTE-ID-GUARD-001 pattern)', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+
+    const response = await agent.post('/api/quizzes/does-not-exist/sessions')
+
+    expect(response.status).toBe(404)
+  })
+})
+
+describe('POST /api/quiz-sessions/:sessionId/start', () => {
+  async function createSession(agent: ReturnType<typeof request.agent>) {
+    const { quizId } = await createCourseAndQuiz(agent)
+    const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
+    return created.body.id as string
+  }
+
+  it('starts a session with a time limit', async () => {
+    // given: a closed session
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const sessionId = await createSession(agent)
+
+    // when: starting it with a 75-minute limit
+    const response = await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({ timeLimit: '75m' })
+
+    // then: it is running, with a computed close time
+    expect(response.status).toBe(200)
+    expect(response.body.status).toBe('running')
+    expect(response.body.timeLimitSeconds).toBe(75 * 60)
+    expect(response.body.closesAt).not.toBeNull()
+  })
+
+  it('starts a session with no time limit', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const sessionId = await createSession(agent)
+
+    const response = await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({})
+
+    expect(response.status).toBe(200)
+    expect(response.body.status).toBe('running')
+    expect(response.body.closesAt).toBeNull()
+  })
+
+  it('returns 400 for an unparseable time limit', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const sessionId = await createSession(agent)
+
+    const response = await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({ timeLimit: 'banana' })
+
+    expect(response.status).toBe(400)
+  })
+
+  it('reopens a stopped session, resetting the deadline', async () => {
+    // given: a session that was started and stopped
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const sessionId = await createSession(agent)
+    await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({ timeLimit: '10m' })
+    await agent.post(`/api/quiz-sessions/${sessionId}/stop`)
+
+    // when: starting it again with a different limit
+    const response = await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({ timeLimit: '30m' })
+
+    // then: it is running again, not stuck as stopped
+    expect(response.status).toBe(200)
+    expect(response.body.status).toBe('running')
+    expect(response.body.timeLimitSeconds).toBe(30 * 60)
+    expect(response.body.stoppedAt).toBeNull()
+  })
+
+  it('returns 404, not a crash, for a malformed session id', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+
+    const response = await agent.post('/api/quiz-sessions/does-not-exist/start')
+
+    expect(response.status).toBe(404)
+  })
+})
+
+describe('POST /api/quiz-sessions/:sessionId/stop', () => {
+  it('stops a running session', async () => {
+    // given: a running session
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { quizId } = await createCourseAndQuiz(agent)
+    const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
+    await agent.post(`/api/quiz-sessions/${created.body.id}/start`).send({})
+
+    // when: stopping it
+    const response = await agent.post(`/api/quiz-sessions/${created.body.id}/stop`)
+
+    // then: it is stopped
+    expect(response.status).toBe(200)
+    expect(response.body.status).toBe('stopped')
+  })
+
+  it('returns 404 for a session belonging to a different tenant', async () => {
+    const { app, users } = createTestApp()
+    const agentA = await signInAgent(users, app, 'trainer-a@example.com')
+    const { quizId } = await createCourseAndQuiz(agentA)
+    const created = await agentA.post(`/api/quizzes/${quizId}/sessions`)
+    const agentB = await signInAgent(users, app, 'trainer-b@example.com')
+
+    const response = await agentB.post(`/api/quiz-sessions/${created.body.id}/stop`)
+
+    expect(response.status).toBe(404)
+  })
+})
+
+describe('GET /api/quiz-sessions/:sessionId', () => {
+  it('returns 401 when not signed in', async () => {
+    const { app } = createTestApp()
+    const response = await request(app).get('/api/quiz-sessions/some-id')
+    expect(response.status).toBe(401)
+  })
+
+  it('auto-derives stopped once the deadline has passed, without an explicit stop', async () => {
+    // given: a session started with a short limit, whose deadline is
+    // manipulated (via the fake's exposed rows) to already be in the past
+    const { app, users, quizSessions } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { quizId } = await createCourseAndQuiz(agent)
+    const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
+    await agent.post(`/api/quiz-sessions/${created.body.id}/start`).send({ timeLimit: '10m' })
+    const row = quizSessions.rows.find((row) => row.id === created.body.id)
+    if (row) row.closesAt = new Date(Date.now() - 1000)
+
+    // when: fetching it
+    const response = await agent.get(`/api/quiz-sessions/${created.body.id}`)
+
+    // then: it reports stopped, without anything having called .../stop
+    expect(response.status).toBe(200)
+    expect(response.body.status).toBe('stopped')
+  })
+
+  it('uses APP_BASE_URL for takeUrl, not request-derived context', async () => {
+    // given: a custom APP_BASE_URL
+    process.env.APP_BASE_URL = 'https://learning.example.com'
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { quizId } = await createCourseAndQuiz(agent)
+    const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
+
+    // when: fetching the session
+    const response = await agent.get(`/api/quiz-sessions/${created.body.id}`)
+
+    // then: takeUrl is built from the configured base URL
+    expect(response.body.takeUrl).toBe(`https://learning.example.com/quiz-sessions/${created.body.id}/take`)
+  })
+
+  it('returns 404, not a crash, for a malformed session id', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+
+    const response = await agent.get('/api/quiz-sessions/does-not-exist')
+
+    expect(response.status).toBe(404)
+  })
+})

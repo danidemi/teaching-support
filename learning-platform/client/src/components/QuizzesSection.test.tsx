@@ -141,4 +141,47 @@ describe('QuizzesSection (QUIZ-DASHBOARD-001, extracted by COURSE-DETAIL-001)', 
 
     await waitFor(() => expect(screen.getByText(/could not upload/i)).toBeInTheDocument())
   })
+
+  // QUIZ-SESSION-CONTROL-001: "Create session" navigates straight to the
+  // new session's monitor page, same direct-navigation pattern
+  // CourseDashboardPage already uses for its own rows.
+  it('creates a quiz session and navigates to its monitor page', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string, init?: RequestInit) => {
+        if (url.endsWith('/quizzes') && (!init || init.method === undefined)) {
+          return Promise.resolve({
+            status: 200,
+            json: () => Promise.resolve([{ id: 'q1', title: 'Chapter 1 quiz', fileName: 'ch1.xml', status: 'uploaded', createdAt: '2026-01-10T00:00:00Z', updatedAt: '2026-01-10T00:00:00Z' }]),
+          })
+        }
+        if (url === '/api/quizzes/q1/sessions' && init?.method === 'POST') {
+          return Promise.resolve({ status: 201, json: () => Promise.resolve({ id: 'session-1', status: 'closed' }) })
+        }
+        return Promise.resolve({ status: 404, json: () => Promise.resolve({}) })
+      }),
+    )
+    const assignSpy = vi.fn()
+    vi.stubGlobal('location', { ...window.location, assign: assignSpy })
+
+    renderSection()
+    await waitFor(() => expect(screen.getByText('Chapter 1 quiz')).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: /create session/i }))
+
+    await waitFor(() => expect(assignSpy).toHaveBeenCalledWith('/quiz-sessions/session-1'))
+  })
+
+  it('shows an error when creating a session fails', async () => {
+    stubFetch({
+      quizzes: [{ id: 'q1', title: 'Chapter 1 quiz', fileName: 'ch1.xml', status: 'uploaded', createdAt: '2026-01-10T00:00:00Z', updatedAt: '2026-01-10T00:00:00Z' }],
+      uploadStatus: 500,
+    })
+    renderSection()
+    await waitFor(() => expect(screen.getByText('Chapter 1 quiz')).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: /create session/i }))
+
+    await waitFor(() => expect(screen.getByText(/could not create a quiz session/i)).toBeInTheDocument())
+  })
 })

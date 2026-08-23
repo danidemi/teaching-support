@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, varchar, json, index, uniqueIndex, customType } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, timestamp, varchar, json, integer, index, uniqueIndex, customType } from 'drizzle-orm/pg-core'
 
 /**
  * Postgres `bytea` — drizzle-orm/pg-core has no built-in binary column
@@ -113,6 +113,42 @@ export const quizzes = pgTable('quizzes', {
   fileName: text('file_name').notNull(),
   fileData: bytea('file_data').notNull(),
   status: text('status').notNull().default('uploaded'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+/**
+ * QUIZ-SESSION-CONTROL-001: an occurrence of a quiz being taken. A quiz
+ * can have several sessions over time (a retake), all kept — this table
+ * never overwrites a row for the "current" session the way, say, a
+ * single-row-per-quiz design would.
+ *
+ * No `status` column on purpose (see `server/src/routes/quizSessions.ts`'s
+ * `deriveStatus`) — `closed` / `running` / `stopped` is computed on every
+ * read from `startedAt`/`closesAt`/`stoppedAt`, including the "auto-close
+ * once `closesAt` has passed" case, so there's no separate background job
+ * needed to flip a stored value at the deadline (consistent with
+ * ADR-0009's "no new server infrastructure" reasoning for this feature).
+ * Tenancy is proven by joining `quizId -> quizzes.courseId ->
+ * courses.tenantId`, not a denormalized `tenantId` column here.
+ */
+export const quizSessions = pgTable('quiz_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  quizId: uuid('quiz_id')
+    .notNull()
+    .references(() => quizzes.id),
+  // Nullable: a time limit is optional (the DoD's "optionally with a time
+  // limit"). Set on start/reopen, not on creation.
+  timeLimitSeconds: integer('time_limit_seconds'),
+  // Nullable: unset while `closed`. Re-set (to "now") on every start,
+  // including a reopen — a reopen is a full restart of the deadline, not
+  // a resume of the old one.
+  startedAt: timestamp('started_at', { withTimezone: true }),
+  // Nullable: unset if no time limit was given at start/reopen time.
+  // Computed as `startedAt + timeLimitSeconds` when a limit is set.
+  closesAt: timestamp('closes_at', { withTimezone: true }),
+  // Nullable: unset until an explicit Stop. Cleared again on reopen.
+  stoppedAt: timestamp('stopped_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 })

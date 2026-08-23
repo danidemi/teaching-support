@@ -129,3 +129,39 @@ Technical plan (sprint planning, 2026-08-23):
   to count down to) — just the "running" state and the Stop button.
 * sequenced **after** ROUTE-ID-GUARD-001, **before** QUIZ-SESSION-LIVE-STATUS-001 (which
   depends on this story's session/Block #1 existing).
+
+Verification (development, 2026-08-23):
+* implementation: `quiz_sessions` table + migration (`drizzle/0007_nosy_unicorn.sql`),
+  `SessionRepository` (`db/quizSessions.ts`), `createQuizSessionsRouter`
+  (`routes/quizSessions.ts`, `deriveStatus`/`parseTimeLimit` exported as pure functions),
+  wired into `app.ts`. `server/src/config.ts` (new) holds `appBaseUrl()`, shared between
+  `signup.ts` (refactored to use it) and the new session-URL computation. Client:
+  `QuizSessionMonitorPage.tsx` + route, `QuizzesSection.tsx`'s new "Create session" action.
+  `testSupport/fakes.ts` gained `createFakeSessionRepository`, and `createFakeQuizRepository`
+  was moved there from `quizzes.test.ts` (now shared, both using UUID-shaped ids that throw
+  per ROUTE-ID-GUARD-001's pattern).
+* automated: 121/121 server tests green (30 new: `quizSessions.test.ts`'s pure-function tests
+  for `deriveStatus`/`parseTimeLimit` plus route tests for create/start/stop/reopen/malformed
+  ids/`takeUrl`), 61/61 client tests green (9 new in `QuizSessionMonitorPage.test.tsx`, 2 new
+  in `QuizzesSection.test.tsx`). `tsc -b` / `tsc --noEmit` / `vite build` all clean on both
+  sides.
+* manual, against a disposable Postgres + server (isolated ports, dev stack untouched,
+  confirmed via `docker ps` before/after): full API lifecycle via `curl` (create -> closed,
+  start with `75m` -> running with correct `closesAt`, invalid time limit -> 400, stop ->
+  stopped, reopen with a new limit -> running again with a fresh `closesAt`, malformed session
+  id -> 404 not a crash), and confirmed `takeUrl` is built from `APP_BASE_URL`, not
+  request/browser context (ADR-0008).
+* manual, real browser (Playwright, ad hoc script against the same disposable instance, not
+  committed — the sprint has no browser-suite story this time): signed in through the actual
+  UI, opened the monitor page, confirmed the QR code renders as an inline `<svg>`, and
+  clicked through Stop -> Reopen -> running again. **This caught a real defect the unit tests
+  had missed**: the first implementation only ever showed the time-limit input/Start button
+  when `status === 'closed'`, so a `stopped` session rendered a permanently-disabled Stop
+  button with no way back in from the UI — contradicting the DoD's "always reopenable, closed
+  is not a dead end." Fixed (`stopped` now renders the same Start-labeled-"Reopen" input as
+  `closed`) and locked in with a new regression test
+  (`QuizSessionMonitorPage.test.tsx`'s "offers a Reopen (start) action after stopping, not a
+  dead end") before re-verifying by hand. Worth flagging at retro: the server-side unit tests
+  and the first pass of client unit tests both missed this because they test each state in
+  isolation rather than a real state transition sequence through the actual UI — the manual
+  click-through is what caught it.

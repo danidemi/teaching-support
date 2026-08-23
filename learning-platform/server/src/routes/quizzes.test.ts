@@ -5,10 +5,10 @@ import {
   createFakeUserRepository,
   createFakeTenantRepository,
   createFakeCourseRepository,
+  createFakeQuizRepository,
   createTestSessionMiddleware,
   signInAgent,
 } from '../testSupport/fakes.js'
-import type { NewQuiz, Quiz, QuizFileUpdate, QuizRepository } from '../db/quizzes.js'
 
 // Covers QUIZ-DASHBOARD-001's DoD (active_sprint/story_quiz_dashboard.md):
 // list, delete, and replace-file, all scoped to a course the caller's
@@ -21,37 +21,6 @@ import type { NewQuiz, Quiz, QuizFileUpdate, QuizRepository } from '../db/quizze
 const VALID_QTI_ITEM = `<qti-assessment-item xmlns="http://www.imsglobal.org/xsd/imsqtiasi_v3p0" identifier="q1" title="Sample question">
   <qti-item-body><p>What is 2 + 2?</p></qti-item-body>
 </qti-assessment-item>`
-
-function createFakeQuizRepository(): QuizRepository & { rows: (Quiz & { courseId: string })[] } {
-  const rows: (Quiz & { courseId: string })[] = []
-  let nextId = 1
-
-  return {
-    rows,
-    async listByCourse(courseId: string) {
-      return rows.filter((row) => row.courseId === courseId).map(({ id, title, fileName, status, createdAt, updatedAt }) => ({ id, title, fileName, status, createdAt, updatedAt }))
-    },
-    async create(quiz: NewQuiz) {
-      const now = new Date()
-      const created = { id: String(nextId++), courseId: quiz.courseId, title: quiz.title, fileName: quiz.fileName, status: 'uploaded', createdAt: now, updatedAt: now }
-      rows.push(created)
-      return { id: created.id, title: created.title, fileName: created.fileName, status: created.status, createdAt: created.createdAt, updatedAt: created.updatedAt }
-    },
-    async delete(quizId: string, courseId: string) {
-      const index = rows.findIndex((row) => row.id === quizId && row.courseId === courseId)
-      if (index === -1) return false
-      rows.splice(index, 1)
-      return true
-    },
-    async replaceFile(quizId: string, courseId: string, file: QuizFileUpdate) {
-      const row = rows.find((row) => row.id === quizId && row.courseId === courseId)
-      if (!row) return null
-      row.fileName = file.fileName
-      row.updatedAt = new Date()
-      return { id: row.id, title: row.title, fileName: row.fileName, status: row.status, createdAt: row.createdAt, updatedAt: row.updatedAt }
-    },
-  }
-}
 
 function createTestApp() {
   const users = createFakeUserRepository()

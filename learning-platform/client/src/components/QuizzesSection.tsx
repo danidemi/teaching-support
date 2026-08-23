@@ -31,6 +31,11 @@ function formatDate(iso: string) {
  * rendered as one section of `CourseDetailPage` instead of an entire
  * page — takes `courseId` as a prop instead of reading it via
  * `useParams` itself, so it has no route/router dependency of its own.
+ *
+ * Also the entry point for QUIZ-SESSION-CONTROL-001's "create a quiz
+ * session" action (per quiz row) — navigates straight to the new
+ * session's Quiz Session Monitor page, same direct-navigation pattern
+ * `CourseDashboardPage` already uses for its own rows.
  */
 function QuizzesSection({ courseId }: { courseId: string }) {
   const [quizzes, setQuizzes] = useState<Quiz[] | null>(null)
@@ -91,6 +96,17 @@ function QuizzesSection({ courseId }: { courseId: string }) {
   function startReplace(quizId: string) {
     setReplacingQuizId(quizId)
     replaceInputRef.current?.click()
+  }
+
+  async function handleCreateSession(quizId: string) {
+    setActionError(null)
+    const response = await fetch(`/api/quizzes/${quizId}/sessions`, { method: 'POST' })
+    if (response.status === 201) {
+      const created = await response.json()
+      window.location.assign(`/quiz-sessions/${created.id}`)
+    } else {
+      setActionError('Could not create a quiz session. Try again.')
+    }
   }
 
   async function handleReplaceFileChosen(event: React.ChangeEvent<HTMLInputElement>) {
@@ -159,6 +175,9 @@ function QuizzesSection({ courseId }: { courseId: string }) {
                 <td className="px-4 py-2 text-ink/70">{quiz.status}</td>
                 <td className="px-4 py-2">
                   <div className="flex gap-2">
+                    <Button type="button" variant="outline" size="sm" onClick={() => handleCreateSession(quiz.id)}>
+                      Create session
+                    </Button>
                     <Button type="button" variant="outline" size="sm" onClick={() => startReplace(quiz.id)}>
                       Replace file
                     </Button>

@@ -6,6 +6,8 @@ import type { NewUser, UserForLogin, UserRepository } from '../db/users.js'
 import { UNIQUE_VIOLATION } from '../db/users.js'
 import type { Course, CourseRepository, CourseSort, NewCourse } from '../db/courses.js'
 import type { Tenant, TenantRepository } from '../db/tenants.js'
+import type { NewQuiz, Quiz, QuizFileUpdate, QuizRepository } from '../db/quizzes.js'
+import type { QuizSession, SessionRepository } from '../db/quizSessions.js'
 import { INVALID_TEXT_REPRESENTATION } from '../db/errors.js'
 
 /**
@@ -107,6 +109,114 @@ export function createFakeCourseRepository(): CourseRepository & { rows: (Course
       throwIfNotUuidShaped(courseId)
       const row = rows.find((row) => row.id === courseId && row.tenantId === tenantId)
       return row ? { id: row.id, title: row.title, createdAt: row.createdAt, updatedAt: row.updatedAt } : null
+    },
+  }
+}
+
+/**
+ * Moved here from `quizzes.test.ts` (QUIZ-SESSION-CONTROL-001) when
+ * `quizSessions.test.ts` needed the same courses/quizzes fakes to build a
+ * fake `SessionRepository` on top of — kept here rather than duplicated a
+ * third time, same rationale as this file's own header comment.
+ */
+export function createFakeQuizRepository(): QuizRepository & { rows: (Quiz & { courseId: string })[] } {
+  const rows: (Quiz & { courseId: string })[] = []
+  let nextId = 1
+
+  return {
+    rows,
+    async listByCourse(courseId: string) {
+      return rows.filter((row) => row.courseId === courseId).map(({ id, title, fileName, status, createdAt, updatedAt }) => ({ id, title, fileName, status, createdAt, updatedAt }))
+    },
+    async create(quiz: NewQuiz) {
+      const now = new Date()
+      const created = { id: fakeUuid(nextId++), courseId: quiz.courseId, title: quiz.title, fileName: quiz.fileName, status: 'uploaded', createdAt: now, updatedAt: now }
+      rows.push(created)
+      return { id: created.id, title: created.title, fileName: created.fileName, status: created.status, createdAt: created.createdAt, updatedAt: created.updatedAt }
+    },
+    async delete(quizId: string, courseId: string) {
+      const index = rows.findIndex((row) => row.id === quizId && row.courseId === courseId)
+      if (index === -1) return false
+      rows.splice(index, 1)
+      return true
+    },
+    async replaceFile(quizId: string, courseId: string, file: QuizFileUpdate) {
+      const row = rows.find((row) => row.id === quizId && row.courseId === courseId)
+      if (!row) return null
+      row.fileName = file.fileName
+      row.updatedAt = new Date()
+      return { id: row.id, title: row.title, fileName: row.fileName, status: row.status, createdAt: row.createdAt, updatedAt: row.updatedAt }
+    },
+  }
+}
+
+/**
+ * QUIZ-SESSION-CONTROL-001: mirrors `SessionRepository`'s real tenancy
+ * check (`quizId -> quizzes.courseId -> courses.tenantId`) against the
+ * courses/quizzes fakes' own row arrays, and — per ROUTE-ID-GUARD-001's
+ * lesson — hands out real UUID-shaped ids and throws the same wrapped
+ * `22P02` shape for a non-UUID-shaped `quizId` or `sessionId`, so a test
+ * actually exercises this router's malformed-id guards.
+ */
+export function createFakeSessionRepository(
+  quizzes: QuizRepository & { rows: (Quiz & { courseId: string })[] },
+  courses: CourseRepository & { rows: (Course & { tenantId: string })[] },
+): SessionRepository & { rows: QuizSession[] } {
+  const rows: QuizSession[] = []
+  let nextId = 1
+
+  function quizBelongsToTenant(quizId: string, tenantId: string): boolean {
+    const quiz = quizzes.rows.find((row) => row.id === quizId)
+    if (!quiz) return false
+    const course = courses.rows.find((row) => row.id === quiz.courseId)
+    return course?.tenantId === tenantId
+  }
+
+  function findRowForTenant(sessionId: string, tenantId: string): QuizSession | null {
+    throwIfNotUuidShaped(sessionId)
+    const row = rows.find((row) => row.id === sessionId)
+    if (!row) return null
+    return quizBelongsToTenant(row.quizId, tenantId) ? row : null
+  }
+
+  return {
+    rows,
+    async createForQuiz(quizId: string, tenantId: string) {
+      throwIfNotUuidShaped(quizId)
+      if (!quizBelongsToTenant(quizId, tenantId)) return null
+      const now = new Date()
+      const created: QuizSession = {
+        id: fakeUuid(nextId++),
+        quizId,
+        timeLimitSeconds: null,
+        startedAt: null,
+        closesAt: null,
+        stoppedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      }
+      rows.push(created)
+      return created
+    },
+    async start(sessionId: string, tenantId: string, timeLimitSeconds: number | null) {
+      const row = findRowForTenant(sessionId, tenantId)
+      if (!row) return null
+      row.timeLimitSeconds = timeLimitSeconds
+      row.startedAt = new Date()
+      row.closesAt = timeLimitSeconds != null ? new Date(row.startedAt.getTime() + timeLimitSeconds * 1000) : null
+      row.stoppedAt = null
+      row.updatedAt = new Date()
+      return row
+    },
+    async stop(sessionId: string, tenantId: string) {
+      const row = findRowForTenant(sessionId, tenantId)
+      if (!row) return null
+      row.stoppedAt = new Date()
+      row.updatedAt = new Date()
+      return row
+    },
+    async findByIdForTenant(sessionId: string, tenantId: string) {
+      return findRowForTenant(sessionId, tenantId)
     },
   }
 }

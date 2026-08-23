@@ -10,6 +10,8 @@ import { createCoursesRouter } from './routes/courses.js'
 import { createCourseRepository, type CourseRepository } from './db/courses.js'
 import { createQuizzesRouter } from './routes/quizzes.js'
 import { createQuizRepository, type QuizRepository } from './db/quizzes.js'
+import { createQuizSessionsRouter } from './routes/quizSessions.js'
+import { createSessionRepository, type SessionRepository } from './db/quizSessions.js'
 import { createMailer, type Mailer } from './email/mailer.js'
 import { createSessionMiddleware } from './auth/session.js'
 
@@ -23,6 +25,7 @@ export interface AppDeps {
   tenants: TenantRepository
   courses: CourseRepository
   quizzes: QuizRepository
+  quizSessions: SessionRepository
   // AUTH-UX-001: applied only to the login router's own routes (see
   // routes/login.ts) — pass a fake (e.g. `express-session` with its
   // default in-memory store) in tests, so exercising /api/login doesn't
@@ -55,6 +58,7 @@ export function createApp(deps?: Partial<AppDeps>): Express {
   const tenants = deps?.tenants ?? lazyTenantRepository()
   const courses = deps?.courses ?? lazyCourseRepository()
   const quizzes = deps?.quizzes ?? lazyQuizRepository()
+  const quizSessions = deps?.quizSessions ?? lazySessionRepository()
   const sessionMiddleware = deps?.sessionMiddleware ?? lazySessionMiddleware()
 
   app.get('/healthz', (_req, res) => {
@@ -69,6 +73,7 @@ export function createApp(deps?: Partial<AppDeps>): Express {
   app.use(createLoginRouter(users, tenants, sessionMiddleware))
   app.use(createCoursesRouter(courses, sessionMiddleware))
   app.use(createQuizzesRouter(courses, quizzes, sessionMiddleware))
+  app.use(createQuizSessionsRouter(quizSessions, sessionMiddleware))
 
   app.use(express.static(CLIENT_DIST))
 
@@ -201,6 +206,28 @@ function lazyQuizRepository(): QuizRepository {
     create: (quiz) => resolve().create(quiz),
     delete: (quizId, courseId) => resolve().delete(quizId, courseId),
     replaceFile: (quizId, courseId, file) => resolve().replaceFile(quizId, courseId, file),
+  }
+}
+
+function lazySessionRepository(): SessionRepository {
+  let real: SessionRepository | undefined
+
+  function resolve(): SessionRepository {
+    if (!real) {
+      const databaseUrl = process.env.DATABASE_URL
+      if (!databaseUrl) {
+        throw new Error('DATABASE_URL is not set — copy server/.env.example to server/.env first')
+      }
+      real = createSessionRepository(databaseUrl)
+    }
+    return real
+  }
+
+  return {
+    createForQuiz: (quizId, tenantId) => resolve().createForQuiz(quizId, tenantId),
+    start: (sessionId, tenantId, timeLimitSeconds) => resolve().start(sessionId, tenantId, timeLimitSeconds),
+    stop: (sessionId, tenantId) => resolve().stop(sessionId, tenantId),
+    findByIdForTenant: (sessionId, tenantId) => resolve().findByIdForTenant(sessionId, tenantId),
   }
 }
 

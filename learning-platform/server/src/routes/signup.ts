@@ -4,6 +4,7 @@ import { generateToken, hashToken } from '../auth/tokens.js'
 import { isUniqueViolation, type UserRepository } from '../db/users.js'
 import type { ConfirmationTokenRepository } from '../db/confirmationTokens.js'
 import type { Mailer } from '../email/mailer.js'
+import { appBaseUrl } from '../config.js'
 
 const MIN_PASSWORD_LENGTH = 8
 const CONFIRMATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000
@@ -21,12 +22,6 @@ function isValidEmail(email: unknown): email is string {
 
 function isValidPassword(password: unknown): password is string {
   return typeof password === 'string' && password.length >= MIN_PASSWORD_LENGTH
-}
-
-function appBaseUrl(): string {
-  // Read per-request, not captured at module load, consistent with how
-  // EXPEDITE_SIGNUP_ENABLED is read below — a test can set it per-case.
-  return process.env.APP_BASE_URL ?? 'http://localhost:3000'
 }
 
 /**
