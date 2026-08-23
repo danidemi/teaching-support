@@ -60,3 +60,17 @@ Notes:
 Open questions:
 * none — script name/location, migration-step, and idempotency all fixed at grooming
   (2026-08-23, see DoD above)
+
+Technical plan (sprint planning, 2026-08-23):
+* new `./scripts/uat.sh` (top-level, next to `client/`/`server/` — no such folder exists yet
+  at this level, only `server/scripts/`) — plain POSIX shell, no new tooling/dependency
+* steps: `docker compose -f server/docker-compose.yml down -v` (idempotency: always start
+  from a clean container+volume state) → `docker compose -f server/docker-compose.yml up -d`
+  → poll until the `postgres` healthcheck reports healthy → `npm ci && npm run build` in
+  `server/` → `npm ci && npm run build` in `client/` → `npm start` in `server/` in the
+  foreground (it serves the built client per existing `README.md`/ADR-0001 setup)
+* no separate migration command — `server/src/index.ts` already runs `applyMigrations` on
+  startup (confirmed at grooming); the script relies on that, does not duplicate it
+* README.md gets a new section: what the script does, how to run it, and which port to open
+  once it's running
+* no ADR needed — orchestrates existing commands only, no new tech-stack element

@@ -46,3 +46,16 @@ Notes:
 Open questions:
 * none — signed-in behavior (redirect to `/courses`) decided at grooming (2026-08-23, see
   DoD above)
+
+Technical plan (sprint planning, 2026-08-23):
+* extract the form block of `client/src/LoginPage.tsx` (email/password inputs, submit
+  handler, error message) into a new `client/src/components/SignInForm.tsx` — same
+  fetch/`/api/login` logic, same `window.location.assign('/')` on success (per that file's
+  existing doc comment, so `/api/me` re-runs against the fresh session cookie); `LoginPage`
+  renders `<SignInForm />` inside its existing `<Card>`, no behavior change
+* `App.tsx` (home page): when `useSignedInUser()` resolves `user` truthy, redirect to
+  `/courses` via `react-router-dom`'s `useNavigate` (already a dependency, used elsewhere —
+  e.g. `QuizDashboardPage.tsx`'s `useParams`); when `user` is falsy, render `<SignInForm />`
+  in place of the current hero-only body (hero text can stay above/around it, per whatever
+  layout looks right — no wireframe exists for this, keep it simple)
+* no ADR needed — no tech-stack change, reusing existing routing/session primitives

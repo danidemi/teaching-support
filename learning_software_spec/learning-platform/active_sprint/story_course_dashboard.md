@@ -120,6 +120,19 @@ Verification (development, 2026-08-22):
 * same gap as every other story this sprint: no browser/Playwright click-through, no visual
   review of the rendered table/modal — HTTP/API-level verification only
 
+Technical plan (sprint planning, 2026-08-23):
+* no server change needed: `GET /api/courses` already returns the full unpaginated list for
+  the tenant (no pagination per this story's own DoD), so ascending/descending/unsorted
+  states are all computed **client-side** by re-sorting the already-loaded `Course[]` array —
+  no new `sortDir` query param, no server-side change to `courses.listByTenant`
+* `CourseDashboardPage.tsx`: replace the "Sort by" `<select>` with `onClick` handlers on each
+  `<th>`; track `{ column: SortBy | null; direction: 'asc' | 'desc' }` in state instead of
+  the current plain `sortBy`; clicking a header cycles `asc → desc → null` (unsorted) if it's
+  the active column, or starts at `asc` if it's a different column; render an arrow
+  (`▲`/`▼`) next to the active column's header text, nothing on the others; unsorted falls
+  back to the order `GET /api/courses` returns (its existing default, title ascending)
+* no ADR needed — no tech-stack change, same React state + shadcn/ui table already in place
+
 Sprint review feedback (2026-08-23) — rejected, not accepted as DONE:
 * the built sorting UI is a "Sort by:" dropdown (per the wireframe drawn at grooming); the
   human wants column-header click-to-sort instead, with standard tri-state cycling
