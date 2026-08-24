@@ -94,24 +94,7 @@ exists only to name the field, for every author and reviewer, regardless of cour
 Loanwords already standard in the target language's technical register are kept as-is rather than
 forced into an awkward native term.
 
-For `:language: it`, use this fixed mapping — do not re-derive a translation per guide, and do not
-mix two renderings of the same field across steps:
-
-| Canonical (this spec) | Italian rendering |
-|---|---|
-| Preconditions          | Precondizioni |
-| Steps                  | Passi |
-| Do::                   | Azioni:: |
-| Expect::               | Risultato Atteso:: |
-| Verify::               | Verifica:: |
-| Why:: / Mechanical: / Teaches: | Motivazioni:: / Spiegazione: / Insegnamento: |
-| If it goes wrong::     | In caso di problemi:: |
-| Trainer-only::         | Trainer-only:: (kept — standard loanword) |
-| Deliberate failure::   | Deliberate failure:: (kept — standard loanword) |
-| Timing::               | Timing:: (kept — standard loanword) |
-| Reset                  | Reset (kept — standard loanword) |
-| Resume mid-demo        | Resume mid-demo (kept — standard loanword) |
-| Live-failure fallback  | Live-failure fallback (kept — standard loanword) |
+Just one example: for `:language: it`, prefer `Precondizioni` to `Preconditions`, but it is safe to use `Reset`.
 
 For any other `:language:`, apply the same principle (translate the prose-facing labels, keep
 established loanwords) and record the mapping you used as an `instructional_decisions` entry in

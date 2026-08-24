@@ -97,3 +97,4 @@ Remember what has been done in the sprint and think about what you think it work
 Select one good thing, one bad thing and extract the good practice that should be replicated in the next sprint, the bad practice that must not be repeated and append them to `references/do_and_donts.md`, in order to apply it next time.
 Keep the `references/do_and_donts.md` short, actionable, brief, meaningful.
 Don't let the file to grow too much, compact it if it's too big keeping the more meaningful DOs and DONTs.
+
