@@ -1,6 +1,6 @@
 ID: QUIZ-SESSION-LIVE-STATUS-001
 
-Status: READY
+Status: DONE
 
 Priority: Medium — split out at grooming (2026-08-23) from the original
 QUIZ-SESSION-MONITOR-001 draft as the second of two stories; depends on

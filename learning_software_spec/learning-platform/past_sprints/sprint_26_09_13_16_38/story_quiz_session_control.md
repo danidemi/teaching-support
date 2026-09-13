@@ -1,6 +1,6 @@
 ID: QUIZ-SESSION-CONTROL-001
 
-Status: READY
+Status: DONE
 
 Priority: Medium-High — split out at grooming (2026-08-23) from the original
 QUIZ-SESSION-MONITOR-001 draft as the first of two stories; ships first because it delivers a
