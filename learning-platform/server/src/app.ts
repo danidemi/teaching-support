@@ -209,6 +209,7 @@ function lazyQuizRepository(): QuizRepository {
     create: (quiz) => resolve().create(quiz),
     delete: (quizId, courseId) => resolve().delete(quizId, courseId),
     replaceFile: (quizId, courseId, file) => resolve().replaceFile(quizId, courseId, file),
+    getFiles: (quizId, courseId) => resolve().getFiles(quizId, courseId),
   }
 }
 

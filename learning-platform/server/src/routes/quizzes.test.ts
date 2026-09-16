@@ -1,6 +1,11 @@
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
+import AdmZip from 'adm-zip'
 import { createApp } from '../app.js'
+import { validPackageZip } from '../../test-fixtures/qti-samples/buildPackage.js'
 import {
   createFakeUserRepository,
   createFakeTenantRepository,
@@ -17,10 +22,21 @@ import {
 // original QTI 2.2 coverage per ADR-0007's hard cutover): POST validates
 // the file as QTI 3.0 before creating a row, rejecting an invalid one
 // with line/element-level errors and not creating anything.
+//
+// Also covers QUIZ-PACKAGE-STORAGE-001's DoD
+// (active_sprint/story_qti_package_storage.md): POST/PUT accept a `.zip`
+// package through the same input, stored as one `quiz_files` row per file.
 
 const VALID_QTI_ITEM = `<qti-assessment-item xmlns="http://www.imsglobal.org/xsd/imsqtiasi_v3p0" identifier="q1" title="Sample question">
   <qti-item-body><p>What is 2 + 2?</p></qti-item-body>
 </qti-assessment-item>`
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const SAMPLES_DIR = path.resolve(__dirname, '../../test-fixtures/qti-samples')
+
+function readSample(name: string): Buffer {
+  return readFileSync(path.join(SAMPLES_DIR, name))
+}
 
 function createTestApp() {
   const users = createFakeUserRepository()
@@ -63,8 +79,8 @@ describe('GET /api/courses/:courseId/quizzes (QUIZ-DASHBOARD-001)', () => {
     const agent = await signInAgent(users, app, 'trainer@example.com')
     const courseId = await createCourse(agent)
     void courses
-    await quizzes.create({ courseId, title: 'Quiz 1', fileName: 'quiz1.xml', fileData: Buffer.from('x') })
-    await quizzes.create({ courseId, title: 'Quiz 2', fileName: 'quiz2.xml', fileData: Buffer.from('y') })
+    await quizzes.create({ courseId, title: 'Quiz 1', fileName: 'quiz1.xml', files: [{ relativePath: 'quiz1.xml', fileData: Buffer.from('x') }] })
+    await quizzes.create({ courseId, title: 'Quiz 2', fileName: 'quiz2.xml', files: [{ relativePath: 'quiz2.xml', fileData: Buffer.from('y') }] })
 
     // when: listing quizzes for the course
     const response = await agent.get(`/api/courses/${courseId}/quizzes`)
@@ -166,13 +182,98 @@ describe('POST /api/courses/:courseId/quizzes (QTI-22-IMPORT)', () => {
   })
 })
 
+describe('POST /api/courses/:courseId/quizzes — .zip package (QUIZ-PACKAGE-STORAGE-001)', () => {
+  it('creates a quiz from a valid multi-item .zip package, storing every file', async () => {
+    // given: a signed-in trainer with a course
+    const { app, users, quizzes } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const courseId = await createCourse(agent)
+
+    // when: uploading a well-formed QTI 3.0 package
+    const response = await agent.post(`/api/courses/${courseId}/quizzes`).attach('file', validPackageZip(), 'geography-quiz.zip')
+
+    // then: the quiz is created, titled from test.xml's own title, with all 4 files stored
+    expect(response.status).toBe(201)
+    expect(response.body.title).toBe('Geography quiz (multi-item test)')
+    expect(response.body.fileName).toBe('geography-quiz.zip')
+    const storedFiles = quizzes.fileRows.filter((f) => f.quizId === response.body.id)
+    expect(storedFiles.map((f) => f.relativePath).sort()).toEqual(
+      ['imsmanifest.xml', 'sample-accept-multiple-choice-basic.xml', 'sample-accept-single-choice-basic.xml', 'test.xml'].sort(),
+    )
+  })
+
+  it('still accepts a standalone single-item upload, stored as a 1-row package with no manifest', async () => {
+    // given/when: uploading a bare QTI 3.0 item, same as before this story
+    const { app, users, quizzes } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const courseId = await createCourse(agent)
+    const response = await agent.post(`/api/courses/${courseId}/quizzes`).attach('file', Buffer.from(VALID_QTI_ITEM), 'question1.xml')
+
+    // then: unchanged trainer-facing behavior, but internally a 1-file package
+    expect(response.status).toBe(201)
+    const storedFiles = quizzes.fileRows.filter((f) => f.quizId === response.body.id)
+    expect(storedFiles).toHaveLength(1)
+    expect(storedFiles[0].relativePath).toBe('question1.xml')
+  })
+
+  it('rejects a .zip that is not a valid archive, creating nothing', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const courseId = await createCourse(agent)
+
+    const response = await agent.post(`/api/courses/${courseId}/quizzes`).attach('file', Buffer.from('not a zip'), 'broken.zip')
+
+    expect(response.status).toBe(400)
+    expect(response.body.error).toBe('invalid_format')
+    const listResponse = await agent.get(`/api/courses/${courseId}/quizzes`)
+    expect(listResponse.body).toEqual([])
+  })
+
+  it('rejects a package with a dangling item-ref href, creating nothing', async () => {
+    // given: a package missing one of the two files test.xml references
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const courseId = await createCourse(agent)
+    const zip = new AdmZip()
+    zip.addFile('imsmanifest.xml', Buffer.from('<manifest/>', 'utf-8'))
+    zip.addFile('test.xml', readSample('sample-accept-multi-item-test.xml'))
+    zip.addFile('sample-accept-single-choice-basic.xml', readSample('sample-accept-single-choice-basic.xml'))
+    // sample-accept-multiple-choice-basic.xml intentionally omitted
+
+    // when: uploading it
+    const response = await agent.post(`/api/courses/${courseId}/quizzes`).attach('file', zip.toBuffer(), 'incomplete.zip')
+
+    // then: rejected with structured errors naming the dangling file, nothing created
+    expect(response.status).toBe(400)
+    expect(response.body.error).toBe('invalid_format')
+    expect(response.body.errors.some((e: { message: string }) => e.message.includes('sample-accept-multiple-choice-basic.xml'))).toBe(true)
+    const listResponse = await agent.get(`/api/courses/${courseId}/quizzes`)
+    expect(listResponse.body).toEqual([])
+  })
+
+  it('rejects a package missing test.xml, creating nothing', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const courseId = await createCourse(agent)
+    const zip = new AdmZip()
+    zip.addFile('imsmanifest.xml', Buffer.from('<manifest/>', 'utf-8'))
+
+    const response = await agent.post(`/api/courses/${courseId}/quizzes`).attach('file', zip.toBuffer(), 'no-test.zip')
+
+    expect(response.status).toBe(400)
+    expect(response.body.error).toBe('invalid_format')
+    const listResponse = await agent.get(`/api/courses/${courseId}/quizzes`)
+    expect(listResponse.body).toEqual([])
+  })
+})
+
 describe('DELETE /api/courses/:courseId/quizzes/:quizId (QUIZ-DASHBOARD-001)', () => {
   it('deletes the quiz row', async () => {
     // given: a course with one quiz
     const { app, users, quizzes } = createTestApp()
     const agent = await signInAgent(users, app, 'trainer@example.com')
     const courseId = await createCourse(agent)
-    const quiz = await quizzes.create({ courseId, title: 'Quiz 1', fileName: 'quiz1.xml', fileData: Buffer.from('x') })
+    const quiz = await quizzes.create({ courseId, title: 'Quiz 1', fileName: 'quiz1.xml', files: [{ relativePath: 'quiz1.xml', fileData: Buffer.from('x') }] })
 
     // when: deleting it
     const response = await agent.delete(`/api/courses/${courseId}/quizzes/${quiz.id}`)
@@ -198,7 +299,7 @@ describe('DELETE /api/courses/:courseId/quizzes/:quizId (QUIZ-DASHBOARD-001)', (
     const { app, users, quizzes } = createTestApp()
     const agentA = await signInAgent(users, app, 'trainer-a@example.com')
     const courseId = await createCourse(agentA)
-    const quiz = await quizzes.create({ courseId, title: 'Quiz 1', fileName: 'quiz1.xml', fileData: Buffer.from('x') })
+    const quiz = await quizzes.create({ courseId, title: 'Quiz 1', fileName: 'quiz1.xml', files: [{ relativePath: 'quiz1.xml', fileData: Buffer.from('x') }] })
     const agentB = await signInAgent(users, app, 'trainer-b@example.com')
 
     // when: tenant B tries to delete it
@@ -217,7 +318,7 @@ describe('PUT /api/courses/:courseId/quizzes/:quizId/file (QUIZ-DASHBOARD-001)',
     const { app, users, quizzes } = createTestApp()
     const agent = await signInAgent(users, app, 'trainer@example.com')
     const courseId = await createCourse(agent)
-    const quiz = await quizzes.create({ courseId, title: 'Quiz 1', fileName: 'original.xml', fileData: Buffer.from('x') })
+    const quiz = await quizzes.create({ courseId, title: 'Quiz 1', fileName: 'original.xml', files: [{ relativePath: 'original.xml', fileData: Buffer.from('x') }] })
 
     // when: replacing its file
     const response = await agent
@@ -236,7 +337,7 @@ describe('PUT /api/courses/:courseId/quizzes/:quizId/file (QUIZ-DASHBOARD-001)',
     const { app, users, quizzes } = createTestApp()
     const agent = await signInAgent(users, app, 'trainer@example.com')
     const courseId = await createCourse(agent)
-    const quiz = await quizzes.create({ courseId, title: 'Quiz 1', fileName: 'original.xml', fileData: Buffer.from('x') })
+    const quiz = await quizzes.create({ courseId, title: 'Quiz 1', fileName: 'original.xml', files: [{ relativePath: 'original.xml', fileData: Buffer.from('x') }] })
 
     const response = await agent.put(`/api/courses/${courseId}/quizzes/${quiz.id}/file`)
 

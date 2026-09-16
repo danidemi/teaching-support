@@ -6,7 +6,7 @@ import type { NewUser, UserForLogin, UserRepository } from '../db/users.js'
 import { UNIQUE_VIOLATION } from '../db/users.js'
 import type { Course, CourseRepository, CourseSort, NewCourse } from '../db/courses.js'
 import type { Tenant, TenantRepository } from '../db/tenants.js'
-import type { NewQuiz, Quiz, QuizFileUpdate, QuizRepository } from '../db/quizzes.js'
+import type { NewQuiz, NewQuizFile, Quiz, QuizFile, QuizFileUpdate, QuizRepository } from '../db/quizzes.js'
 import type { QuizSession, SessionRepository } from '../db/quizSessions.js'
 import type { ConnectionRepository, QuizSessionConnection } from '../db/quizSessionConnections.js'
 import { INVALID_TEXT_REPRESENTATION } from '../db/errors.js'
@@ -120,12 +120,24 @@ export function createFakeCourseRepository(): CourseRepository & { rows: (Course
  * fake `SessionRepository` on top of — kept here rather than duplicated a
  * third time, same rationale as this file's own header comment.
  */
-export function createFakeQuizRepository(): QuizRepository & { rows: (Quiz & { courseId: string })[] } {
+export function createFakeQuizRepository(): QuizRepository & { rows: (Quiz & { courseId: string })[]; fileRows: (QuizFile & { quizId: string })[] } {
   const rows: (Quiz & { courseId: string })[] = []
+  const fileRows: (QuizFile & { quizId: string })[] = []
   let nextId = 1
+  let nextFileId = 1
+
+  function replaceFiles(quizId: string, files: NewQuizFile[]) {
+    for (let i = fileRows.length - 1; i >= 0; i--) {
+      if (fileRows[i].quizId === quizId) fileRows.splice(i, 1)
+    }
+    for (const file of files) {
+      fileRows.push({ id: fakeUuid(nextFileId++), quizId, relativePath: file.relativePath, fileData: file.fileData, mimeType: file.mimeType ?? null })
+    }
+  }
 
   return {
     rows,
+    fileRows,
     async listByCourse(courseId: string) {
       return rows.filter((row) => row.courseId === courseId).map(({ id, title, fileName, status, createdAt, updatedAt }) => ({ id, title, fileName, status, createdAt, updatedAt }))
     },
@@ -133,12 +145,14 @@ export function createFakeQuizRepository(): QuizRepository & { rows: (Quiz & { c
       const now = new Date()
       const created = { id: fakeUuid(nextId++), courseId: quiz.courseId, title: quiz.title, fileName: quiz.fileName, status: 'uploaded', createdAt: now, updatedAt: now }
       rows.push(created)
+      replaceFiles(created.id, quiz.files)
       return { id: created.id, title: created.title, fileName: created.fileName, status: created.status, createdAt: created.createdAt, updatedAt: created.updatedAt }
     },
     async delete(quizId: string, courseId: string) {
       const index = rows.findIndex((row) => row.id === quizId && row.courseId === courseId)
       if (index === -1) return false
       rows.splice(index, 1)
+      replaceFiles(quizId, [])
       return true
     },
     async replaceFile(quizId: string, courseId: string, file: QuizFileUpdate) {
@@ -146,7 +160,13 @@ export function createFakeQuizRepository(): QuizRepository & { rows: (Quiz & { c
       if (!row) return null
       row.fileName = file.fileName
       row.updatedAt = new Date()
+      replaceFiles(quizId, file.files)
       return { id: row.id, title: row.title, fileName: row.fileName, status: row.status, createdAt: row.createdAt, updatedAt: row.updatedAt }
+    },
+    async getFiles(quizId: string, courseId: string) {
+      const row = rows.find((row) => row.id === quizId && row.courseId === courseId)
+      if (!row) return []
+      return fileRows.filter((f) => f.quizId === quizId).map(({ id, relativePath, fileData, mimeType }) => ({ id, relativePath, fileData, mimeType }))
     },
   }
 }

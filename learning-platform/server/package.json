@@ -11,9 +11,11 @@
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx scripts/db-migrate.ts"
+    "db:migrate": "tsx scripts/db-migrate.ts",
+    "build:qti-fixture": "tsx scripts/build-qti-package-fixture.ts"
   },
   "dependencies": {
+    "adm-zip": "^0.5.18",
     "bcryptjs": "^3.0.3",
     "connect-pg-simple": "^10.0.0",
     "dotenv": "^17.4.2",
@@ -26,6 +28,7 @@
     "sax": "^1.6.1"
   },
   "devDependencies": {
+    "@types/adm-zip": "^0.5.8",
     "@types/connect-pg-simple": "^7.0.3",
     "@types/express": "^4.17.21",
     "@types/express-session": "^1.19.0",

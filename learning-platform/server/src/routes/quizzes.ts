@@ -2,18 +2,69 @@ import { Router, type Request, type Response, type RequestHandler } from 'expres
 import multer from 'multer'
 import path from 'node:path'
 import type { CourseRepository } from '../db/courses.js'
-import type { QuizRepository } from '../db/quizzes.js'
-import { validateQti3 } from '../qti/validateQti3.js'
+import type { NewQuizFile, QuizRepository } from '../db/quizzes.js'
+import { validateQti3, validateQtiPackage, extractZipEntries, type QtiValidationError } from '../qti/validateQti3.js'
 import { isInvalidIdError } from '../db/errors.js'
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } })
 
+// A trainer's single-file upload is either a `.zip` package (ADR-0010) or,
+// for backwards compatibility (QUIZ-PACKAGE-STORAGE-001's "standalone
+// upload keeps working" DoD item), the same bare QTI 3.0 XML file
+// QTI-22-IMPORT always accepted. Extension is the only cheap, unambiguous
+// signal available here — content-sniffing a zip's magic bytes buys
+// nothing multer's own filename doesn't already tell us.
+function isZipUpload(originalName: string): boolean {
+  return originalName.toLowerCase().endsWith('.zip')
+}
+
+function guessMimeType(relativePath: string): string | null {
+  return relativePath.toLowerCase().endsWith('.xml') ? 'application/xml' : null
+}
+
+interface PreparedUpload {
+  title: string
+  files: NewQuizFile[]
+}
+
+type PrepareResult = { ok: true; upload: PreparedUpload } | { ok: false; errors: QtiValidationError[] }
+
+// Shared by POST (create) and PUT (replace file) — both accept the same
+// single-file input and must format-validate it the same way.
+function prepareUpload(file: Express.Multer.File): PrepareResult {
+  if (isZipUpload(file.originalname)) {
+    const validation = validateQtiPackage(file.buffer)
+    if (!validation.valid) return { ok: false, errors: validation.errors }
+    return {
+      ok: true,
+      upload: {
+        title: validation.title || path.parse(file.originalname).name,
+        files: validation.files.map((f) => ({ relativePath: f.relativePath, fileData: f.content, mimeType: guessMimeType(f.relativePath) })),
+      },
+    }
+  }
+
+  const validation = validateQti3(file.buffer)
+  if (!validation.valid) return { ok: false, errors: validation.errors }
+  return {
+    ok: true,
+    upload: {
+      title: validation.title || path.parse(file.originalname).name,
+      // QUIZ-PACKAGE-STORAGE-001: a standalone upload is still stored as a
+      // package — just a 1-row one, with no manifest, keyed by the
+      // uploaded file's own name.
+      files: [{ relativePath: file.originalname, fileData: file.buffer, mimeType: 'application/xml' }],
+    },
+  }
+}
+
 /**
  * `GET/POST /api/courses/:courseId/quizzes` (list — QUIZ-DASHBOARD-001;
- * create — QTI-22-IMPORT), `DELETE .../quizzes/:quizId`
+ * create — QTI-22-IMPORT, extended by QUIZ-PACKAGE-STORAGE-001 to accept a
+ * `.zip` package as well as a bare file), `DELETE .../quizzes/:quizId`
  * (QUIZ-DASHBOARD-001), and `PUT .../quizzes/:quizId/file`
- * (QUIZ-DASHBOARD-001 replace, no format validation — see that story's
- * Notes on why this and create aren't held to the same check).
+ * (QUIZ-DASHBOARD-001 replace, no format validation change beyond what
+ * create already gained).
  *
  * Every route first calls `courses.findByIdForTenant` — a course id that
  * doesn't exist and one that exists in a different tenant get the same
@@ -81,6 +132,8 @@ export function createQuizzesRouter(courses: CourseRepository, quizzes: QuizRepo
   // upload returns every structural error found (line/element-level, per
   // the DoD), not just the first — a trainer fixing a file one round trip
   // at a time is a worse experience than seeing everything wrong at once.
+  // QUIZ-PACKAGE-STORAGE-001: the same input now also accepts a `.zip`
+  // package, validated and stored as one row per file (ADR-0010).
   router.post('/api/courses/:courseId/quizzes', sessionMiddleware, upload.single('file'), async (req, res) => {
     if (rejectIfUnauthorized(await authorizeCourse(req), res)) return
     if (!req.file) {
@@ -88,19 +141,18 @@ export function createQuizzesRouter(courses: CourseRepository, quizzes: QuizRepo
       return
     }
 
-    const validation = validateQti3(req.file.buffer)
-    if (!validation.valid) {
-      res.status(400).json({ error: 'invalid_format', errors: validation.errors })
+    const prepared = prepareUpload(req.file)
+    if (!prepared.ok) {
+      res.status(400).json({ error: 'invalid_format', errors: prepared.errors })
       return
     }
 
     try {
-      const title = validation.title || path.parse(req.file.originalname).name
       const created = await quizzes.create({
         courseId: req.params.courseId,
-        title,
+        title: prepared.upload.title,
         fileName: req.file.originalname,
-        fileData: req.file.buffer,
+        files: prepared.upload.files,
       })
       res.status(201).json(created)
     } catch (err) {
@@ -130,10 +182,21 @@ export function createQuizzesRouter(courses: CourseRepository, quizzes: QuizRepo
       res.status(400).json({ error: 'missing_file' })
       return
     }
+    // Mirrors QUIZ-DASHBOARD-001's original "replace has no format
+    // validation" choice: still true, but the file is now a package as
+    // well, so it still has to be split into files that make sense in the
+    // `quiz_files` shape. A bare (non-zip) replacement is stored as a
+    // 1-row package like a standalone create; a `.zip` is unzipped without
+    // running validateQtiPackage's structural checks, matching PUT's
+    // pre-existing "no validation" contract for replace.
+    const files: NewQuizFile[] = isZipUpload(req.file.originalname)
+      ? unpackWithoutValidation(req.file.buffer)
+      : [{ relativePath: req.file.originalname, fileData: req.file.buffer, mimeType: 'application/xml' }]
+
     try {
       const updated = await quizzes.replaceFile(req.params.quizId, req.params.courseId, {
         fileName: req.file.originalname,
-        fileData: req.file.buffer,
+        files,
       })
       if (!updated) {
         res.status(404).json({ error: 'quiz_not_found' })
@@ -147,4 +210,19 @@ export function createQuizzesRouter(courses: CourseRepository, quizzes: QuizRepo
   })
 
   return router
+}
+
+// Best-effort unzip for PUT's unvalidated replace path — if the zip can't
+// even be opened, fall back to storing it as a single opaque file rather
+// than failing a route that has never format-validated its input.
+function unpackWithoutValidation(buffer: Buffer): NewQuizFile[] {
+  try {
+    const entries = extractZipEntries(buffer)
+    if (entries.length > 0) {
+      return entries.map((f) => ({ relativePath: f.relativePath, fileData: f.content, mimeType: guessMimeType(f.relativePath) }))
+    }
+  } catch {
+    // not a valid zip — fall through
+  }
+  return [{ relativePath: 'upload.zip', fileData: buffer, mimeType: 'application/zip' }]
 }

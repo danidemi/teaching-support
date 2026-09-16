@@ -103,6 +103,12 @@ export const courses = pgTable(
  * No `create` route ships in QUIZ-DASHBOARD-001 itself — `QuizRepository
  * .create` exists for QTI-22-IMPORT to call (that story owns the only
  * user-facing way to add a quiz row: format-validated upload).
+ *
+ * QUIZ-PACKAGE-STORAGE-001/ADR-0010: `fileData` moved off this row and
+ * onto `quizFiles` below (one row per file) — every quiz is now "a
+ * package", a standalone single-item upload being a 1-row package with no
+ * manifest, not a special case. `fileName` stays here as the trainer-facing
+ * label (the originally uploaded file's name, `.zip` or bare `.xml`).
  */
 export const quizzes = pgTable('quizzes', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -111,10 +117,28 @@ export const quizzes = pgTable('quizzes', {
     .references(() => courses.id),
   title: text('title').notNull(),
   fileName: text('file_name').notNull(),
-  fileData: bytea('file_data').notNull(),
   status: text('status').notNull().default('uploaded'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+/**
+ * QUIZ-PACKAGE-STORAGE-001/ADR-0010: one row per file belonging to a
+ * quiz's uploaded package — `imsmanifest.xml`, `test.xml`, and each
+ * `items/item-NN.xml`, all tied to the same `quizzes` row via `quizId`.
+ * No `tenantId` column here, same as `quizSessions`/`quizSessionConnections`
+ * below — tenancy is proven by joining `quizId -> quizzes.courseId ->
+ * courses.tenantId`, not denormalized onto this table.
+ */
+export const quizFiles = pgTable('quiz_files', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  quizId: uuid('quiz_id')
+    .notNull()
+    .references(() => quizzes.id),
+  relativePath: text('relative_path').notNull(),
+  fileData: bytea('file_data').notNull(),
+  mimeType: text('mime_type'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })
 
 /**

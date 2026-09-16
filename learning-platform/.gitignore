@@ -7,3 +7,6 @@ dist/
 client/test-results/
 client/playwright-report/
 client/blob-report/
+
+# QUIZ-PACKAGE-STORAGE-001: manual-UAT .zip built from server/test-fixtures/qti-samples/
+server/test-fixtures/qti-samples/.generated/

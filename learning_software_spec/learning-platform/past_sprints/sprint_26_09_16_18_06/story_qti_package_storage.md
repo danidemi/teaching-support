@@ -1,6 +1,6 @@
 ID: QUIZ-PACKAGE-STORAGE-001
 
-Status: READY
+Status: DONE
 
 Priority: High — blocks both QUIZ-TAKE-RENDER-001 and QUIZ-AUTO-EVAL-001; without it, no
 multi-question quiz authored by the `learning-quiz-author` plugin can ever be taken by a
@@ -56,3 +56,19 @@ Known context (grooming, 2026-09-13):
   plugin cannot be uploaded as-is today.
 * This story is upstream of QUIZ-TAKE-RENDER-001 and QUIZ-AUTO-EVAL-001 — both assume a
   multi-item test's item files are actually retrievable server-side.
+
+Verification (development, 2026-09-16):
+* implemented: `.zip` package upload/storage per ADR-0010 (`quiz_files` table, `adm-zip`
+  unzip, `validateQtiPackage` extending `server/src/qti/validateQti3.ts`, migration
+  `0009_tranquil_reaper.sql` dropping `quizzes.fileData`)
+* automated: 140/140 server tests pass, including package-upload, standalone-single-item
+  regression, and malformed/incomplete-package rejection cases
+  (`src/routes/quizzes.test.ts`, `src/qti/validateQti3.test.ts`)
+* gap found and closed same sprint: QTI-UAT-SAMPLES-001's fixtures were reused for manual
+  UAT upload, but nothing produced a real `.zip` a human could attach through the browser
+  for the new package path. Added `server/test-fixtures/qti-samples/buildPackage.ts`
+  (single source of truth for the fixture package, shared by both test files, replacing
+  two copy-pasted zip-assembly helpers) and `npm run build:qti-fixture`
+  (`server/scripts/build-qti-package-fixture.ts`), which writes the package to a
+  gitignored `test-fixtures/qti-samples/.generated/` for manual UAT
+* manual: human tested the app and accepted the story at sprint review, 2026-09-16

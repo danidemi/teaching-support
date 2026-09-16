@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, it, expect } from 'vitest'
-import { validateQti3 } from './validateQti3.js'
+import AdmZip from 'adm-zip'
+import { validateQti3, validateQtiPackage } from './validateQti3.js'
+import { validPackageEntries, zipOf } from '../../test-fixtures/qti-samples/buildPackage.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const SAMPLES_DIR = path.resolve(__dirname, '../../test-fixtures/qti-samples')
@@ -148,5 +150,77 @@ describe('validateQti3 against the QTI-UAT-SAMPLES-001 fixtures', () => {
   ])('rejects %s', (fileName) => {
     const result = validateQti3(readSample(fileName))
     expect(result.valid).toBe(false)
+  })
+})
+
+// Covers QUIZ-PACKAGE-STORAGE-001's DoD
+// (active_sprint/story_qti_package_storage.md): a `.zip` package —
+// imsmanifest.xml + test.xml + N item files — validates as a whole,
+// closing the gap `sample-accept-multi-item-test.xml`'s own fixture
+// comment flags for validateQti3 (dangling hrefs go unchecked there).
+
+describe('validateQtiPackage (QUIZ-PACKAGE-STORAGE-001)', () => {
+  it('accepts a well-formed package, returning every file to store', () => {
+    // given: a zip with a manifest, test.xml, and both item files it references
+    const result = validateQtiPackage(zipOf(validPackageEntries()))
+
+    // then: it's accepted, with the test's own declared title and all 4 files
+    expect(result.valid).toBe(true)
+    expect(result.errors).toEqual([])
+    expect(result.title).toBe('Geography quiz (multi-item test)')
+    expect(result.files.map((f) => f.relativePath).sort()).toEqual(
+      ['imsmanifest.xml', 'sample-accept-multiple-choice-basic.xml', 'sample-accept-single-choice-basic.xml', 'test.xml'].sort(),
+    )
+  })
+
+  it('rejects a buffer that is not a valid zip archive', () => {
+    const result = validateQtiPackage(Buffer.from('not a zip file at all'))
+
+    expect(result.valid).toBe(false)
+    expect(result.errors[0].message).toContain('not a valid zip archive')
+    expect(result.files).toEqual([])
+  })
+
+  it('rejects a package missing imsmanifest.xml', () => {
+    const { ['imsmanifest.xml']: _omit, ...rest } = validPackageEntries()
+    const result = validateQtiPackage(zipOf(rest))
+
+    expect(result.valid).toBe(false)
+    expect(result.errors.some((e) => e.file === 'imsmanifest.xml')).toBe(true)
+  })
+
+  it('rejects a package missing test.xml', () => {
+    const { ['test.xml']: _omit, ...rest } = validPackageEntries()
+    const result = validateQtiPackage(zipOf(rest))
+
+    expect(result.valid).toBe(false)
+    expect(result.errors.some((e) => e.file === 'test.xml')).toBe(true)
+  })
+
+  it('rejects a package with a dangling item-ref href', () => {
+    // given: test.xml references a second item file that isn't in the zip
+    const entries = validPackageEntries()
+    delete entries['sample-accept-multiple-choice-basic.xml']
+    const result = validateQtiPackage(zipOf(entries))
+
+    expect(result.valid).toBe(false)
+    expect(result.errors.some((e) => e.message.includes('sample-accept-multiple-choice-basic.xml') && e.message.includes('no such file'))).toBe(true)
+  })
+
+  it('rejects a package whose referenced item file is itself structurally invalid, naming the file', () => {
+    // given: the referenced item is missing its required "identifier" attribute
+    const entries = validPackageEntries()
+    entries['sample-accept-single-choice-basic.xml'] = readSample('sample-reject-missing-identifier.xml')
+    const result = validateQtiPackage(zipOf(entries))
+
+    expect(result.valid).toBe(false)
+    expect(result.errors.some((e) => e.file === 'sample-accept-single-choice-basic.xml' && e.message.includes('identifier'))).toBe(true)
+  })
+
+  it('rejects an empty zip archive', () => {
+    const result = validateQtiPackage(new AdmZip().toBuffer())
+
+    expect(result.valid).toBe(false)
+    expect(result.errors[0].message).toContain('empty')
   })
 })

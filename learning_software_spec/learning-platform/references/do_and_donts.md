@@ -73,3 +73,13 @@ Newest entries at the bottom.
   repeated story after story. The environment can also change mid-session (e.g. a tool
   installed after the check was last made) — re-verify rather than trust a stale
   assumption or a memory of an earlier check.
+
+## sprint_26_09_16_18_06
+
+* **DO** run a blast-radius check when a story changes an existing data shape or behavior:
+  search for other stories, scripts, or fixtures whose own DoD/Notes depended on the old
+  shape, not just the source files that reference it in code. QUIZ-PACKAGE-STORAGE-001's DoD
+  covered every code call site of the old "one file per quiz" assumption but missed that
+  QTI-UAT-SAMPLES-001's fixtures were also reused for manual UAT upload — a human had no
+  ready-made `.zip` to attach for the new package path. Caught this sprint only because the
+  human asked about it directly at review, not because grooming/planning surfaced it.
