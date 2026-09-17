@@ -61,8 +61,17 @@ Known context (grooming, 2026-09-13):
     renderer, no external deps, but explicitly does **not** include scoring/response
     processing (would need to be paired with hand-written logic for QUIZ-AUTO-EVAL-001
     regardless).
-  * None of the three have been prototyped/spiked against this repo's actual fixtures yet —
-    sprint planning should budget a short spike before committing, or accept the risk.
+  * `qti3` has been spiked against this repo's actual fixtures (2026-09-17) — see
+    `piattaforma-corsi/learning-platform/spikes/qti3-render/FINDINGS.md`. Naming correction:
+    no npm package is literally named `qti3` — it's three packages,
+    `@longsightgroup/qti3-core` + `qti3-player` + `qti3-player-react`. Confirmed: correct
+    single/multi-select `qti-choice-interaction` rendering (verified in real Chromium, not
+    jsdom), correct response capture shape, correct scoring both client-side (preview) and
+    server-side via `qti3-core` alone (no browser), no network dependency. The multi-item
+    Next/Submit sequencing this DoD needs is hand-written host code either way — qti3's
+    player renders one item at a time by design, regardless of which candidate is chosen.
+    The other two candidates (`qti3-item-player`, `@ae-studio/qti-renderer`) remain
+    unspiked.
 * Scope was deliberately narrowed to `qti-choice-interaction` because it's the only
   interaction type present in this repo's QTI fixtures/authored content — broader QTI 3.0
   interaction support is a future PBI if/when authored content needs it.
