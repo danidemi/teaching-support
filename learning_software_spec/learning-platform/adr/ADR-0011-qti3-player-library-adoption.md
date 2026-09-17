@@ -66,7 +66,12 @@ alternatives remain on record above as a documented fallback path.
   satisfied by ADR-0001's React 18.3.1).
 * `server/package.json` gains `@longsightgroup/qti3-core` as a direct runtime dependency —
   the server has no reason to install the player/React packages, so this one is not
-  transitive here — for `QUIZ-AUTO-EVAL-001`'s server-side scoring (§Basis above).
+  transitive here. Originally scoped to `QUIZ-AUTO-EVAL-001`'s server-side scoring
+  (§Basis above); development (2026-09-17) found `QUIZ-TAKE-RENDER-001` needs it too —
+  its `GET .../items` endpoint computes each item's `registryStatus` server-side (so an
+  anonymous client can't fake which items are gradable), which is the same `qti3-core`
+  call AUTO-EVAL's scoring already depended on. The dependency addition itself was
+  already decided here; only which story's commit adds it to `package.json` moved.
 * **Styling boundary with ADR-0006**: `<qti-assessment-item-player>` is a real Custom
   Element with shadow DOM. shadcn/ui (Radix + Tailwind, ADR-0006) cannot reach inside it —
   the rendered question/choices come from the web component's own internal markup/styles,

@@ -3,10 +3,14 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import QuizSessionTakePage from './QuizSessionTakePage'
 
-// Covers QUIZ-SESSION-LIVE-STATUS-001's DoD
-// (active_sprint/story_quiz_session_live_status.md): the placeholder
-// page a student reaches via the QR/URL — joins on load, offers a stub
-// submit action, no sign-in of any kind.
+// Covers the non-rendering slice of QUIZ-TAKE-RENDER-001's DoD
+// (active_sprint/story_quiz_take_render.md): joining, the session-status
+// gate (not-started/running/stopped), and the unsupported-interaction-type
+// placeholder (which needs no qti3 web component to render). The actual
+// qti3-player rendering/Next/Submit-sequencing path is verified by
+// Playwright e2e instead (`client/e2e/quiz-session-take.spec.ts`) — jsdom
+// compatibility for that Custom Element is unverified, per ADR-0011's
+// Consequences and the spike's §4 finding.
 
 function renderAt(sessionId: string) {
   render(
@@ -18,7 +22,17 @@ function renderAt(sessionId: string) {
   )
 }
 
-function stubFetch(handlers: { joinStatus?: number; joinBody?: unknown; submitStatus?: number }) {
+interface FetchHandlers {
+  joinStatus?: number
+  joinBody?: unknown
+  statusStatus?: number
+  statusBody?: unknown
+  itemsStatus?: number
+  itemsBody?: unknown
+  submitStatus?: number
+}
+
+function stubFetch(handlers: FetchHandlers) {
   vi.stubGlobal(
     'fetch',
     vi.fn((url: string, init?: RequestInit) => {
@@ -28,15 +42,30 @@ function stubFetch(handlers: { joinStatus?: number; joinBody?: unknown; submitSt
           json: () => Promise.resolve(handlers.joinBody ?? { id: 'connection-1' }),
         })
       }
+      if (url.endsWith('/status')) {
+        return Promise.resolve({
+          status: handlers.statusStatus ?? 200,
+          json: () => Promise.resolve(handlers.statusBody ?? { status: 'closed' }),
+        })
+      }
+      if (url.endsWith('/items')) {
+        return Promise.resolve({
+          status: handlers.itemsStatus ?? 200,
+          json: () => Promise.resolve(handlers.itemsBody ?? { items: [] }),
+        })
+      }
       if (url.endsWith('/submit') && init?.method === 'POST') {
         return Promise.resolve({ status: handlers.submitStatus ?? 200, json: () => Promise.resolve({ ok: true }) })
+      }
+      if (url.endsWith('/answers') && init?.method === 'POST') {
+        return Promise.resolve({ status: 201, json: () => Promise.resolve({ id: 'answer-1' }) })
       }
       return Promise.resolve({ status: 404, json: () => Promise.resolve({}) })
     }),
   )
 }
 
-describe('QuizSessionTakePage (QUIZ-SESSION-LIVE-STATUS-001)', () => {
+describe('QuizSessionTakePage (QUIZ-TAKE-RENDER-001)', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
   })
@@ -45,9 +74,8 @@ describe('QuizSessionTakePage (QUIZ-SESSION-LIVE-STATUS-001)', () => {
     stubFetch({})
     renderAt('session-1')
 
-    await waitFor(() => expect(screen.getByTestId('joined-placeholder')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByTestId('not-started-message')).toBeInTheDocument())
     expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/quiz-sessions/session-1/connections', expect.objectContaining({ method: 'POST' }))
-    // never calls /api/me or anything sign-in related
     expect(vi.mocked(fetch)).not.toHaveBeenCalledWith('/api/me')
   })
 
@@ -57,14 +85,35 @@ describe('QuizSessionTakePage (QUIZ-SESSION-LIVE-STATUS-001)', () => {
     await waitFor(() => expect(screen.getByText(/could not join this session/i)).toBeInTheDocument())
   })
 
-  it('submits via the stub action and shows a confirmation', async () => {
-    stubFetch({ joinBody: { id: 'connection-1' } })
+  it('shows a not-started message while the session is closed', async () => {
+    stubFetch({ statusBody: { status: 'closed' } })
     renderAt('session-1')
-    await waitFor(() => expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByTestId('not-started-message')).toBeInTheDocument())
+  })
+
+  it('shows a stopped message once the session has ended', async () => {
+    stubFetch({ statusBody: { status: 'stopped' } })
+    renderAt('session-1')
+    await waitFor(() => expect(screen.getByTestId('stopped-message')).toBeInTheDocument())
+  })
+
+  it('renders the unsupported-interaction-type placeholder, and still advances via Next', async () => {
+    stubFetch({
+      statusBody: { status: 'running' },
+      itemsBody: { items: [{ identifier: 'text-entry-unsupported', path: 'item.xml', xml: '<x/>', supported: false }] },
+    })
+    renderAt('session-1')
+
+    await waitFor(() => expect(screen.getByTestId('unsupported-item-message')).toBeInTheDocument())
+    expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /submit/i }))
 
-    await waitFor(() => expect(screen.getByText(/submitted — thanks/i)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByTestId('submitted-confirmation')).toBeInTheDocument())
+    expect(vi.mocked(fetch)).toHaveBeenCalledWith(
+      '/api/quiz-sessions/session-1/connections/connection-1/answers',
+      expect.objectContaining({ method: 'POST', body: JSON.stringify({ itemPath: 'item.xml', responses: null }) }),
+    )
     expect(vi.mocked(fetch)).toHaveBeenCalledWith(
       '/api/quiz-sessions/session-1/connections/connection-1/submit',
       expect.objectContaining({ method: 'POST' }),
@@ -72,7 +121,11 @@ describe('QuizSessionTakePage (QUIZ-SESSION-LIVE-STATUS-001)', () => {
   })
 
   it('shows an error when submit fails', async () => {
-    stubFetch({ submitStatus: 500 })
+    stubFetch({
+      statusBody: { status: 'running' },
+      itemsBody: { items: [{ identifier: 'text-entry-unsupported', path: 'item.xml', xml: '<x/>', supported: false }] },
+      submitStatus: 500,
+    })
     renderAt('session-1')
     await waitFor(() => expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument())
 

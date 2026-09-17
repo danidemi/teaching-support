@@ -8,6 +8,7 @@ import {
   createFakeQuizRepository,
   createFakeSessionRepository,
   createFakeConnectionRepository,
+  createFakeQuizSessionAnswerRepository,
   createTestSessionMiddleware,
   signInAgent,
 } from '../testSupport/fakes.js'
@@ -30,8 +31,9 @@ function createTestApp() {
   const quizzes = createFakeQuizRepository()
   const quizSessions = createFakeSessionRepository(quizzes, courses)
   const quizSessionConnections = createFakeConnectionRepository(quizSessions)
-  const app = createApp({ users, tenants, courses, quizzes, quizSessions, quizSessionConnections, sessionMiddleware: createTestSessionMiddleware() })
-  return { app, users, courses, quizzes, quizSessions, quizSessionConnections }
+  const quizSessionAnswers = createFakeQuizSessionAnswerRepository()
+  const app = createApp({ users, tenants, courses, quizzes, quizSessions, quizSessionConnections, quizSessionAnswers, sessionMiddleware: createTestSessionMiddleware() })
+  return { app, users, courses, quizzes, quizSessions, quizSessionConnections, quizSessionAnswers }
 }
 
 async function createCourseAndQuiz(agent: ReturnType<typeof request.agent>) {
@@ -381,6 +383,175 @@ describe('POST /api/quiz-sessions/:sessionId/connections/:connectionId/submit (Q
     const { sessionId } = await createSessionAndJoin(agent, app)
 
     const response = await request(app).post(`/api/quiz-sessions/${sessionId}/connections/does-not-exist/submit`)
+
+    expect(response.status).toBe(404)
+  })
+})
+
+const CHOICE_ITEM = `<qti-assessment-item xmlns="http://www.imsglobal.org/xsd/imsqtiasi_v3p0" identifier="single-choice-basic" title="Capital of France">
+  <qti-response-declaration identifier="RESPONSE" cardinality="single" base-type="identifier">
+    <qti-correct-response><qti-value>choice_b</qti-value></qti-correct-response>
+  </qti-response-declaration>
+  <qti-item-body>
+    <qti-choice-interaction response-identifier="RESPONSE" shuffle="false" max-choices="1">
+      <qti-simple-choice identifier="choice_a">Berlin</qti-simple-choice>
+      <qti-simple-choice identifier="choice_b">Paris</qti-simple-choice>
+    </qti-choice-interaction>
+  </qti-item-body>
+</qti-assessment-item>`
+
+const UNSUPPORTED_ITEM = `<qti-assessment-item xmlns="http://www.imsglobal.org/xsd/imsqtiasi_v3p0" identifier="text-entry-unsupported" title="Capital of Italy">
+  <qti-response-declaration identifier="RESPONSE" cardinality="single" base-type="string">
+    <qti-correct-response><qti-value>Rome</qti-value></qti-correct-response>
+  </qti-response-declaration>
+  <qti-item-body>
+    <qti-text-entry-interaction response-identifier="RESPONSE"/>
+  </qti-item-body>
+</qti-assessment-item>`
+
+async function createCourseAndQuizWithItem(agent: ReturnType<typeof request.agent>, xml: string, fileName = 'quiz.xml') {
+  const courseResponse = await agent.post('/api/courses').send({ title: `Course for ${fileName}` })
+  const courseId = courseResponse.body.id as string
+  const quizResponse = await agent.post(`/api/courses/${courseId}/quizzes`).attach('file', Buffer.from(xml), fileName)
+  return { courseId, quizId: quizResponse.body.id as string }
+}
+
+// Covers QUIZ-TAKE-RENDER-001's DoD (active_sprint/story_quiz_take_render.md):
+// anonymous status/items/answers routes the take page depends on.
+describe('GET /api/quiz-sessions/:sessionId/status (QUIZ-TAKE-RENDER-001)', () => {
+  it('reports closed/running/stopped with no tenant of any kind', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { quizId } = await createCourseAndQuizWithItem(agent, CHOICE_ITEM)
+    const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
+    const sessionId = created.body.id as string
+
+    expect((await request(app).get(`/api/quiz-sessions/${sessionId}/status`)).body).toEqual({ status: 'closed' })
+
+    await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({})
+    expect((await request(app).get(`/api/quiz-sessions/${sessionId}/status`)).body).toEqual({ status: 'running' })
+
+    await agent.post(`/api/quiz-sessions/${sessionId}/stop`)
+    expect((await request(app).get(`/api/quiz-sessions/${sessionId}/status`)).body).toEqual({ status: 'stopped' })
+  })
+
+  it('returns 404, not a crash, for a malformed session id', async () => {
+    const { app } = createTestApp()
+    const response = await request(app).get('/api/quiz-sessions/does-not-exist/status')
+    expect(response.status).toBe(404)
+  })
+})
+
+describe('GET /api/quiz-sessions/:sessionId/items (QUIZ-TAKE-RENDER-001)', () => {
+  async function createRunningSession(agent: ReturnType<typeof request.agent>, xml: string) {
+    const { quizId } = await createCourseAndQuizWithItem(agent, xml)
+    const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
+    const sessionId = created.body.id as string
+    await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({})
+    return sessionId
+  }
+
+  it('resolves a standalone single-item quiz, marked supported', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const sessionId = await createRunningSession(agent, CHOICE_ITEM)
+
+    const response = await request(app).get(`/api/quiz-sessions/${sessionId}/items`)
+
+    expect(response.status).toBe(200)
+    expect(response.body.items).toHaveLength(1)
+    expect(response.body.items[0]).toMatchObject({ identifier: 'single-choice-basic', supported: true })
+  })
+
+  it('marks a non-choice-interaction item unsupported, not a crash', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const sessionId = await createRunningSession(agent, UNSUPPORTED_ITEM)
+
+    const response = await request(app).get(`/api/quiz-sessions/${sessionId}/items`)
+
+    expect(response.status).toBe(200)
+    expect(response.body.items[0]).toMatchObject({ identifier: 'text-entry-unsupported', supported: false })
+  })
+
+  it('returns 409 while not running, not the questions', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { quizId } = await createCourseAndQuizWithItem(agent, CHOICE_ITEM)
+    const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
+
+    const response = await request(app).get(`/api/quiz-sessions/${created.body.id}/items`)
+
+    expect(response.status).toBe(409)
+    expect(response.body.status).toBe('closed')
+  })
+
+  it('returns 404, not a crash, for a malformed session id', async () => {
+    const { app } = createTestApp()
+    const response = await request(app).get('/api/quiz-sessions/does-not-exist/items')
+    expect(response.status).toBe(404)
+  })
+})
+
+describe('POST /api/quiz-sessions/:sessionId/connections/:connectionId/answers (QUIZ-TAKE-RENDER-001)', () => {
+  async function createRunningSessionAndJoin(agent: ReturnType<typeof request.agent>, app: ReturnType<typeof createTestApp>['app'], xml: string, fileName = 'quiz.xml') {
+    const { quizId } = await createCourseAndQuizWithItem(agent, xml, fileName)
+    const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
+    const sessionId = created.body.id as string
+    await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({})
+    const joined = await request(app).post(`/api/quiz-sessions/${sessionId}/connections`)
+    const itemsResponse = await request(app).get(`/api/quiz-sessions/${sessionId}/items`)
+    return { sessionId, connectionId: joined.body.id as string, itemPath: itemsResponse.body.items[0].path as string }
+  }
+
+  it('records a pending, max-score-1 answer for a supported choice item', async () => {
+    const { app, users, quizSessionAnswers } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { sessionId, connectionId, itemPath } = await createRunningSessionAndJoin(agent, app, CHOICE_ITEM)
+
+    const response = await request(app)
+      .post(`/api/quiz-sessions/${sessionId}/connections/${connectionId}/answers`)
+      .send({ itemPath, responses: { RESPONSE: 'choice_b' } })
+
+    expect(response.status).toBe(201)
+    const row = quizSessionAnswers.rows.find((row) => row.id === response.body.id)
+    expect(row).toMatchObject({ itemIdentifier: 'single-choice-basic', gradingStatus: 'pending', maxScore: 1, score: null })
+    expect(row?.responses).toEqual({ RESPONSE: 'choice_b' })
+  })
+
+  it('records an ungraded, max-score-0 answer for an unsupported item, ignoring any client-sent responses', async () => {
+    const { app, users, quizSessionAnswers } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { sessionId, connectionId, itemPath } = await createRunningSessionAndJoin(agent, app, UNSUPPORTED_ITEM)
+
+    const response = await request(app)
+      .post(`/api/quiz-sessions/${sessionId}/connections/${connectionId}/answers`)
+      .send({ itemPath, responses: { RESPONSE: 'Rome' } })
+
+    expect(response.status).toBe(201)
+    const row = quizSessionAnswers.rows.find((row) => row.id === response.body.id)
+    expect(row).toMatchObject({ itemIdentifier: 'text-entry-unsupported', gradingStatus: 'ungraded', maxScore: 0, score: null, responses: null })
+  })
+
+  it('returns 404 for a connection that does not belong to the given session', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const first = await createRunningSessionAndJoin(agent, app, CHOICE_ITEM)
+    const second = await createRunningSessionAndJoin(agent, app, CHOICE_ITEM, 'quiz-2.xml')
+
+    const response = await request(app)
+      .post(`/api/quiz-sessions/${second.sessionId}/connections/${first.connectionId}/answers`)
+      .send({ itemPath: first.itemPath, responses: {} })
+
+    expect(response.status).toBe(404)
+  })
+
+  it('returns 404, not a crash, for a malformed connection id', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { sessionId } = await createRunningSessionAndJoin(agent, app, CHOICE_ITEM)
+
+    const response = await request(app).post(`/api/quiz-sessions/${sessionId}/connections/does-not-exist/answers`).send({ itemPath: 'quiz.xml' })
 
     expect(response.status).toBe(404)
   })

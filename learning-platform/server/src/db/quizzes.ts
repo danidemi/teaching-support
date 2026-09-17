@@ -61,6 +61,10 @@ export interface QuizRepository {
   delete(quizId: string, courseId: string): Promise<boolean>
   replaceFile(quizId: string, courseId: string, file: QuizFileUpdate): Promise<Quiz | null>
   getFiles(quizId: string, courseId: string): Promise<QuizFile[]>
+  // QUIZ-TAKE-RENDER-001: no tenant — resolving a running session's item
+  // XML for the anonymous take page has no course/tenant to scope by
+  // (only a sessionId, itself already the student's only credential).
+  getFilesByQuizId(quizId: string): Promise<QuizFile[]>
 }
 
 const SELECT_COLUMNS = {
@@ -149,6 +153,10 @@ export function createQuizRepository(databaseUrl: string): QuizRepository {
         .innerJoin(quizzes, eq(quizFiles.quizId, quizzes.id))
         .where(and(eq(quizFiles.quizId, quizId), eq(quizzes.courseId, courseId)))
       return rows
+    },
+
+    async getFilesByQuizId(quizId) {
+      return db.select(FILE_SELECT_COLUMNS).from(quizFiles).where(eq(quizFiles.quizId, quizId))
     },
   }
 }

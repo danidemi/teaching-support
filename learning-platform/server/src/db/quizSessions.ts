@@ -31,6 +31,11 @@ export interface SessionRepository {
   start(sessionId: string, tenantId: string, timeLimitSeconds: number | null): Promise<QuizSession | null>
   stop(sessionId: string, tenantId: string): Promise<QuizSession | null>
   findByIdForTenant(sessionId: string, tenantId: string): Promise<QuizSession | null>
+  // QUIZ-TAKE-RENDER-001: no tenant — an anonymous student's phone has no
+  // login (same reasoning as `ConnectionRepository`, see `db/schema.ts`).
+  // Used only to derive/serve status and items, never anything
+  // trainer-only (counts, other sessions of the same quiz, ...).
+  findById(sessionId: string): Promise<QuizSession | null>
 }
 
 const SELECT_COLUMNS = {
@@ -101,6 +106,11 @@ export function createSessionRepository(databaseUrl: string): SessionRepository 
 
     async findByIdForTenant(sessionId, tenantId) {
       return findRowForTenant(sessionId, tenantId)
+    },
+
+    async findById(sessionId) {
+      const rows = await db.select(SELECT_COLUMNS).from(quizSessions).where(eq(quizSessions.id, sessionId)).limit(1)
+      return rows[0] ?? null
     },
   }
 }

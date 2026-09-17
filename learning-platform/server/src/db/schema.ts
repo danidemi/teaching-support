@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, varchar, json, integer, index, uniqueIndex, customType } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, timestamp, varchar, json, jsonb, integer, doublePrecision, index, uniqueIndex, customType } from 'drizzle-orm/pg-core'
 
 /**
  * Postgres `bytea` — drizzle-orm/pg-core has no built-in binary column
@@ -199,6 +199,42 @@ export const quizSessionConnections = pgTable('quiz_session_connections', {
   // never touches this table, which is exactly how "keeps accumulating
   // rather than resetting" is satisfied without extra logic.
   submittedAt: timestamp('submitted_at', { withTimezone: true }),
+})
+
+/**
+ * QUIZ-TAKE-RENDER-001: one row per answered (or skipped-unsupported) item
+ * per attempt (`connectionId` — a new connection per attempt already, so
+ * no separate "attempt" concept is needed here). `itemPath` is the item's
+ * `quiz_files.relativePath`, not a `test.xml` item-ref href — a standalone
+ * single-item quiz has no `test.xml` to derive one from, and this is what
+ * lets QUIZ-AUTO-EVAL-001 re-fetch the same item's XML to score against
+ * without this table's shape changing (that story only ever transitions
+ * `gradingStatus`/`score`, per its own plan). `gradingStatus` is a plain
+ * text column, not a Postgres enum: `'pending' | 'ungraded' | 'graded'`,
+ * all three declared now even though this story only ever writes the
+ * first two (see the interaction-type gate in `routes/quizSessions.ts`);
+ * QUIZ-AUTO-EVAL-001 is the only story that ever writes `'graded'`,
+ * needing no migration of its own since the value already exists here.
+ * `maxScore` is `1` for a normal (`pending`) answer, `0` for an
+ * `'ungraded'` one, so an unsupported item never inflates a connection's
+ * scoring denominator. `score` stays null until QUIZ-AUTO-EVAL-001 sets
+ * it. `responses` is nullable jsonb — null for an `'ungraded'` row (no
+ * response was captured), otherwise the raw `responses.RESPONSE` shape
+ * from qti3's `serialize()` (spike finding: its `outcomes` are always
+ * unscored zeros, deliberately not persisted here).
+ */
+export const quizSessionAnswers = pgTable('quiz_session_answers', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  connectionId: uuid('connection_id')
+    .notNull()
+    .references(() => quizSessionConnections.id),
+  itemIdentifier: text('item_identifier').notNull(),
+  itemPath: text('item_path').notNull(),
+  responses: jsonb('responses'),
+  gradingStatus: text('grading_status').notNull(),
+  maxScore: doublePrecision('max_score').notNull(),
+  score: doublePrecision('score'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 })
 
 /**

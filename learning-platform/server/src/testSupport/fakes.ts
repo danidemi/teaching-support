@@ -9,6 +9,7 @@ import type { Tenant, TenantRepository } from '../db/tenants.js'
 import type { NewQuiz, NewQuizFile, Quiz, QuizFile, QuizFileUpdate, QuizRepository } from '../db/quizzes.js'
 import type { QuizSession, SessionRepository } from '../db/quizSessions.js'
 import type { ConnectionRepository, QuizSessionConnection } from '../db/quizSessionConnections.js'
+import type { GradingStatus, NewQuizSessionAnswer, QuizSessionAnswer, QuizSessionAnswerRepository } from '../db/quizSessionAnswers.js'
 import { INVALID_TEXT_REPRESENTATION } from '../db/errors.js'
 
 /**
@@ -168,6 +169,9 @@ export function createFakeQuizRepository(): QuizRepository & { rows: (Quiz & { c
       if (!row) return []
       return fileRows.filter((f) => f.quizId === quizId).map(({ id, relativePath, fileData, mimeType }) => ({ id, relativePath, fileData, mimeType }))
     },
+    async getFilesByQuizId(quizId: string) {
+      return fileRows.filter((f) => f.quizId === quizId).map(({ id, relativePath, fileData, mimeType }) => ({ id, relativePath, fileData, mimeType }))
+    },
   }
 }
 
@@ -239,6 +243,10 @@ export function createFakeSessionRepository(
     async findByIdForTenant(sessionId: string, tenantId: string) {
       return findRowForTenant(sessionId, tenantId)
     },
+    async findById(sessionId: string) {
+      throwIfNotUuidShaped(sessionId)
+      return rows.find((row) => row.id === sessionId) ?? null
+    },
   }
 }
 
@@ -276,6 +284,49 @@ export function createFakeConnectionRepository(sessions: SessionRepository & { r
       return {
         joinedCount: forSession.length,
         submittedCount: forSession.filter((row) => row.submittedAt !== null).length,
+      }
+    },
+    async belongsToSession(connectionId: string, sessionId: string) {
+      throwIfNotUuidShaped(connectionId)
+      throwIfNotUuidShaped(sessionId)
+      return rows.some((row) => row.id === connectionId && row.sessionId === sessionId)
+    },
+  }
+}
+
+/**
+ * QUIZ-TAKE-RENDER-001: in-memory fake for the answers table this story
+ * owns — no tenant/session scoping of its own (the route layer already
+ * checks the connection belongs to the session before calling `create`).
+ */
+export function createFakeQuizSessionAnswerRepository(): QuizSessionAnswerRepository & { rows: QuizSessionAnswer[] } {
+  const rows: QuizSessionAnswer[] = []
+  let nextId = 1
+
+  return {
+    rows,
+    async create(answer: NewQuizSessionAnswer) {
+      const created: QuizSessionAnswer = {
+        id: fakeUuid(nextId++),
+        connectionId: answer.connectionId,
+        itemIdentifier: answer.itemIdentifier,
+        itemPath: answer.itemPath,
+        responses: answer.responses,
+        gradingStatus: answer.gradingStatus,
+        maxScore: answer.maxScore,
+        score: null,
+      }
+      rows.push(created)
+      return created
+    },
+    async listForConnection(connectionId: string) {
+      return rows.filter((row) => row.connectionId === connectionId)
+    },
+    async markGraded(id: string, score: number) {
+      const row = rows.find((row) => row.id === id && row.gradingStatus === ('pending' as GradingStatus))
+      if (row) {
+        row.score = score
+        row.gradingStatus = 'graded'
       }
     },
   }

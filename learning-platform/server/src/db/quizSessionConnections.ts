@@ -32,6 +32,10 @@ export interface ConnectionRepository {
   // accept one that doesn't actually belong to the session in the URL.
   markSubmitted(connectionId: string, sessionId: string): Promise<boolean>
   countsForSession(sessionId: string): Promise<SessionCounts>
+  // QUIZ-TAKE-RENDER-001: same "belongs to this session" scoping as
+  // `markSubmitted`, for the new answers route to check before writing a
+  // `quiz_session_answers` row against an arbitrary connectionId.
+  belongsToSession(connectionId: string, sessionId: string): Promise<boolean>
 }
 
 export function createConnectionRepository(databaseUrl: string): ConnectionRepository {
@@ -61,6 +65,15 @@ export function createConnectionRepository(databaseUrl: string): ConnectionRepos
         .from(quizSessionConnections)
         .where(and(eq(quizSessionConnections.sessionId, sessionId), isNotNull(quizSessionConnections.submittedAt)))
       return { joinedCount: joined.length, submittedCount: submitted.length }
+    },
+
+    async belongsToSession(connectionId, sessionId) {
+      const rows = await db
+        .select({ id: quizSessionConnections.id })
+        .from(quizSessionConnections)
+        .where(and(eq(quizSessionConnections.id, connectionId), eq(quizSessionConnections.sessionId, sessionId)))
+        .limit(1)
+      return rows.length > 0
     },
   }
 }

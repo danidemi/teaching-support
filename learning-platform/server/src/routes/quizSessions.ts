@@ -1,8 +1,11 @@
 import { Router, type RequestHandler } from 'express'
 import type { SessionRepository, QuizSession } from '../db/quizSessions.js'
 import type { ConnectionRepository } from '../db/quizSessionConnections.js'
+import type { QuizSessionAnswerRepository } from '../db/quizSessionAnswers.js'
+import type { QuizRepository } from '../db/quizzes.js'
 import { isInvalidIdError } from '../db/errors.js'
 import { appBaseUrl } from '../config.js'
+import { resolveQuizItems } from '../qti/resolveQtiItems.js'
 
 export type SessionStatus = 'closed' | 'running' | 'stopped'
 
@@ -85,11 +88,25 @@ export function parseTimeLimit(input: unknown): number | null | 'invalid' {
  * session's own status (joining before start is exactly what the DoD
  * wants counted).
  *
+ * QUIZ-TAKE-RENDER-001 adds three more anonymous, no-tenant routes for the
+ * same reason: `GET .../status` (the take page's not-started/running/
+ * stopped gate), `GET .../items` (resolved item XML, `running` only —
+ * `409` otherwise, so the questions aren't fetchable by URL before the
+ * session starts), and `POST .../connections/:connectionId/answers`
+ * (records one item's response, or the `'ungraded'` placeholder for an
+ * unsupported interaction type).
+ *
  * Every id-in-URL lookup here — tenant-scoped or not — follows
  * ROUTE-ID-GUARD-001's pattern: wrapped in try/catch, a malformed id
  * folded into the same 404 as a genuinely missing row.
  */
-export function createQuizSessionsRouter(sessions: SessionRepository, connections: ConnectionRepository, sessionMiddleware: RequestHandler): Router {
+export function createQuizSessionsRouter(
+  sessions: SessionRepository,
+  connections: ConnectionRepository,
+  sessionMiddleware: RequestHandler,
+  answers: QuizSessionAnswerRepository,
+  quizzes: QuizRepository,
+): Router {
   const router = Router()
 
   function requireTenant(req: import('express').Request, res: import('express').Response): string | null {
@@ -207,6 +224,106 @@ export function createQuizSessionsRouter(sessions: SessionRepository, connection
         return
       }
       console.error('create quiz session connection failed:', err)
+      res.status(500).json({ error: 'internal_error' })
+    }
+  })
+
+  // QUIZ-TAKE-RENDER-001: anonymous — the take page's session-status gate
+  // (not-started / running / stopped). Deliberately just `{ status }`, not
+  // `toResponse`'s full shape — no counts, no `quizId`, nothing trainer-only
+  // leaks to an anonymous caller.
+  router.get('/api/quiz-sessions/:sessionId/status', async (req, res) => {
+    try {
+      const session = await sessions.findById(req.params.sessionId)
+      if (!session) {
+        res.status(404).json({ error: 'session_not_found' })
+        return
+      }
+      res.status(200).json({ status: deriveStatus(session, new Date()) })
+    } catch (err) {
+      if (isInvalidIdError(err)) {
+        res.status(404).json({ error: 'session_not_found' })
+        return
+      }
+      console.error('get quiz session status failed:', err)
+      res.status(500).json({ error: 'internal_error' })
+    }
+  })
+
+  // QUIZ-TAKE-RENDER-001: anonymous — resolves the session's quiz package
+  // (ADR-0010's quiz_files) into the ordered item list the take page
+  // renders. Served only while `running`: a `closed`/`stopped` session
+  // returns `409`, not the questions, so the take-URL alone can't be used
+  // to read the quiz before/after the window the trainer opened it for.
+  router.get('/api/quiz-sessions/:sessionId/items', async (req, res) => {
+    try {
+      const session = await sessions.findById(req.params.sessionId)
+      if (!session) {
+        res.status(404).json({ error: 'session_not_found' })
+        return
+      }
+      const status = deriveStatus(session, new Date())
+      if (status !== 'running') {
+        res.status(409).json({ error: 'session_not_running', status })
+        return
+      }
+      const files = await quizzes.getFilesByQuizId(session.quizId)
+      const items = resolveQuizItems(files)
+      res.status(200).json({
+        items: items.map((item) => ({ identifier: item.identifier, path: item.path, xml: item.xml, supported: item.supported })),
+      })
+    } catch (err) {
+      if (isInvalidIdError(err)) {
+        res.status(404).json({ error: 'session_not_found' })
+        return
+      }
+      console.error('get quiz session items failed:', err)
+      res.status(500).json({ error: 'internal_error' })
+    }
+  })
+
+  // QUIZ-TAKE-RENDER-001: anonymous — one call per item, on each
+  // Next/Submit click. `supported`/`gradingStatus`/`maxScore` are derived
+  // server-side from the same item resolution `GET .../items` uses, never
+  // trusted from the client, so an anonymous caller can't mark an
+  // unsupported item as scored (or vice versa) by sending a crafted body.
+  router.post('/api/quiz-sessions/:sessionId/connections/:connectionId/answers', async (req, res) => {
+    try {
+      const session = await sessions.findById(req.params.sessionId)
+      if (!session) {
+        res.status(404).json({ error: 'session_not_found' })
+        return
+      }
+      if (!(await connections.belongsToSession(req.params.connectionId, req.params.sessionId))) {
+        res.status(404).json({ error: 'connection_not_found' })
+        return
+      }
+      const itemPath = req.body?.itemPath
+      if (typeof itemPath !== 'string' || itemPath.length === 0) {
+        res.status(400).json({ error: 'invalid_item_path' })
+        return
+      }
+      const files = await quizzes.getFilesByQuizId(session.quizId)
+      const item = resolveQuizItems(files).find((candidate) => candidate.path === itemPath)
+      if (!item) {
+        res.status(404).json({ error: 'item_not_found' })
+        return
+      }
+      const created = await answers.create({
+        connectionId: req.params.connectionId,
+        itemIdentifier: item.identifier,
+        itemPath: item.path,
+        responses: item.supported ? (req.body?.responses ?? null) : null,
+        gradingStatus: item.supported ? 'pending' : 'ungraded',
+        maxScore: item.supported ? 1 : 0,
+      })
+      res.status(201).json({ id: created.id })
+    } catch (err) {
+      if (isInvalidIdError(err)) {
+        res.status(404).json({ error: 'session_not_found' })
+        return
+      }
+      console.error('create quiz session answer failed:', err)
       res.status(500).json({ error: 'internal_error' })
     }
   })

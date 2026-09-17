@@ -224,3 +224,30 @@ Technical plan (sprint planning, 2026-09-17):
     (added at sprint planning) exercises the unsupported-interaction-type placeholder path,
     which no existing fixture (all `qti-choice-interaction`) could test.
 * Sequenced before QUIZ-AUTO-EVAL-001 (dependency).
+
+Implementation notes (development, 2026-09-17): two endpoints this plan
+described but didn't name a shape for at planning time, landed as part of
+this story —
+* `GET /api/quiz-sessions/:sessionId/status` (anonymous): `{ status }`
+  only, not `toResponse`'s full trainer shape — the take page's
+  not-started/running/stopped gate needed an anonymous status source, and
+  the existing `GET /api/quiz-sessions/:sessionId` is tenant-gated.
+* `GET /api/quiz-sessions/:sessionId/items` (anonymous, `running` only —
+  `409` otherwise, so the questions aren't fetchable via the take-URL
+  outside the window the trainer opened it for): `{ items: [{identifier,
+  path, xml, supported}] }`. `supported` is computed server-side via
+  `@longsightgroup/qti3-core`'s `registryStatus` (this story's dependency
+  on it was moved up from QUIZ-AUTO-EVAL-001's plan to here, since
+  rendering needs the same check AUTO-EVAL's scoring does) — the client
+  never decides this itself, so a crafted request can't mark an
+  unsupported item as gradable or vice versa. `path` (the item's
+  `quiz_files.relativePath`) is echoed back by the client on
+  `POST .../answers` and is what `quiz_session_answers.itemPath` stores —
+  added to that table's own migration for this reason, so
+  QUIZ-AUTO-EVAL-001 can re-fetch the exact item XML to score against
+  without a second migration. `itemIdentifier` is the item's own root
+  `identifier`, not a `qti-assessment-item-ref`'s — a standalone
+  single-item quiz has no ref to take one from.
+* `server/package.json` gains `@longsightgroup/qti3-core@0.10.5` directly
+  (not just transitively via the client's player package) — see the
+  `supported`-computation note above. ADR-0011 updated to reflect this.
