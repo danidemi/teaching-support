@@ -36,6 +36,9 @@ export interface ConnectionRepository {
   // `markSubmitted`, for the new answers route to check before writing a
   // `quiz_session_answers` row against an arbitrary connectionId.
   belongsToSession(connectionId: string, sessionId: string): Promise<boolean>
+  // QUIZ-AUTO-EVAL-001: the raw rows (not just counts) behind
+  // `GET .../results` — one per connection, to score against.
+  listForSession(sessionId: string): Promise<QuizSessionConnection[]>
 }
 
 export function createConnectionRepository(databaseUrl: string): ConnectionRepository {
@@ -74,6 +77,10 @@ export function createConnectionRepository(databaseUrl: string): ConnectionRepos
         .where(and(eq(quizSessionConnections.id, connectionId), eq(quizSessionConnections.sessionId, sessionId)))
         .limit(1)
       return rows.length > 0
+    },
+
+    async listForSession(sessionId) {
+      return db.select().from(quizSessionConnections).where(eq(quizSessionConnections.sessionId, sessionId))
     },
   }
 }

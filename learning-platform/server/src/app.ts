@@ -259,6 +259,7 @@ function lazyConnectionRepository(): ConnectionRepository {
     markSubmitted: (connectionId, sessionId) => resolve().markSubmitted(connectionId, sessionId),
     countsForSession: (sessionId) => resolve().countsForSession(sessionId),
     belongsToSession: (connectionId, sessionId) => resolve().belongsToSession(connectionId, sessionId),
+    listForSession: (sessionId) => resolve().listForSession(sessionId),
   }
 }
 

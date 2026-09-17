@@ -37,6 +37,7 @@ function QuizSessionTakePage() {
   const [items, setItems] = useState<QuizItem[] | null>(null)
   const [index, setIndex] = useState(0)
   const [submitted, setSubmitted] = useState(false)
+  const [result, setResult] = useState<{ totalScore: number; maxScore: number } | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const playerRef = useRef<QtiAssessmentItemPlayerHandle>(null)
 
@@ -106,6 +107,12 @@ function QuizSessionTakePage() {
     if (!sessionId || !connectionId) return
     const response = await fetch(`/api/quiz-sessions/${sessionId}/connections/${connectionId}/submit`, { method: 'POST' })
     if (response.status === 200) {
+      const body = await response.json()
+      // QUIZ-AUTO-EVAL-001: `result` is present once scoring has run — an
+      // item's own `qti-choice-interaction` scope means it's always there
+      // for this story's items, but the field is optional in the response
+      // shape itself (submit alone, with no scoring story, still works).
+      if (body.result) setResult({ totalScore: body.result.totalScore, maxScore: body.result.maxScore })
       setSubmitted(true)
     } else {
       setActionError('Could not submit. Try again.')
@@ -134,9 +141,14 @@ function QuizSessionTakePage() {
         )}
 
         {joinState === 'joined' && status === 'running' && submitted && (
-          <p className="text-sm font-medium text-ink" data-testid="submitted-confirmation">
-            ✓ Quiz submitted!
-          </p>
+          <div className="flex flex-col items-center gap-2" data-testid="submitted-confirmation">
+            <p className="text-sm font-medium text-ink">✓ Quiz submitted!</p>
+            {result && (
+              <p className="text-sm text-ink" data-testid="quiz-score">
+                Your score: {result.totalScore} / {result.maxScore}
+              </p>
+            )}
+          </div>
         )}
 
         {joinState === 'joined' && status === 'running' && !submitted && currentItem && (

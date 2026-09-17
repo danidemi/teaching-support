@@ -388,16 +388,18 @@ describe('POST /api/quiz-sessions/:sessionId/connections/:connectionId/submit (Q
   })
 })
 
-const CHOICE_ITEM = `<qti-assessment-item xmlns="http://www.imsglobal.org/xsd/imsqtiasi_v3p0" identifier="single-choice-basic" title="Capital of France">
+const CHOICE_ITEM = `<qti-assessment-item xmlns="http://www.imsglobal.org/xsd/imsqtiasi_v3p0" identifier="single-choice-basic" title="Capital of France" adaptive="false" time-dependent="false">
   <qti-response-declaration identifier="RESPONSE" cardinality="single" base-type="identifier">
     <qti-correct-response><qti-value>choice_b</qti-value></qti-correct-response>
   </qti-response-declaration>
+  <qti-outcome-declaration identifier="SCORE" cardinality="single" base-type="float"><qti-default-value><qti-value>0</qti-value></qti-default-value></qti-outcome-declaration>
   <qti-item-body>
     <qti-choice-interaction response-identifier="RESPONSE" shuffle="false" max-choices="1">
       <qti-simple-choice identifier="choice_a">Berlin</qti-simple-choice>
       <qti-simple-choice identifier="choice_b">Paris</qti-simple-choice>
     </qti-choice-interaction>
   </qti-item-body>
+  <qti-response-processing template="https://purl.imsglobal.org/spec/qti/v3p0/rptemplates/match_correct"/>
 </qti-assessment-item>`
 
 const UNSUPPORTED_ITEM = `<qti-assessment-item xmlns="http://www.imsglobal.org/xsd/imsqtiasi_v3p0" identifier="text-entry-unsupported" title="Capital of Italy">
@@ -554,6 +556,131 @@ describe('POST /api/quiz-sessions/:sessionId/connections/:connectionId/answers (
     const response = await request(app).post(`/api/quiz-sessions/${sessionId}/connections/does-not-exist/answers`).send({ itemPath: 'quiz.xml' })
 
     expect(response.status).toBe(404)
+  })
+})
+
+// Covers QUIZ-AUTO-EVAL-001's DoD (active_sprint/story_quiz_auto_eval.md):
+// scoring on final submit, and the trainer-facing results endpoint.
+describe('POST .../submit scores pending answers (QUIZ-AUTO-EVAL-001)', () => {
+  async function createRunningSessionAndAnswer(agent: ReturnType<typeof request.agent>, app: ReturnType<typeof createTestApp>['app'], xml: string, responses: unknown, fileName: string) {
+    const { quizId } = await createCourseAndQuizWithItem(agent, xml, fileName)
+    const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
+    const sessionId = created.body.id as string
+    await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({})
+    const joined = await request(app).post(`/api/quiz-sessions/${sessionId}/connections`)
+    const connectionId = joined.body.id as string
+    const itemsResponse = await request(app).get(`/api/quiz-sessions/${sessionId}/items`)
+    const itemPath = itemsResponse.body.items[0].path as string
+    await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${connectionId}/answers`).send({ itemPath, responses })
+    return { sessionId, connectionId }
+  }
+
+  it('scores a correct choice answer as maxScore on submit, in the response result', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { sessionId, connectionId } = await createRunningSessionAndAnswer(agent, app, CHOICE_ITEM, { RESPONSE: 'choice_b' }, 'correct.xml')
+
+    const response = await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${connectionId}/submit`)
+
+    expect(response.status).toBe(200)
+    expect(response.body.result).toEqual({
+      totalScore: 1,
+      maxScore: 1,
+      itemResults: [{ itemIdentifier: 'single-choice-basic', gradingStatus: 'graded', score: 1, maxScore: 1 }],
+    })
+  })
+
+  it('scores an incorrect choice answer as 0 on submit', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { sessionId, connectionId } = await createRunningSessionAndAnswer(agent, app, CHOICE_ITEM, { RESPONSE: 'choice_a' }, 'incorrect.xml')
+
+    const response = await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${connectionId}/submit`)
+
+    expect(response.body.result.totalScore).toBe(0)
+    expect(response.body.result.itemResults[0].score).toBe(0)
+  })
+
+  it('leaves an ungraded answer untouched, excluded from the denominator', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { sessionId, connectionId } = await createRunningSessionAndAnswer(agent, app, UNSUPPORTED_ITEM, { RESPONSE: 'Rome' }, 'ungraded.xml')
+
+    const response = await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${connectionId}/submit`)
+
+    expect(response.body.result).toEqual({
+      totalScore: 0,
+      maxScore: 0,
+      itemResults: [{ itemIdentifier: 'text-entry-unsupported', gradingStatus: 'ungraded', score: null, maxScore: 0 }],
+    })
+  })
+})
+
+describe('GET /api/quiz-sessions/:sessionId/results (QUIZ-AUTO-EVAL-001)', () => {
+  it('returns 409 while not stopped, not the results', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { quizId } = await createCourseAndQuizWithItem(agent, CHOICE_ITEM, 'quiz.xml')
+    const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
+
+    const response = await agent.get(`/api/quiz-sessions/${created.body.id}/results`)
+
+    expect(response.status).toBe(409)
+    expect(response.body.status).toBe('closed')
+  })
+
+  it('returns per-connection scores and a class average once stopped', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { quizId } = await createCourseAndQuizWithItem(agent, CHOICE_ITEM, 'quiz.xml')
+    const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
+    const sessionId = created.body.id as string
+    await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({})
+
+    const itemsResponse = await request(app).get(`/api/quiz-sessions/${sessionId}/items`)
+    const itemPath = itemsResponse.body.items[0].path as string
+
+    const studentA = await request(app).post(`/api/quiz-sessions/${sessionId}/connections`)
+    await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${studentA.body.id}/answers`).send({ itemPath, responses: { RESPONSE: 'choice_b' } })
+    await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${studentA.body.id}/submit`)
+
+    const studentB = await request(app).post(`/api/quiz-sessions/${sessionId}/connections`)
+    await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${studentB.body.id}/answers`).send({ itemPath, responses: { RESPONSE: 'choice_a' } })
+    await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${studentB.body.id}/submit`)
+
+    await agent.post(`/api/quiz-sessions/${sessionId}/stop`)
+
+    const response = await agent.get(`/api/quiz-sessions/${sessionId}/results`)
+
+    expect(response.status).toBe(200)
+    expect(response.body.connections).toEqual(
+      expect.arrayContaining([
+        { connectionId: studentA.body.id, totalScore: 1, maxScore: 1, hasUngraded: false },
+        { connectionId: studentB.body.id, totalScore: 0, maxScore: 1, hasUngraded: false },
+      ]),
+    )
+    expect(response.body.classAverage).toBe(0.5)
+  })
+
+  it('excludes an all-ungraded connection from the class average, not counting it as 0', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { quizId } = await createCourseAndQuizWithItem(agent, UNSUPPORTED_ITEM, 'quiz.xml')
+    const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
+    const sessionId = created.body.id as string
+    await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({})
+
+    const itemsResponse = await request(app).get(`/api/quiz-sessions/${sessionId}/items`)
+    const itemPath = itemsResponse.body.items[0].path as string
+    const student = await request(app).post(`/api/quiz-sessions/${sessionId}/connections`)
+    await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${student.body.id}/answers`).send({ itemPath, responses: { RESPONSE: 'Rome' } })
+    await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${student.body.id}/submit`)
+    await agent.post(`/api/quiz-sessions/${sessionId}/stop`)
+
+    const response = await agent.get(`/api/quiz-sessions/${sessionId}/results`)
+
+    expect(response.body.connections[0]).toEqual({ connectionId: student.body.id, totalScore: 0, maxScore: 0, hasUngraded: true })
+    expect(response.body.classAverage).toBeNull()
   })
 })
 

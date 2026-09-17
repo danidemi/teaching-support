@@ -291,6 +291,9 @@ export function createFakeConnectionRepository(sessions: SessionRepository & { r
       throwIfNotUuidShaped(sessionId)
       return rows.some((row) => row.id === connectionId && row.sessionId === sessionId)
     },
+    async listForSession(sessionId: string) {
+      return rows.filter((row) => row.sessionId === sessionId)
+    },
   }
 }
 

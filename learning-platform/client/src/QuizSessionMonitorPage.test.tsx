@@ -28,6 +28,7 @@ function stubFetch(handlers: {
   sessionStatus?: number
   startStatus?: number
   stopStatus?: number
+  results?: object | null
 }) {
   let session = handlers.session
   vi.stubGlobal(
@@ -51,6 +52,11 @@ function stubFetch(handlers: {
         }
         session = { ...(session as object), status: 'stopped' }
         return Promise.resolve({ status: 200, json: () => Promise.resolve(session) })
+      }
+      if (url.endsWith('/results')) {
+        return handlers.results
+          ? Promise.resolve({ status: 200, json: () => Promise.resolve(handlers.results) })
+          : Promise.resolve({ status: 409, json: () => Promise.resolve({ error: 'results_not_available' }) })
       }
       if (url.match(/^\/api\/quiz-sessions\/[^/]+$/)) {
         if (handlers.sessionStatus && handlers.sessionStatus !== 200) {
@@ -206,6 +212,33 @@ describe('QuizSessionMonitorPage (QUIZ-SESSION-CONTROL-001)', () => {
     // been started at all
     expect(fetchMock.mock.calls.length).toBe(callsAfterLoad)
     vi.useRealTimers()
+  })
+
+  it('shows Block #3 results once stopped (QUIZ-AUTO-EVAL-001)', async () => {
+    stubFetch({
+      me: SIGNED_IN_USER,
+      session: { ...BASE_SESSION, status: 'stopped', joinedCount: 2, submittedCount: 2 },
+      results: {
+        connections: [
+          { connectionId: 'conn-a', totalScore: 8, maxScore: 10, hasUngraded: false },
+          { connectionId: 'conn-b', totalScore: 0, maxScore: 0, hasUngraded: true },
+        ],
+        classAverage: 0.8,
+      },
+    })
+    renderAt('session-1')
+
+    await waitFor(() => expect(screen.getByTestId('block-3-results')).toBeInTheDocument())
+    expect(screen.getByTestId('block-3-results')).toHaveTextContent('Class average: 80%')
+    expect(screen.getByTestId('block-3-results')).toHaveTextContent('8 / 10')
+    expect(screen.getByTestId('block-3-results')).toHaveTextContent('needs manual grading')
+  })
+
+  it('does not show Block #3 before the session is stopped', async () => {
+    stubFetch({ me: SIGNED_IN_USER, session: { ...BASE_SESSION, status: 'running', closesAt: '2026-08-23T13:00:00Z' } })
+    renderAt('session-1')
+    await waitFor(() => expect(screen.getByTestId('block-2-live-status')).toBeInTheDocument())
+    expect(screen.queryByTestId('block-3-results')).not.toBeInTheDocument()
   })
 
   it('shows an error when the session cannot be loaded', async () => {

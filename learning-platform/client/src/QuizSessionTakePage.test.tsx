@@ -30,6 +30,7 @@ interface FetchHandlers {
   itemsStatus?: number
   itemsBody?: unknown
   submitStatus?: number
+  submitBody?: unknown
 }
 
 function stubFetch(handlers: FetchHandlers) {
@@ -55,7 +56,7 @@ function stubFetch(handlers: FetchHandlers) {
         })
       }
       if (url.endsWith('/submit') && init?.method === 'POST') {
-        return Promise.resolve({ status: handlers.submitStatus ?? 200, json: () => Promise.resolve({ ok: true }) })
+        return Promise.resolve({ status: handlers.submitStatus ?? 200, json: () => Promise.resolve(handlers.submitBody ?? { ok: true }) })
       }
       if (url.endsWith('/answers') && init?.method === 'POST') {
         return Promise.resolve({ status: 201, json: () => Promise.resolve({ id: 'answer-1' }) })
@@ -118,6 +119,20 @@ describe('QuizSessionTakePage (QUIZ-TAKE-RENDER-001)', () => {
       '/api/quiz-sessions/session-1/connections/connection-1/submit',
       expect.objectContaining({ method: 'POST' }),
     )
+  })
+
+  it('shows the score line once QUIZ-AUTO-EVAL-001 scoring is present in the submit response', async () => {
+    stubFetch({
+      statusBody: { status: 'running' },
+      itemsBody: { items: [{ identifier: 'text-entry-unsupported', path: 'item.xml', xml: '<x/>', supported: false }] },
+      submitBody: { ok: true, result: { totalScore: 7, maxScore: 10, itemResults: [] } },
+    })
+    renderAt('session-1')
+    await waitFor(() => expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: /submit/i }))
+
+    await waitFor(() => expect(screen.getByTestId('quiz-score')).toHaveTextContent('Your score: 7 / 10'))
   })
 
   it('shows an error when submit fails', async () => {

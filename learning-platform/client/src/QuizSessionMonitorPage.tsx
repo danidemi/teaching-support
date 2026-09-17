@@ -24,6 +24,18 @@ interface QuizSession {
 
 const POLL_INTERVAL_MS = 3000
 
+interface ConnectionResult {
+  connectionId: string
+  totalScore: number
+  maxScore: number
+  hasUngraded: boolean
+}
+
+interface SessionResults {
+  connections: ConnectionResult[]
+  classAverage: number | null
+}
+
 function formatClockTime(iso: string) {
   return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
@@ -76,6 +88,7 @@ function QuizSessionMonitorPage() {
   const [timeLimitInput, setTimeLimitInput] = useState('')
   const [qrSvg, setQrSvg] = useState<string | null>(null)
   const [now, setNow] = useState(() => new Date())
+  const [results, setResults] = useState<SessionResults | null>(null)
 
   const loadSession = useCallback(async () => {
     if (!sessionId) return
@@ -106,6 +119,22 @@ function QuizSessionMonitorPage() {
     const interval = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(interval)
   }, [])
+
+  // QUIZ-AUTO-EVAL-001: Block #3 fetches once, on the same status
+  // transition that already reveals Block #2's post-stop state — no new
+  // polling, results don't change after the session is stopped.
+  useEffect(() => {
+    if (!sessionId || session?.status !== 'stopped') return
+    let cancelled = false
+    fetch(`/api/quiz-sessions/${sessionId}/results`).then(async (response) => {
+      if (cancelled || response.status !== 200) return
+      const body = await response.json()
+      if (Array.isArray(body?.connections)) setResults(body)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [sessionId, session?.status])
 
   useEffect(() => {
     if (!session) {
@@ -246,6 +275,36 @@ function QuizSessionMonitorPage() {
                 </p>
               )}
             </Card>
+
+            {session.status === 'stopped' && results && (
+              <Card data-testid="block-3-results" className="md:col-span-2">
+                <h2 className="mb-3 text-sm font-medium text-ink">Results</h2>
+                {/* classAverage is a mean of per-connection score ratios, not raw totals — shown as a percentage, since there's no single shared denominator. */}
+                <p className="mb-3 text-sm text-ink">
+                  Class average: {results.classAverage === null ? '—' : `${Math.round(results.classAverage * 100)}%`}
+                </p>
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="text-ink/70">
+                      <th className="pb-1 font-medium">Student (connection)</th>
+                      <th className="pb-1 font-medium">Score</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {results.connections.map((connection) => (
+                      <tr key={connection.connectionId}>
+                        <td className="pr-4 py-1 text-ink/70">{connection.connectionId}</td>
+                        <td className="py-1 text-ink">
+                          {connection.maxScore === 0
+                            ? 'needs manual grading'
+                            : `${connection.totalScore} / ${connection.maxScore}${connection.hasUngraded ? ' (some items need manual grading)' : ''}`}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </Card>
+            )}
           </div>
         )}
       </main>

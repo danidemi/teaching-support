@@ -148,3 +148,20 @@ Technical plan (sprint planning, 2026-09-17):
   which should assert the real score appears once this story lands.
 * Sequenced after QUIZ-TAKE-RENDER-001 (dependency — needs real `quiz_session_answers` rows
   to score).
+
+Implementation notes (development, 2026-09-17):
+* Block #3's wireframe showed "Class average: 6.4 / 10" — an illustrative
+  number assuming every connection shares the same denominator. Since
+  `classAverage` is actually a mean of each connection's own
+  `totalScore/maxScore` *ratio* (no shared denominator once connections hit
+  different numbers of ungraded items, per this story's own plan above),
+  it's rendered as a percentage instead (`80%`), not `x / y`. Per-connection
+  rows still show `totalScore / maxScore` as drafted; a connection with
+  `maxScore: 0` shows "needs manual grading" in place of a score, and one
+  with a partial ungraded item shows its score plus a
+  "(some items need manual grading)" note — neither was disambiguated in
+  the wireframe.
+* `@longsightgroup/qti3-core` was already added to `server/package.json`
+  by QUIZ-TAKE-RENDER-001 (see that story's implementation notes and
+  ADR-0011) — this story adds no new dependency, only the scoring/results
+  code that uses it.

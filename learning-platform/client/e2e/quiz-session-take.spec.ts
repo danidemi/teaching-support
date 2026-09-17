@@ -104,8 +104,15 @@ test('a student takes a real multi-item choice-only quiz end to end, and the tra
   await studentPage.getByRole('button', { name: /^submit$/i }).click()
 
   await expect(studentPage.getByTestId('submitted-confirmation')).toBeVisible()
+  // QUIZ-AUTO-EVAL-001: both answers were correct (choice_b, choice_a+choice_c)
+  await expect(studentPage.getByTestId('quiz-score')).toHaveText('Your score: 2 / 2')
 
   await expect(page.getByTestId('block-2-live-status')).toContainText('1/1 answered', { timeout: 10_000 })
+
+  await page.getByRole('button', { name: /^stop$/i }).click()
+  await expect(page.getByTestId('block-3-results')).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByTestId('block-3-results')).toContainText('Class average: 100%')
+  await expect(page.getByTestId('block-3-results')).toContainText('2 / 2')
 
   await studentContext.close()
 })

@@ -6,6 +6,15 @@ import type { QuizRepository } from '../db/quizzes.js'
 import { isInvalidIdError } from '../db/errors.js'
 import { appBaseUrl } from '../config.js'
 import { resolveQuizItems } from '../qti/resolveQtiItems.js'
+import { scoreChoiceAnswer } from '../qti/scoreAnswer.js'
+import type { GradingStatus } from '../db/quizSessionAnswers.js'
+
+export interface ItemResult {
+  itemIdentifier: string
+  gradingStatus: GradingStatus
+  score: number | null
+  maxScore: number
+}
 
 export type SessionStatus = 'closed' | 'running' | 'stopped'
 
@@ -207,6 +216,61 @@ export function createQuizSessionsRouter(
     }
   })
 
+  // QUIZ-AUTO-EVAL-001: trainer-facing, tenant-scoped — deliberately a
+  // separate endpoint from `GET .../:sessionId` rather than folded into
+  // it, since results only exist once `stopped` and every other session
+  // field is needed well before that. `409`, not `403` — the results
+  // aren't there yet, this isn't an authorization question.
+  router.get('/api/quiz-sessions/:sessionId/results', sessionMiddleware, async (req, res) => {
+    const tenantId = requireTenant(req, res)
+    if (!tenantId) return
+    try {
+      const session = await sessions.findByIdForTenant(req.params.sessionId, tenantId)
+      if (!session) {
+        res.status(404).json({ error: 'session_not_found' })
+        return
+      }
+      const status = deriveStatus(session, new Date())
+      if (status !== 'stopped') {
+        res.status(409).json({ error: 'results_not_available', status })
+        return
+      }
+
+      const connectionRows = await connections.listForSession(session.id)
+      const perConnection = await Promise.all(
+        connectionRows.map(async (connection) => {
+          const rows = await answers.listForConnection(connection.id)
+          return {
+            connectionId: connection.id,
+            totalScore: rows.filter((row) => row.gradingStatus === 'graded').reduce((sum, row) => sum + (row.score ?? 0), 0),
+            maxScore: rows.reduce((sum, row) => sum + row.maxScore, 0),
+            hasUngraded: rows.some((row) => row.gradingStatus === 'ungraded'),
+          }
+        }),
+      )
+      // Mean of each connection's own totalScore/maxScore ratio, not a mean
+      // of raw totals — a connection that hit more ungraded items has a
+      // smaller denominator, not a smaller numerator, so averaging raw
+      // totals would unfairly penalize it. A connection with maxScore 0
+      // (every item ungraded) is excluded from the mean entirely, not
+      // treated as a 0.
+      const withScorableItems = perConnection.filter((connection) => connection.maxScore > 0)
+      const classAverage =
+        withScorableItems.length > 0
+          ? withScorableItems.reduce((sum, connection) => sum + connection.totalScore / connection.maxScore, 0) / withScorableItems.length
+          : null
+
+      res.status(200).json({ connections: perConnection, classAverage })
+    } catch (err) {
+      if (isInvalidIdError(err)) {
+        res.status(404).json({ error: 'session_not_found' })
+        return
+      }
+      console.error('get quiz session results failed:', err)
+      res.status(500).json({ error: 'internal_error' })
+    }
+  })
+
   // QUIZ-SESSION-LIVE-STATUS-001: anonymous — no sessionMiddleware, no
   // tenant. Accepts a join in any session status (a `closed` session's
   // joined count is part of the DoD).
@@ -328,6 +392,14 @@ export function createQuizSessionsRouter(
     }
   })
 
+  // QUIZ-AUTO-EVAL-001: extends the existing submit route (still anonymous)
+  // rather than a separate endpoint — scoring happens once, right where
+  // "the attempt is over" is already decided. Every `'pending'`
+  // `quiz_session_answers` row for this connection is scored via
+  // `qti3-core` and transitioned to `'graded'`; `'ungraded'` rows (the
+  // interaction-type gate in the answers route above) are left untouched.
+  // The response's `result` is what the take page's confirmation screen
+  // renders the score line from directly — no extra round-trip.
   router.post('/api/quiz-sessions/:sessionId/connections/:connectionId/submit', async (req, res) => {
     try {
       const submitted = await connections.markSubmitted(req.params.connectionId, req.params.sessionId)
@@ -335,7 +407,35 @@ export function createQuizSessionsRouter(
         res.status(404).json({ error: 'connection_not_found' })
         return
       }
-      res.status(200).json({ ok: true })
+
+      const session = await sessions.findById(req.params.sessionId)
+      let result: { totalScore: number; maxScore: number; itemResults: ItemResult[] } | undefined
+
+      if (session) {
+        const files = await quizzes.getFilesByQuizId(session.quizId)
+        const xmlByPath = new Map(files.map((file) => [file.relativePath, file.fileData.toString('utf-8')]))
+
+        const pending = (await answers.listForConnection(req.params.connectionId)).filter((row) => row.gradingStatus === 'pending')
+        for (const row of pending) {
+          const xml = xmlByPath.get(row.itemPath)
+          const score = xml ? scoreChoiceAnswer(xml, row.responses) : 0
+          await answers.markGraded(row.id, score)
+        }
+
+        const allRows = await answers.listForConnection(req.params.connectionId)
+        result = {
+          totalScore: allRows.filter((row) => row.gradingStatus === 'graded').reduce((sum, row) => sum + (row.score ?? 0), 0),
+          maxScore: allRows.reduce((sum, row) => sum + row.maxScore, 0),
+          itemResults: allRows.map((row) => ({
+            itemIdentifier: row.itemIdentifier,
+            gradingStatus: row.gradingStatus,
+            score: row.score,
+            maxScore: row.maxScore,
+          })),
+        }
+      }
+
+      res.status(200).json(result ? { ok: true, result } : { ok: true })
     } catch (err) {
       if (isInvalidIdError(err)) {
         res.status(404).json({ error: 'connection_not_found' })
