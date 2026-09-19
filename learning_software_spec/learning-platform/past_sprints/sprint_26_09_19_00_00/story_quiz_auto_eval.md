@@ -1,6 +1,6 @@
 ID: QUIZ-AUTO-EVAL-001
 
-Status: READY
+Status: DONE
 
 Priority: Medium-High — completes the value of QUIZ-TAKE-RENDER-001 (a recorded-but-never-
 scored answer is of limited use to either the student or the trainer).

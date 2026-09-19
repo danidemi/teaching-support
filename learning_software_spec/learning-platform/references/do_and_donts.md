@@ -83,3 +83,18 @@ Newest entries at the bottom.
   QTI-UAT-SAMPLES-001's fixtures were also reused for manual UAT upload — a human had no
   ready-made `.zip` to attach for the new package path. Caught this sprint only because the
   human asked about it directly at review, not because grooming/planning surfaced it.
+
+## sprint_26_09_19_00_00
+
+* **DO** attach a screenshot (or before/after pair, for a visual bug fix) whenever declaring a
+  GUI-touching story or fix done, so the human can sight-check the result without pulling up
+  the running app themselves — explicit human ask this sprint. Cheap for minor GUI work
+  (already-open dev tooling can grab one); skip only when the change is genuinely not visual.
+* **DON'T** assume the automated suite (unit + e2e) covers a GUI story's visual correctness.
+  Both post-review bugs this sprint (a card too narrow for its content; question text invisible
+  under dark-mode preference) were purely visual/CSS defects — `tsc -b`, vitest, and the e2e
+  specs all stayed green through both, because they assert on DOM/text presence, not on layout
+  width or actual rendered color. A GUI story's DoD needs an explicit real-browser visual
+  look (screenshot or live click-through), not just "tests pass," especially for
+  preference-dependent rendering (color-scheme, viewport size) that a default-settings glance
+  won't surface either.

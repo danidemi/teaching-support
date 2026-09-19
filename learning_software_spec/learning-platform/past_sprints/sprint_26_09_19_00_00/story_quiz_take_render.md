@@ -1,6 +1,6 @@
 ID: QUIZ-TAKE-RENDER-001
 
-Status: READY
+Status: DONE
 
 Priority: High — replaces the QUIZ-SESSION-LIVE-STATUS-001 placeholder page with the real
 quiz-taking experience it was explicitly built to be a stand-in for.
@@ -251,3 +251,23 @@ this story —
 * `server/package.json` gains `@longsightgroup/qti3-core@0.10.5` directly
   (not just transitively via the client's player package) — see the
   `supported`-computation note above. ADR-0011 updated to reflect this.
+
+Post-review bug fixes (manual UAT against the live server, 2026-09-19 — found
+by the human clicking through the built app, not by the automated suite):
+* Layout: `QuizSessionTakePage`'s outer `Card` was `max-w-sm text-center` for
+  every state, including the question-rendering one — a width sized for the
+  short status messages (joining/not-started/stopped), not for the qti3
+  player's actual question/answer content, which was clipped. Fixed by
+  widening the card (`w-full max-w-3xl`) only while a question is actually
+  showing; the short-message states keep the original narrow, centered card.
+* Invisible question/answer text under OS/browser dark-mode preference:
+  `qti-assessment-item-player` (light DOM, not shadow DOM — corrects this
+  story's plan/ADR-0011 assumption above) sets `this.style.colorScheme =
+  "light dark"` on itself at runtime. This app has no dark theme, so under a
+  dark OS/browser preference the player's own CSS system colors
+  (`CanvasText`/`light-dark()`, see `base-styles.js`) resolved to white text
+  sitting on the app's plain light background. Fixed in `client/src/
+  index.css`: `:root { color-scheme: light }` plus a targeted
+  `qti-assessment-item-player { color-scheme: light !important }` (only
+  `!important` can outrank the element's own inline style). Verified via
+  Playwright screenshots with `colorScheme: 'dark'` emulation, before/after.

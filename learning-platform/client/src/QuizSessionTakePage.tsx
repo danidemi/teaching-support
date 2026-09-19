@@ -121,9 +121,16 @@ function QuizSessionTakePage() {
 
   const currentItem = items?.[index]
 
+  // Question-taking (and the qti3-player it hosts) needs real width to
+  // render answer text legibly — the other states here are a couple of
+  // short status lines, which is what `max-w-sm text-center` was sized
+  // for. Widening the card for every state keeps one layout instead of
+  // branching the wrapper itself.
+  const showingQuestion = joinState === 'joined' && status === 'running' && !submitted && currentItem
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-paper px-6">
-      <Card className="max-w-sm text-center">
+      <Card className={showingQuestion ? 'w-full max-w-3xl' : 'max-w-sm text-center'}>
         <h1 className="mb-3 text-lg font-semibold text-ink">Quiz session</h1>
         {joinState === 'joining' && <p className="text-sm text-ink/70">Joining…</p>}
         {joinState === 'error' && <p className="text-sm text-error">Could not join this session. Ask your trainer for a new link.</p>}
@@ -151,20 +158,22 @@ function QuizSessionTakePage() {
           </div>
         )}
 
-        {joinState === 'joined' && status === 'running' && !submitted && currentItem && (
-          <div className="flex flex-col items-center gap-group-gap" data-testid="quiz-question">
+        {showingQuestion && (
+          <div className="flex flex-col items-stretch gap-group-gap text-left" data-testid="quiz-question">
             <p className="text-sm text-ink/70">
               Question {index + 1} of {items?.length}
             </p>
             {currentItem.supported ? (
-              <QtiAssessmentItemPlayer key={currentItem.identifier} ref={playerRef} xml={currentItem.xml} />
+              <div className="w-full">
+                <QtiAssessmentItemPlayer key={currentItem.identifier} ref={playerRef} xml={currentItem.xml} />
+              </div>
             ) : (
               <p className="text-sm text-ink/70" data-testid="unsupported-item-message">
                 ⚠ This question type isn&apos;t supported yet and has been skipped.
               </p>
             )}
             {actionError && <p className="text-sm text-error">{actionError}</p>}
-            <Button type="button" onClick={handleNext}>
+            <Button type="button" onClick={handleNext} className="self-start">
               {items && index === items.length - 1 ? 'Submit' : 'Next'}
             </Button>
           </div>

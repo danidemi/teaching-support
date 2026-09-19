@@ -7,6 +7,26 @@
 @tailwind components;
 @tailwind utilities;
 
+/* This app has no dark theme — pin the color scheme so CSS system colors
+   (CanvasText/Canvas) and light-dark() resolve to light values regardless
+   of OS/browser preference. Without this, @longsightgroup/qti3-player's
+   own styles (which use those to support forced-colors/dark mode) can
+   pick dark-scheme text colors that sit invisibly on this app's light
+   background. */
+:root {
+  color-scheme: light;
+}
+
+/* qti-assessment-item-player sets `this.style.colorScheme = "light dark"`
+   on itself (an inline style), which otherwise wins over the :root rule
+   above for its own subtree — under a dark OS/browser preference this
+   resolves CanvasText to white text sitting on this app's plain light
+   background, making question/choice text invisible. !important is the
+   only thing that outranks that inline style. */
+qti-assessment-item-player {
+  color-scheme: light !important;
+}
+
 body {
   @apply bg-paper text-ink font-sans antialiased;
 }
