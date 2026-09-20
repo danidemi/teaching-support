@@ -172,6 +172,23 @@ describe('QuizzesSection (QUIZ-DASHBOARD-001, extracted by COURSE-DETAIL-001)', 
     await waitFor(() => expect(assignSpy).toHaveBeenCalledWith('/quiz-sessions/session-1'))
   })
 
+  // QUIZ-SESSION-HISTORY-001: "Sessions" navigates to the new history page
+  // for the quiz, always shown regardless of how many sessions exist.
+  it('shows a Sessions button per row that navigates to the quiz\'s session history', async () => {
+    stubFetch({
+      quizzes: [{ id: 'q1', title: 'Chapter 1 quiz', fileName: 'ch1.xml', status: 'uploaded', createdAt: '2026-01-10T00:00:00Z', updatedAt: '2026-01-10T00:00:00Z' }],
+    })
+    const assignSpy = vi.fn()
+    vi.stubGlobal('location', { ...window.location, assign: assignSpy })
+
+    renderSection()
+    await waitFor(() => expect(screen.getByText('Chapter 1 quiz')).toBeInTheDocument())
+
+    fireEvent.click(screen.getByRole('button', { name: /sessions/i }))
+
+    expect(assignSpy).toHaveBeenCalledWith('/quizzes/q1/sessions')
+  })
+
   it('shows an error when creating a session fails', async () => {
     stubFetch({
       quizzes: [{ id: 'q1', title: 'Chapter 1 quiz', fileName: 'ch1.xml', status: 'uploaded', createdAt: '2026-01-10T00:00:00Z', updatedAt: '2026-01-10T00:00:00Z' }],

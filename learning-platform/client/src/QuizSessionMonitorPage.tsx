@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import QRCode from 'qrcode'
+import { ExternalLink } from 'lucide-react'
 import AppHeader from './components/AppHeader'
 import { Card } from './components/ui/card'
 import { Input } from './components/ui/input'
@@ -203,7 +204,15 @@ function QuizSessionMonitorPage() {
                   dangerouslySetInnerHTML={{ __html: qrSvg }}
                 />
               )}
-              <p className="break-all rounded border border-border bg-white px-3 py-2 text-sm text-ink">{session.takeUrl}</p>
+              <a
+                href={session.takeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 break-all rounded border border-border bg-white px-3 py-2 text-sm text-ink"
+              >
+                {session.takeUrl}
+                <ExternalLink className="size-4 shrink-0" aria-hidden="true" />
+              </a>
 
               <Card>
                 <h2 className="mb-3 text-sm font-medium text-ink">Session control</h2>
@@ -295,7 +304,7 @@ function QuizSessionMonitorPage() {
                       <tr key={connection.connectionId}>
                         <td className="pr-4 py-1 text-ink/70">{connection.connectionId}</td>
                         <td className="py-1 text-ink">
-                          {connection.maxScore === 0
+                          {connection.hasUngraded && connection.maxScore === 0
                             ? 'needs manual grading'
                             : `${connection.totalScore} / ${connection.maxScore}${connection.hasUngraded ? ' (some items need manual grading)' : ''}`}
                         </td>

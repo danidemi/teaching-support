@@ -155,6 +155,72 @@ describe('POST /api/quizzes/:quizId/sessions', () => {
   })
 })
 
+describe('GET /api/quizzes/:quizId/sessions (QUIZ-SESSION-HISTORY-001)', () => {
+  it('returns 401 when not signed in', async () => {
+    const { app } = createTestApp()
+    const response = await request(app).get('/api/quizzes/some-id/sessions')
+    expect(response.status).toBe(401)
+  })
+
+  it('returns an empty list for a quiz with no sessions yet', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { quizId } = await createCourseAndQuiz(agent)
+
+    const response = await agent.get(`/api/quizzes/${quizId}/sessions`)
+
+    expect(response.status).toBe(200)
+    expect(response.body).toEqual([])
+  })
+
+  it('returns every session for the quiz, newest first', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { quizId } = await createCourseAndQuiz(agent)
+
+    const first = await agent.post(`/api/quizzes/${quizId}/sessions`)
+    const second = await agent.post(`/api/quizzes/${quizId}/sessions`)
+
+    const response = await agent.get(`/api/quizzes/${quizId}/sessions`)
+
+    expect(response.status).toBe(200)
+    expect(response.body.map((session: { id: string }) => session.id)).toEqual([second.body.id, first.body.id])
+  })
+
+  it('includes joined/submitted counts per session', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { quizId } = await createCourseAndQuiz(agent)
+    const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
+    await request(app).post(`/api/quiz-sessions/${created.body.id}/connections`)
+
+    const response = await agent.get(`/api/quizzes/${quizId}/sessions`)
+
+    expect(response.body[0].joinedCount).toBe(1)
+    expect(response.body[0].submittedCount).toBe(0)
+  })
+
+  it('returns 404 for a quiz belonging to a different tenant', async () => {
+    const { app, users } = createTestApp()
+    const agentA = await signInAgent(users, app, 'trainer-a@example.com')
+    const { quizId } = await createCourseAndQuiz(agentA)
+    const agentB = await signInAgent(users, app, 'trainer-b@example.com')
+
+    const response = await agentB.get(`/api/quizzes/${quizId}/sessions`)
+
+    expect(response.status).toBe(404)
+  })
+
+  it('returns 404, not a crash, for a malformed quiz id (ROUTE-ID-GUARD-001 pattern)', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+
+    const response = await agent.get('/api/quizzes/does-not-exist/sessions')
+
+    expect(response.status).toBe(404)
+  })
+})
+
 describe('POST /api/quiz-sessions/:sessionId/start', () => {
   async function createSession(agent: ReturnType<typeof request.agent>) {
     const { quizId } = await createCourseAndQuiz(agent)
@@ -339,6 +405,54 @@ describe('POST /api/quiz-sessions/:sessionId/connections (QUIZ-SESSION-LIVE-STAT
     const { app } = createTestApp()
     const response = await request(app).post('/api/quiz-sessions/00000000-0000-4000-8000-000000000999/connections')
     expect(response.status).toBe(404)
+  })
+})
+
+describe('POST /api/quiz-sessions/:sessionId/connections rejects a stopped session (QUIZ-CONNECTION-INTEGRITY-001)', () => {
+  it('returns 409 and creates no connection once the session is stopped', async () => {
+    // given: a session that was started and then stopped
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { quizId } = await createCourseAndQuiz(agent)
+    const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
+    const sessionId = created.body.id as string
+    await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({})
+    await agent.post(`/api/quiz-sessions/${sessionId}/stop`)
+
+    // when: a new anonymous join is attempted
+    const response = await request(app).post(`/api/quiz-sessions/${sessionId}/connections`)
+
+    // then: it is rejected, not silently accepted
+    expect(response.status).toBe(409)
+    expect(response.body).toEqual({ error: 'session_not_running', status: 'stopped' })
+
+    // and: no ghost connection was created — joinedCount is unaffected
+    const sessionResponse = await agent.get(`/api/quiz-sessions/${sessionId}`)
+    expect(sessionResponse.body.joinedCount).toBe(0)
+  })
+
+  it('still accepts a join while closed (pre-start lobby, unchanged)', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { quizId } = await createCourseAndQuiz(agent)
+    const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
+
+    const response = await request(app).post(`/api/quiz-sessions/${created.body.id}/connections`)
+
+    expect(response.status).toBe(201)
+  })
+
+  it('still accepts a join while running (unchanged)', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { quizId } = await createCourseAndQuiz(agent)
+    const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
+    const sessionId = created.body.id as string
+    await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({})
+
+    const response = await request(app).post(`/api/quiz-sessions/${sessionId}/connections`)
+
+    expect(response.status).toBe(201)
   })
 })
 
@@ -660,6 +774,55 @@ describe('GET /api/quiz-sessions/:sessionId/results (QUIZ-AUTO-EVAL-001)', () =>
       ]),
     )
     expect(response.body.classAverage).toBe(0.5)
+  })
+
+  it('excludes a connection that only ever joined, never submitted (QUIZ-CONNECTION-INTEGRITY-001)', async () => {
+    // given: one real submission and one connection that only joined
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { quizId } = await createCourseAndQuizWithItem(agent, CHOICE_ITEM, 'quiz.xml')
+    const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
+    const sessionId = created.body.id as string
+    await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({})
+
+    const itemsResponse = await request(app).get(`/api/quiz-sessions/${sessionId}/items`)
+    const itemPath = itemsResponse.body.items[0].path as string
+
+    const submitted = await request(app).post(`/api/quiz-sessions/${sessionId}/connections`)
+    await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${submitted.body.id}/answers`).send({ itemPath, responses: { RESPONSE: 'choice_b' } })
+    await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${submitted.body.id}/submit`)
+
+    const ghost = await request(app).post(`/api/quiz-sessions/${sessionId}/connections`)
+
+    await agent.post(`/api/quiz-sessions/${sessionId}/stop`)
+
+    // when
+    const response = await agent.get(`/api/quiz-sessions/${sessionId}/results`)
+
+    // then: only the connection that submitted is present
+    expect(response.body.connections).toEqual([{ connectionId: submitted.body.id, totalScore: 1, maxScore: 1, hasUngraded: false }])
+    expect(response.body.connections.map((c: { connectionId: string }) => c.connectionId)).not.toContain(ghost.body.id)
+  })
+
+  it('includes a genuine zero-answer submission as a real result, not excluded (QUIZ-CONNECTION-INTEGRITY-001)', async () => {
+    // given: a student who joined, reached the end, and submitted without answering anything
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { quizId } = await createCourseAndQuizWithItem(agent, CHOICE_ITEM, 'quiz.xml')
+    const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
+    const sessionId = created.body.id as string
+    await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({})
+
+    const student = await request(app).post(`/api/quiz-sessions/${sessionId}/connections`)
+    await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${student.body.id}/submit`)
+
+    await agent.post(`/api/quiz-sessions/${sessionId}/stop`)
+
+    // when
+    const response = await agent.get(`/api/quiz-sessions/${sessionId}/results`)
+
+    // then: present with a real (zero) score, not excluded
+    expect(response.body.connections).toEqual([{ connectionId: student.body.id, totalScore: 0, maxScore: 0, hasUngraded: false }])
   })
 
   it('excludes an all-ungraded connection from the class average, not counting it as 0', async () => {

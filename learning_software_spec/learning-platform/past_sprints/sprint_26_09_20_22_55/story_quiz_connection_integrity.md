@@ -1,6 +1,6 @@
 ID: QUIZ-CONNECTION-INTEGRITY-001
 
-Status: READY
+Status: DONE
 
 Priority: High — data-integrity bug: trainers currently see fabricated "needs manual
 grading" rows for students who never took the quiz, which pollutes real class results.
@@ -74,3 +74,35 @@ Known context (grooming, 2026-09-19):
   "has at least one answer row."
 * No cleanup of already-created ghost rows in the database is in scope — this story only
   prevents new ones and fixes the results view going forward.
+
+Reopened (grooming, 2026-09-20):
+* This story was previously marked `DONE` and archived to `past_sprints/sprint_26_09_20_21_57/`
+  on the human's sign-off, but none of its DoD is actually present in `learning-platform`'s code:
+  `POST .../connections` still creates a row unconditionally (no `stopped` check, no `409`);
+  `listForSession` still returns every connection with no `submittedAt` filter; the client's
+  "needs manual grading" label is still keyed off `maxScore === 0` alone, with no exception for a
+  genuine zero-answer submission. `git log` shows no commit for this story at all. Reset to
+  `READY` and moved back to `active_sprint/` to be actually implemented; the `review.md` from the
+  false close was deleted.
+* This also means `BUG-QUIZ-EMPTY-ANSWER-MANUAL-GRADING` (backlog) was never fixed by this story
+  either, despite the story's own DoD claiming to cover it — see that bug file for the
+  overlap note.
+
+Implemented (sprint, 2026-09-20):
+* `POST /api/quiz-sessions/:sessionId/connections` now derives status first and returns `409
+  { error: 'session_not_running', status: 'stopped' }` without creating a row when `stopped`;
+  `closed`/`running` unchanged (`server/src/routes/quizSessions.ts`).
+* `GET .../results` filters `listForSession`'s rows to `submittedAt !== null` before scoring —
+  ghost joins never reach the response or the class average.
+* Client `QuizSessionMonitorPage` only shows "needs manual grading" when `hasUngraded &&
+  maxScore === 0`, not `maxScore === 0` alone — a genuine zero-answer submission now renders
+  `0 / 0`, a real (if unhelpful-looking) score, not a manual-grading flag. Note: the true
+  denominator for a from-scratch zero-answer quiz is still `0`, not the quiz's actual total
+  possible points, since `maxScore` is only ever summed from `quiz_session_answers` rows — see
+  `BUG-QUIZ-EMPTY-ANSWER-MANUAL-GRADING`'s grooming note for that separate, deeper gap.
+* `QuizSessionTakePage` treats a `409`/`stopped` join response the same as an already-`stopped`
+  status fetch — renders the existing "This quiz session has ended" message.
+* Tests added: 3 server tests for the join/409 behavior, 2 server tests for results
+  filtering (ghost excluded, zero-answer included), 1 client test for the Monitor page's
+  zero-answer rendering, 1 client test for the Take page's 409 handling. `tsc -b` and the full
+  suites (161 server, 76 client) pass.

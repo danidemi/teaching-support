@@ -100,11 +100,20 @@ describe('QuizSessionMonitorPage (QUIZ-SESSION-CONTROL-001)', () => {
     expect(screen.getByLabelText(/time limit/i)).toBeInTheDocument()
   })
 
-  it('shows the take URL as plain text and renders a QR code', async () => {
+  it('shows the take URL as a link and renders a QR code', async () => {
     stubFetch({ me: SIGNED_IN_USER, session: BASE_SESSION })
     renderAt('session-1')
-    await waitFor(() => expect(screen.getByText(BASE_SESSION.takeUrl)).toBeInTheDocument())
     await waitFor(() => expect(screen.getByTestId('session-qr-code').innerHTML).toContain('<svg'))
+  })
+
+  it('makes the take URL a clickable link that opens in a new tab (QUIZ-TAKE-URL-LINK-001)', async () => {
+    stubFetch({ me: SIGNED_IN_USER, session: BASE_SESSION })
+    renderAt('session-1')
+    const link = await screen.findByRole('link', { name: new RegExp(BASE_SESSION.takeUrl) })
+    expect(link).toHaveAttribute('href', BASE_SESSION.takeUrl)
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+    expect(link.querySelector('svg')).toBeInTheDocument()
   })
 
   it('starts the session and shows the running state with a Stop button', async () => {
@@ -232,6 +241,22 @@ describe('QuizSessionMonitorPage (QUIZ-SESSION-CONTROL-001)', () => {
     expect(screen.getByTestId('block-3-results')).toHaveTextContent('Class average: 80%')
     expect(screen.getByTestId('block-3-results')).toHaveTextContent('8 / 10')
     expect(screen.getByTestId('block-3-results')).toHaveTextContent('needs manual grading')
+  })
+
+  it('shows a genuine zero-answer submission as a real score, not "needs manual grading" (QUIZ-CONNECTION-INTEGRITY-001)', async () => {
+    stubFetch({
+      me: SIGNED_IN_USER,
+      session: { ...BASE_SESSION, status: 'stopped', joinedCount: 1, submittedCount: 1 },
+      results: {
+        connections: [{ connectionId: 'conn-a', totalScore: 0, maxScore: 0, hasUngraded: false }],
+        classAverage: null,
+      },
+    })
+    renderAt('session-1')
+
+    await waitFor(() => expect(screen.getByTestId('block-3-results')).toBeInTheDocument())
+    expect(screen.getByTestId('block-3-results')).toHaveTextContent('0 / 0')
+    expect(screen.getByTestId('block-3-results')).not.toHaveTextContent('needs manual grading')
   })
 
   it('does not show Block #3 before the session is stopped', async () => {

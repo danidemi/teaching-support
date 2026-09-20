@@ -247,6 +247,11 @@ export function createFakeSessionRepository(
       throwIfNotUuidShaped(sessionId)
       return rows.find((row) => row.id === sessionId) ?? null
     },
+    async listForQuiz(quizId: string, tenantId: string) {
+      throwIfNotUuidShaped(quizId)
+      if (!quizBelongsToTenant(quizId, tenantId)) return null
+      return rows.filter((row) => row.quizId === quizId).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    },
   }
 }
 

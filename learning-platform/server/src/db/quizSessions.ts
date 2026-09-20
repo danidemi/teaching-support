@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, desc, eq } from 'drizzle-orm'
 import { createDb } from './client.js'
 import { quizSessions, quizzes, courses } from './schema.js'
 
@@ -36,6 +36,12 @@ export interface SessionRepository {
   // Used only to derive/serve status and items, never anything
   // trainer-only (counts, other sessions of the same quiz, ...).
   findById(sessionId: string): Promise<QuizSession | null>
+  // QUIZ-SESSION-HISTORY-001: every session ever created for one quiz,
+  // newest first. `null` means the quiz doesn't exist or isn't owned by
+  // this tenant — same information-hiding shape as the rest of this
+  // repository — an empty array means the quiz exists but has no sessions
+  // yet.
+  listForQuiz(quizId: string, tenantId: string): Promise<QuizSession[] | null>
 }
 
 const SELECT_COLUMNS = {
@@ -111,6 +117,11 @@ export function createSessionRepository(databaseUrl: string): SessionRepository 
     async findById(sessionId) {
       const rows = await db.select(SELECT_COLUMNS).from(quizSessions).where(eq(quizSessions.id, sessionId)).limit(1)
       return rows[0] ?? null
+    },
+
+    async listForQuiz(quizId, tenantId) {
+      if (!(await quizBelongsToTenant(quizId, tenantId))) return null
+      return db.select(SELECT_COLUMNS).from(quizSessions).where(eq(quizSessions.quizId, quizId)).orderBy(desc(quizSessions.createdAt))
     },
   }
 }

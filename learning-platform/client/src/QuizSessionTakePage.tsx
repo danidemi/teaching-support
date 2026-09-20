@@ -7,6 +7,15 @@ import { Button } from './components/ui/button'
 type SessionStatus = 'closed' | 'running' | 'stopped'
 type JoinState = 'joining' | 'joined' | 'error'
 
+// BUG-QUIZ-REFRESH-DUP-SESSION: a browser-local token identifying "this
+// student already joined this session," so a page refresh reuses the same
+// connection instead of registering a new one. Scoped per sessionId, not a
+// single global key, since the same browser can legitimately take several
+// different quiz sessions over time.
+function connectionStorageKey(sessionId: string) {
+  return `quiz-session-connection:${sessionId}`
+}
+
 interface QuizItem {
   identifier: string
   path: string
@@ -22,12 +31,15 @@ interface QuizItem {
  * comment for the full list of anonymous, no-tenant endpoints this page
  * calls).
  *
- * Joining (`POST .../connections`) happens on mount regardless of session
- * status, unchanged from the placeholder — a join before the session
- * starts is still counted (QUIZ-SESSION-LIVE-STATUS-001's DoD). Status is
- * fetched separately to decide what to render; there is no polling here —
- * the approved wireframe ("check back once the trainer starts it") is a
- * manual-refresh flow, not a live one.
+ * Joining (`POST .../connections`) happens on mount — a join before the
+ * session starts is still counted (QUIZ-SESSION-LIVE-STATUS-001's DoD), but
+ * a `stopped` session now rejects it with 409 (QUIZ-CONNECTION-INTEGRITY-001),
+ * rendered the same as the pre-existing "ended" message. A page refresh
+ * reuses the `connectionId` stashed in `localStorage` on first join instead
+ * of joining again (BUG-QUIZ-REFRESH-DUP-SESSION) — see
+ * `connectionStorageKey`. Status is fetched separately to decide what to
+ * render; there is no polling here — the approved wireframe ("check back
+ * once the trainer starts it") is a manual-refresh flow, not a live one.
  */
 function QuizSessionTakePage() {
   const { sessionId } = useParams<{ sessionId: string }>()
@@ -43,24 +55,45 @@ function QuizSessionTakePage() {
 
   useEffect(() => {
     if (!sessionId) return
+    const currentSessionId = sessionId
     let cancelled = false
 
     async function load() {
-      const [joinResponse, statusResponse] = await Promise.all([
-        fetch(`/api/quiz-sessions/${sessionId}/connections`, { method: 'POST' }),
-        fetch(`/api/quiz-sessions/${sessionId}/status`),
-      ])
-      if (cancelled) return
+      const storageKey = connectionStorageKey(currentSessionId)
+      const storedConnectionId = localStorage.getItem(storageKey)
 
-      if (joinResponse.status !== 201) {
-        setJoinState('error')
-        return
+      if (storedConnectionId) {
+        // Already joined this session in this browser (e.g. a refresh) —
+        // reuse the connection instead of joining again.
+        setConnectionId(storedConnectionId)
+        setJoinState('joined')
+      } else {
+        const joinResponse = await fetch(`/api/quiz-sessions/${sessionId}/connections`, { method: 'POST' })
+        if (cancelled) return
+
+        if (joinResponse.status !== 201) {
+          // QUIZ-CONNECTION-INTEGRITY-001: a `stopped` session rejects the
+          // join with 409 rather than accepting a ghost connection — render
+          // the existing "ended" message, not a generic join error.
+          if (joinResponse.status === 409) {
+            const joinErrorBody = await joinResponse.json()
+            if (joinErrorBody.status === 'stopped') {
+              setStatus('stopped')
+              setJoinState('joined')
+              return
+            }
+          }
+          setJoinState('error')
+          return
+        }
+        const joinBody = await joinResponse.json()
+        localStorage.setItem(storageKey, joinBody.id)
+        setConnectionId(joinBody.id)
+        setJoinState('joined')
       }
-      const joinBody = await joinResponse.json()
-      setConnectionId(joinBody.id)
-      setJoinState('joined')
 
-      if (statusResponse.status !== 200) return
+      const statusResponse = await fetch(`/api/quiz-sessions/${sessionId}/status`)
+      if (cancelled || statusResponse.status !== 200) return
       const statusBody = await statusResponse.json()
       if (cancelled) return
       setStatus(statusBody.status)

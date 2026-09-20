@@ -17,6 +17,10 @@ Contains references files:
 
 Contains `Product Backlog Items` (PBIs) that are not yet developed and among which the human will chose the ones to develop in the next sprint.
 
+It also contains templates for different kind of PBIs. Template is in the form `_<KIND_OF_PBI>.template.md`, i.e.:
+* bug: @backlog/_bug.template.md
+* story: @backlog/_story.template.md
+
 ## `active_sprint/` folder
 
 Contains the PBIs to be developed in the current sprint.
@@ -101,7 +105,7 @@ new file called `review.md` stating what have been done, decuded and observed du
 
 After that ask human what new PBIs should be added. Collect the feedback by the human and keep on intervitinging him until you are able to have enough info to create the needed new BPIs.
 During the interview:
-* start the interview asking a list of new things that should be done.
+* start the interview asking a list of new PBIs that should be added. Try to match the answer of the human to the type of PBIs for which templates are available.
 * split the list in potential PBIs
 * for each PBI collect all the info you need, but be parcicularly specific about the reasons why a PBI is needed, and what are the expected results.
 * when human is too generic, propose him hypotesis, questions, choices that will allow him to deeply think about the new stories.

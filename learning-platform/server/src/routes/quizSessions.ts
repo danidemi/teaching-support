@@ -146,6 +146,33 @@ export function createQuizSessionsRouter(
     }
   })
 
+  // QUIZ-SESSION-HISTORY-001: every session ever created for one quiz,
+  // newest first, so a trainer can reach a past run without having kept
+  // the URL "Create session" redirected them to originally.
+  router.get('/api/quizzes/:quizId/sessions', sessionMiddleware, async (req, res) => {
+    const tenantId = requireTenant(req, res)
+    if (!tenantId) return
+    try {
+      const rows = await sessions.listForQuiz(req.params.quizId, tenantId)
+      if (!rows) {
+        res.status(404).json({ error: 'quiz_not_found' })
+        return
+      }
+      const now = new Date()
+      const responses = await Promise.all(
+        rows.map(async (session) => toResponse(session, now, await connections.countsForSession(session.id))),
+      )
+      res.status(200).json(responses)
+    } catch (err) {
+      if (isInvalidIdError(err)) {
+        res.status(404).json({ error: 'quiz_not_found' })
+        return
+      }
+      console.error('list quiz sessions failed:', err)
+      res.status(500).json({ error: 'internal_error' })
+    }
+  })
+
   router.post('/api/quiz-sessions/:sessionId/start', sessionMiddleware, async (req, res) => {
     const tenantId = requireTenant(req, res)
     if (!tenantId) return
@@ -236,7 +263,11 @@ export function createQuizSessionsRouter(
         return
       }
 
-      const connectionRows = await connections.listForSession(session.id)
+      // QUIZ-CONNECTION-INTEGRITY-001: a connection that only ever joined
+      // (never called .../submit) never took the quiz — exclude it here
+      // rather than in the repository, since every other consumer of
+      // connection rows (joinedCount, etc.) still wants every join.
+      const connectionRows = (await connections.listForSession(session.id)).filter((connection) => connection.submittedAt !== null)
       const perConnection = await Promise.all(
         connectionRows.map(async (connection) => {
           const rows = await answers.listForConnection(connection.id)
@@ -274,8 +305,21 @@ export function createQuizSessionsRouter(
   // QUIZ-SESSION-LIVE-STATUS-001: anonymous — no sessionMiddleware, no
   // tenant. Accepts a join in any session status (a `closed` session's
   // joined count is part of the DoD).
+  // QUIZ-CONNECTION-INTEGRITY-001: a `stopped` session must stop accepting
+  // new joins — `closed` (pre-start lobby, QUIZ-SESSION-LIVE-STATUS-001) and
+  // `running` are unaffected.
   router.post('/api/quiz-sessions/:sessionId/connections', async (req, res) => {
     try {
+      const session = await sessions.findById(req.params.sessionId)
+      if (!session) {
+        res.status(404).json({ error: 'session_not_found' })
+        return
+      }
+      const status = deriveStatus(session, new Date())
+      if (status === 'stopped') {
+        res.status(409).json({ error: 'session_not_running', status })
+        return
+      }
       const connection = await connections.create(req.params.sessionId)
       if (!connection) {
         res.status(404).json({ error: 'session_not_found' })

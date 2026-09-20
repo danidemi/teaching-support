@@ -35,7 +35,10 @@ function formatDate(iso: string) {
  * Also the entry point for QUIZ-SESSION-CONTROL-001's "create a quiz
  * session" action (per quiz row) — navigates straight to the new
  * session's Quiz Session Monitor page, same direct-navigation pattern
- * `CourseDashboardPage` already uses for its own rows.
+ * `CourseDashboardPage` already uses for its own rows. QUIZ-SESSION-
+ * HISTORY-001 adds a "Sessions" action alongside it, to reach any past
+ * session again via `QuizSessionHistoryPage` — always shown, even with
+ * zero sessions yet (that page renders its own empty state).
  */
 function QuizzesSection({ courseId }: { courseId: string }) {
   const [quizzes, setQuizzes] = useState<Quiz[] | null>(null)
@@ -177,6 +180,9 @@ function QuizzesSection({ courseId }: { courseId: string }) {
                   <div className="flex gap-2">
                     <Button type="button" variant="outline" size="sm" onClick={() => handleCreateSession(quiz.id)}>
                       Create session
+                    </Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => window.location.assign(`/quizzes/${quiz.id}/sessions`)}>
+                      Sessions
                     </Button>
                     <Button type="button" variant="outline" size="sm" onClick={() => startReplace(quiz.id)}>
                       Replace file

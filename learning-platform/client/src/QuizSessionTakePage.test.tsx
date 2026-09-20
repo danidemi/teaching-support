@@ -69,6 +69,7 @@ function stubFetch(handlers: FetchHandlers) {
 describe('QuizSessionTakePage (QUIZ-TAKE-RENDER-001)', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
+    localStorage.clear()
   })
 
   it('joins the session on load, with no sign-in of any kind', async () => {
@@ -78,6 +79,23 @@ describe('QuizSessionTakePage (QUIZ-TAKE-RENDER-001)', () => {
     await waitFor(() => expect(screen.getByTestId('not-started-message')).toBeInTheDocument())
     expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/quiz-sessions/session-1/connections', expect.objectContaining({ method: 'POST' }))
     expect(vi.mocked(fetch)).not.toHaveBeenCalledWith('/api/me')
+  })
+
+  it('stores the connectionId on first join, so a later mount can reuse it (BUG-QUIZ-REFRESH-DUP-SESSION)', async () => {
+    stubFetch({ joinBody: { id: 'connection-abc' } })
+    renderAt('session-1')
+
+    await waitFor(() => expect(screen.getByTestId('not-started-message')).toBeInTheDocument())
+    expect(localStorage.getItem('quiz-session-connection:session-1')).toBe('connection-abc')
+  })
+
+  it('reuses a stored connectionId on mount instead of joining again (BUG-QUIZ-REFRESH-DUP-SESSION)', async () => {
+    localStorage.setItem('quiz-session-connection:session-1', 'connection-abc')
+    stubFetch({})
+    renderAt('session-1')
+
+    await waitFor(() => expect(screen.getByTestId('not-started-message')).toBeInTheDocument())
+    expect(vi.mocked(fetch)).not.toHaveBeenCalledWith('/api/quiz-sessions/session-1/connections', expect.objectContaining({ method: 'POST' }))
   })
 
   it('shows an error when the session cannot be joined', async () => {
@@ -96,6 +114,13 @@ describe('QuizSessionTakePage (QUIZ-TAKE-RENDER-001)', () => {
     stubFetch({ statusBody: { status: 'stopped' } })
     renderAt('session-1')
     await waitFor(() => expect(screen.getByTestId('stopped-message')).toBeInTheDocument())
+  })
+
+  it('shows the stopped message, not a join error, when the join is rejected because the session ended (QUIZ-CONNECTION-INTEGRITY-001)', async () => {
+    stubFetch({ joinStatus: 409, joinBody: { error: 'session_not_running', status: 'stopped' } })
+    renderAt('session-1')
+    await waitFor(() => expect(screen.getByTestId('stopped-message')).toBeInTheDocument())
+    expect(screen.queryByText(/could not join this session/i)).not.toBeInTheDocument()
   })
 
   it('renders the unsupported-interaction-type placeholder, and still advances via Next', async () => {

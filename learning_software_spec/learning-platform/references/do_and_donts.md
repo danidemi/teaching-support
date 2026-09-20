@@ -98,3 +98,26 @@ Newest entries at the bottom.
   look (screenshot or live click-through), not just "tests pass," especially for
   preference-dependent rendering (color-scheme, viewport size) that a default-settings glance
   won't surface either.
+
+## sprint_26_09_20 (backlog grooming, 2026-09-20)
+
+* **DON'T** mark a story `DONE` at Sprint Review without checking the actual source repo's
+  code/`git log`, not just the human's verbal "current story is OK." QUIZ-CONNECTION-INTEGRITY-001
+  was marked `DONE` and archived on that basis, but none of its DoD existed in
+  `learning-platform` and there was no commit for it at all — caught only at the next grooming
+  session by grepping the real code, and had to be reopened. Before closing a story at review,
+  grep/read the specific files its DoD names, or the human's approval can't be trusted to reflect
+  what's actually shipped.
+
+## sprint_26_09_20_22_55
+
+* **DON'T** write "no screenshot/visual check was run" into a GUI-touching story's
+  "Implemented" section as a note for the human to catch at review, instead of actually
+  running the check during development. This sprint repeated a gap already on file
+  (`sprint_26_09_19_00_00`'s screenshot DON'T) for two of four items
+  (`BUG-QUIZ-REFRESH-DUP-SESSION`, `QUIZ-TAKE-URL-LINK-001`) — noticing the gap isn't
+  enough if it isn't closed before declaring the story done. Concretely: before writing
+  "Implemented" for a story whose DoD touches rendered UI, check live whether
+  browser/screenshot tooling is available (per the `sprint_26_08_23_12_32` DON'T — don't
+  assume it's missing without checking) and take the screenshot as part of
+  implementation, not as a deferred note.
