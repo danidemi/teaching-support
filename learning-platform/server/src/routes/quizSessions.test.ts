@@ -847,6 +847,89 @@ describe('GET /api/quiz-sessions/:sessionId/results (QUIZ-AUTO-EVAL-001)', () =>
   })
 })
 
+describe('GET /api/quiz-sessions/:sessionId/answer-breakdown (QUIZ-CLASS-REVIEW-001)', () => {
+  it('returns 409 while not stopped, not the breakdown', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { quizId } = await createCourseAndQuizWithItem(agent, CHOICE_ITEM, 'quiz.xml')
+    const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
+
+    const response = await agent.get(`/api/quiz-sessions/${created.body.id}/answer-breakdown`)
+
+    expect(response.status).toBe(409)
+    expect(response.body.status).toBe('closed')
+  })
+
+  it('returns per-option counts once stopped, marking the correct option and a no-answer connection', async () => {
+    // given: a stopped session with one correct answer, one incorrect
+    // answer, and one connection that submitted without answering
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { quizId } = await createCourseAndQuizWithItem(agent, CHOICE_ITEM, 'quiz.xml')
+    const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
+    const sessionId = created.body.id as string
+    await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({})
+
+    const itemsResponse = await request(app).get(`/api/quiz-sessions/${sessionId}/items`)
+    const itemPath = itemsResponse.body.items[0].path as string
+
+    const studentA = await request(app).post(`/api/quiz-sessions/${sessionId}/connections`)
+    await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${studentA.body.id}/answers`).send({ itemPath, responses: { RESPONSE: 'choice_b' } })
+    await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${studentA.body.id}/submit`)
+
+    const studentB = await request(app).post(`/api/quiz-sessions/${sessionId}/connections`)
+    await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${studentB.body.id}/answers`).send({ itemPath, responses: { RESPONSE: 'choice_a' } })
+    await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${studentB.body.id}/submit`)
+
+    const studentC = await request(app).post(`/api/quiz-sessions/${sessionId}/connections`)
+    await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${studentC.body.id}/submit`)
+
+    await agent.post(`/api/quiz-sessions/${sessionId}/stop`)
+
+    // when
+    const response = await agent.get(`/api/quiz-sessions/${sessionId}/answer-breakdown`)
+
+    // then
+    expect(response.status).toBe(200)
+    expect(response.body.items).toEqual([
+      {
+        itemIdentifier: 'single-choice-basic',
+        prompt: undefined,
+        buckets: [
+          { label: 'Berlin', count: 1, isCorrect: false },
+          { label: 'Paris', count: 1, isCorrect: true },
+        ],
+        noAnswerCount: 1,
+      },
+    ])
+  })
+
+  it('excludes a connection that only ever joined, never submitted, from the breakdown entirely', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { quizId } = await createCourseAndQuizWithItem(agent, CHOICE_ITEM, 'quiz.xml')
+    const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
+    const sessionId = created.body.id as string
+    await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({})
+
+    await request(app).post(`/api/quiz-sessions/${sessionId}/connections`)
+    await agent.post(`/api/quiz-sessions/${sessionId}/stop`)
+
+    const response = await agent.get(`/api/quiz-sessions/${sessionId}/answer-breakdown`)
+
+    expect(response.body.items[0].noAnswerCount).toBe(0)
+  })
+
+  it('returns 404, not a crash, for a malformed session id', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+
+    const response = await agent.get('/api/quiz-sessions/does-not-exist/answer-breakdown')
+
+    expect(response.status).toBe(404)
+  })
+})
+
 describe('reopening keeps Block #2 counts accumulating (QUIZ-SESSION-LIVE-STATUS-001)', () => {
   it('does not reset joined/submitted counts on reopen', async () => {
     // given: a session with a join and a submit, then stopped

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import QRCode from 'qrcode'
-import { ExternalLink } from 'lucide-react'
+import { Check, ExternalLink } from 'lucide-react'
 import AppHeader from './components/AppHeader'
 import { Card } from './components/ui/card'
 import { Input } from './components/ui/input'
@@ -35,6 +35,23 @@ interface ConnectionResult {
 interface SessionResults {
   connections: ConnectionResult[]
   classAverage: number | null
+}
+
+interface AnswerBucket {
+  label: string
+  count: number
+  isCorrect: boolean
+}
+
+interface ItemAnswerBreakdown {
+  itemIdentifier: string
+  prompt?: string
+  buckets: AnswerBucket[]
+  noAnswerCount: number
+}
+
+interface AnswerBreakdownResponse {
+  items: ItemAnswerBreakdown[]
 }
 
 function formatClockTime(iso: string) {
@@ -90,6 +107,7 @@ function QuizSessionMonitorPage() {
   const [qrSvg, setQrSvg] = useState<string | null>(null)
   const [now, setNow] = useState(() => new Date())
   const [results, setResults] = useState<SessionResults | null>(null)
+  const [answerBreakdown, setAnswerBreakdown] = useState<AnswerBreakdownResponse | null>(null)
 
   const loadSession = useCallback(async () => {
     if (!sessionId) return
@@ -131,6 +149,22 @@ function QuizSessionMonitorPage() {
       if (cancelled || response.status !== 200) return
       const body = await response.json()
       if (Array.isArray(body?.connections)) setResults(body)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [sessionId, session?.status])
+
+  // QUIZ-CLASS-REVIEW-001: Block #4 fetches once, on the same status
+  // transition as Block #3 — same "no new polling, nothing changes after
+  // stop" reasoning.
+  useEffect(() => {
+    if (!sessionId || session?.status !== 'stopped') return
+    let cancelled = false
+    fetch(`/api/quiz-sessions/${sessionId}/answer-breakdown`).then(async (response) => {
+      if (cancelled || response.status !== 200) return
+      const body = await response.json()
+      if (Array.isArray(body?.items)) setAnswerBreakdown(body)
     })
     return () => {
       cancelled = true
@@ -312,6 +346,47 @@ function QuizSessionMonitorPage() {
                     ))}
                   </tbody>
                 </table>
+              </Card>
+            )}
+
+            {session.status === 'stopped' && answerBreakdown && (
+              <Card data-testid="block-4-answer-breakdown" className="md:col-span-2">
+                <h2 className="mb-3 text-sm font-medium text-ink">Answer breakdown</h2>
+                <div className="flex flex-col gap-group-gap">
+                  {answerBreakdown.items.map((item) => {
+                    const total = item.buckets.reduce((sum, bucket) => sum + bucket.count, 0) + item.noAnswerCount
+                    return (
+                      <div
+                        key={item.itemIdentifier}
+                        data-testid={`item-breakdown-${item.itemIdentifier}`}
+                        className="border-t border-border pt-3 first:border-t-0 first:pt-0"
+                      >
+                        {item.prompt && <p className="mb-2 text-sm font-medium text-ink">{item.prompt}</p>}
+                        <ul className="flex flex-col gap-1">
+                          {item.buckets.map((bucket) => (
+                            <li key={bucket.label} className="flex items-center gap-2 text-sm">
+                              {bucket.isCorrect && <Check className="size-4 shrink-0 text-brass" aria-label="correct answer" />}
+                              <span className={bucket.isCorrect ? 'w-32 shrink-0 font-medium text-ink' : 'w-32 shrink-0 text-ink/70'}>{bucket.label}</span>
+                              <div className="h-2 flex-1 rounded bg-ink-50">
+                                <div
+                                  className="h-2 rounded bg-brass"
+                                  style={{ width: `${total > 0 ? Math.round((bucket.count / total) * 100) : 0}%` }}
+                                />
+                              </div>
+                              <span className="w-6 text-right text-ink/70">{bucket.count}</span>
+                            </li>
+                          ))}
+                          {item.noAnswerCount > 0 && (
+                            <li className="flex items-center gap-2 text-sm text-ink/50">
+                              <span className="flex-1">No answer</span>
+                              <span className="w-6 text-right">{item.noAnswerCount}</span>
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    )
+                  })}
+                </div>
               </Card>
             )}
           </div>

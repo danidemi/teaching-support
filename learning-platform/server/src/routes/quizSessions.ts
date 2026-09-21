@@ -7,6 +7,7 @@ import { isInvalidIdError } from '../db/errors.js'
 import { appBaseUrl } from '../config.js'
 import { resolveQuizItems } from '../qti/resolveQtiItems.js'
 import { scoreChoiceAnswer } from '../qti/scoreAnswer.js'
+import { computeAnswerBreakdown } from '../qti/answerBreakdown.js'
 import type { GradingStatus } from '../db/quizSessionAnswers.js'
 
 export interface ItemResult {
@@ -298,6 +299,48 @@ export function createQuizSessionsRouter(
         return
       }
       console.error('get quiz session results failed:', err)
+      res.status(500).json({ error: 'internal_error' })
+    }
+  })
+
+  // QUIZ-CLASS-REVIEW-001: trainer-facing, tenant-scoped — same
+  // stopped-only `409` gate as `.../results`, and the same "only real
+  // attempts count" connection filter (QUIZ-CONNECTION-INTEGRITY-001).
+  // Item order follows `resolveQuizItems`'s own ordering.
+  router.get('/api/quiz-sessions/:sessionId/answer-breakdown', sessionMiddleware, async (req, res) => {
+    const tenantId = requireTenant(req, res)
+    if (!tenantId) return
+    try {
+      const session = await sessions.findByIdForTenant(req.params.sessionId, tenantId)
+      if (!session) {
+        res.status(404).json({ error: 'session_not_found' })
+        return
+      }
+      const status = deriveStatus(session, new Date())
+      if (status !== 'stopped') {
+        res.status(409).json({ error: 'results_not_available', status })
+        return
+      }
+
+      const connectionRows = (await connections.listForSession(session.id)).filter((connection) => connection.submittedAt !== null)
+      const perConnectionAnswers = await Promise.all(connectionRows.map((connection) => answers.listForConnection(connection.id)))
+
+      const files = await quizzes.getFilesByQuizId(session.quizId)
+      const items = resolveQuizItems(files)
+
+      const breakdown = items.map((item) => {
+        const responsesPerConnection = perConnectionAnswers.map((rows) => rows.find((row) => row.itemIdentifier === item.identifier)?.responses)
+        const { prompt, buckets, noAnswerCount } = computeAnswerBreakdown(item.xml, responsesPerConnection)
+        return { itemIdentifier: item.identifier, prompt, buckets, noAnswerCount }
+      })
+
+      res.status(200).json({ items: breakdown })
+    } catch (err) {
+      if (isInvalidIdError(err)) {
+        res.status(404).json({ error: 'session_not_found' })
+        return
+      }
+      console.error('get quiz session answer breakdown failed:', err)
       res.status(500).json({ error: 'internal_error' })
     }
   })

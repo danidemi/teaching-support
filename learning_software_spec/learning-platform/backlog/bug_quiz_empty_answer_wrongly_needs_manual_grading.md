@@ -1,6 +1,6 @@
 ID: BUG-QUIZ-EMPTY-ANSWER-MANUAL-GRADING
 
-Status: DRAFT
+Status: DISCARDED — already fixed, confirmed at backlog refinement 2026-09-21
 
 Steps To Reproduce:
 1. Create/open a quiz that contains only automatically-evaluable questions (no question type requiring manual grading).
@@ -49,3 +49,24 @@ Known context (grooming, 2026-09-20, confirmed by reading the code):
   least one answer row") are two different lenses on the same underlying gap — the real DoD needs
   both: a full-marks-possible quiz with a zero-answer submission must show `0 / <real max>`, and a
   quiz with a genuinely ungraded item must still show "needs manual grading" for that item.
+
+Refinement (2026-09-21) — discarded, confirmed by reading current code:
+* `client/src/QuizSessionTakePage.tsx`'s `handleNext` now calls `recordCurrentAnswer` (POST
+  `.../answers`) for every item on every Next click, even when nothing was selected
+  (`responses: null`). A real student who reaches final submit without answering anything still
+  gets one `quiz_session_answers` row per item, each with its item's true `maxScore`
+  (`item.supported ? 1 : 0`) — so `results.connections[i].maxScore` is always the quiz's real
+  total for any connection reached through the actual take-page UI. The client's display
+  condition (`hasUngraded && maxScore === 0`) can no longer be true for that path, so "needs
+  manual grading" cannot appear for a fully-auto-gradable quiz through real usage. This appears to
+  postdate the 2026-09-20 grooming pass that filed this bug.
+* The one remaining case that still yields `maxScore: 0, hasUngraded: false` (displayed as
+  `0 / 0`, not "needs manual grading") is a connection whose `submit` is called with zero prior
+  answer rows — reachable today only by calling the submit API directly, bypassing the real
+  take-page flow entirely. `server/src/routes/quizSessions.test.ts:807`
+  ("includes a genuine zero-answer submission as a real result, not excluded
+  (QUIZ-CONNECTION-INTEGRITY-001)") already asserts `0 / 0` as the *expected*, committed result
+  for exactly that case — not filed as a bug by the story that added it.
+* Discarded rather than kept/rescoped: the human's call, given the original defect (the literal
+  "needs manual grading" text for a real student's empty submission) is not reachable through the
+  product's actual UI today.

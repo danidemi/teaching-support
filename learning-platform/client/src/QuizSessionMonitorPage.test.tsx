@@ -29,6 +29,7 @@ function stubFetch(handlers: {
   startStatus?: number
   stopStatus?: number
   results?: object | null
+  answerBreakdown?: object | null
 }) {
   let session = handlers.session
   vi.stubGlobal(
@@ -56,6 +57,11 @@ function stubFetch(handlers: {
       if (url.endsWith('/results')) {
         return handlers.results
           ? Promise.resolve({ status: 200, json: () => Promise.resolve(handlers.results) })
+          : Promise.resolve({ status: 409, json: () => Promise.resolve({ error: 'results_not_available' }) })
+      }
+      if (url.endsWith('/answer-breakdown')) {
+        return handlers.answerBreakdown
+          ? Promise.resolve({ status: 200, json: () => Promise.resolve(handlers.answerBreakdown) })
           : Promise.resolve({ status: 409, json: () => Promise.resolve({ error: 'results_not_available' }) })
       }
       if (url.match(/^\/api\/quiz-sessions\/[^/]+$/)) {
@@ -257,6 +263,62 @@ describe('QuizSessionMonitorPage (QUIZ-SESSION-CONTROL-001)', () => {
     await waitFor(() => expect(screen.getByTestId('block-3-results')).toBeInTheDocument())
     expect(screen.getByTestId('block-3-results')).toHaveTextContent('0 / 0')
     expect(screen.getByTestId('block-3-results')).not.toHaveTextContent('needs manual grading')
+  })
+
+  it('shows Block #4 answer breakdown once stopped, marking the correct option and a no-answer row (QUIZ-CLASS-REVIEW-001)', async () => {
+    stubFetch({
+      me: SIGNED_IN_USER,
+      session: { ...BASE_SESSION, status: 'stopped', joinedCount: 3, submittedCount: 3 },
+      results: { connections: [], classAverage: null },
+      answerBreakdown: {
+        items: [
+          {
+            itemIdentifier: 'single-choice-basic',
+            prompt: 'Capital of France?',
+            buckets: [
+              { label: 'Berlin', count: 1, isCorrect: false },
+              { label: 'Paris', count: 1, isCorrect: true },
+            ],
+            noAnswerCount: 1,
+          },
+        ],
+      },
+    })
+    renderAt('session-1')
+
+    const block = await screen.findByTestId('block-4-answer-breakdown')
+    expect(block).toHaveTextContent('Capital of France?')
+    expect(block).toHaveTextContent('Berlin')
+    expect(block).toHaveTextContent('Paris')
+    expect(block).toHaveTextContent('No answer')
+    expect(screen.getByLabelText('correct answer')).toBeInTheDocument()
+  })
+
+  it('renders a multi-question breakdown, one section per item', async () => {
+    stubFetch({
+      me: SIGNED_IN_USER,
+      session: { ...BASE_SESSION, status: 'stopped', joinedCount: 2, submittedCount: 2 },
+      results: { connections: [], classAverage: null },
+      answerBreakdown: {
+        items: [
+          { itemIdentifier: 'item-1', prompt: 'Question 1', buckets: [{ label: 'A', count: 2, isCorrect: true }], noAnswerCount: 0 },
+          { itemIdentifier: 'item-2', prompt: 'Question 2', buckets: [{ label: 'Rome', count: 1, isCorrect: true }, { label: 'Milan', count: 1, isCorrect: false }], noAnswerCount: 0 },
+        ],
+      },
+    })
+    renderAt('session-1')
+
+    await waitFor(() => expect(screen.getByTestId('item-breakdown-item-1')).toBeInTheDocument())
+    expect(screen.getByTestId('item-breakdown-item-2')).toBeInTheDocument()
+    expect(screen.getByTestId('item-breakdown-item-1')).toHaveTextContent('Question 1')
+    expect(screen.getByTestId('item-breakdown-item-2')).toHaveTextContent('Question 2')
+  })
+
+  it('does not show Block #4 before the session is stopped', async () => {
+    stubFetch({ me: SIGNED_IN_USER, session: { ...BASE_SESSION, status: 'running', closesAt: '2026-08-23T13:00:00Z' } })
+    renderAt('session-1')
+    await waitFor(() => expect(screen.getByTestId('block-2-live-status')).toBeInTheDocument())
+    expect(screen.queryByTestId('block-4-answer-breakdown')).not.toBeInTheDocument()
   })
 
   it('does not show Block #3 before the session is stopped', async () => {

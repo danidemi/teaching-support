@@ -121,3 +121,20 @@ Newest entries at the bottom.
   browser/screenshot tooling is available (per the `sprint_26_08_23_12_32` DON'T — don't
   assume it's missing without checking) and take the screenshot as part of
   implementation, not as a deferred note.
+
+## sprint_26_09_21_19_34
+
+* **DO** verify GUI-touching stories with a real-browser (Playwright/Chromium) screenshot against
+  live/mocked data, not just component tests. QUIZ-CLASS-REVIEW-001's rendered screenshot is what
+  surfaced the missing question-text bug — `data-testid` presence checks in the component tests
+  would never have caught it, since the prompt field was simply empty/undefined rather than absent
+  from the DOM.
+* **DON'T** write a unit test fixture that encodes the same wrong assumption as the code under
+  test, instead of checking it against how the data is actually produced in this codebase.
+  QUIZ-CLASS-REVIEW-001's original prompt test injected `<qti-prompt>` directly under
+  `<qti-item-body>`, which isn't how any real authored item or existing QTI sample fixture places
+  it (always nested inside the interaction element) — so the test passed while the feature was
+  broken for every real item, and the bug only surfaced when a human looked at the actual
+  screenshot. Before writing a fixture for a parsed format already used elsewhere in the repo
+  (QTI XML, stored JSON shapes, etc.), check an existing real sample/fixture for the true shape
+  rather than inventing one that merely satisfies the code being tested.
