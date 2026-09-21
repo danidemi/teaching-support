@@ -12,3 +12,4 @@ This multi-repo is several things at once:
 4. **SCRUM management folders** (`learning-software-spec`), a series of folders that try to make you write code following a SCRUM workflow. Based on the SCRUM there, other source is being generated.
 5. **Literature** (`learning-literature`), folder generally reserved to human for documentation about topics that are important for the project. Don't access them unless explicitly told.
 6. **Tools** (`learning-tools`), a series of tools used across the project.
+

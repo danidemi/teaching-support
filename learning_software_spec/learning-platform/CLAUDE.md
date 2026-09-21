@@ -11,3 +11,11 @@ Applies to all development carried out during a sprint on this project:
 - Use language best practices.
 - Write unit tests using the given / when / then pattern.
 - Ensure existing automatic unit tests keep passing alongside any new ones.
+
+## Drizzle migration naming
+
+Files in `../../learning-platform/server/drizzle/` are named `<seq>_<description>.sql`, e.g. `0020_new_traffic_view.sql`. Keep the zero-padded numeric prefix (drizzle-kit uses it for execution order); the suffix must describe what the migration does, not an invented phrase.
+
+When generating a new migration, pass `--name`: `npx drizzle-kit generate --name <description>` (run from `learning-platform/server`). Do not accept drizzle-kit's random default name.
+
+If a migration file is renamed after the fact, update the matching `tag` entry in `drizzle/meta/_journal.json` to keep it in sync.
