@@ -25,10 +25,14 @@ Once located, the SCRUM root is organized like this:
 
 - `references/`
   - `vision.md` — the project vision; stays constant during development.
-  - `tech_references.md` — where the source lives, stack notes, and other constant tech facts.
+  - `tech_reference.md` — where the source lives, stack notes, and other constant tech facts.
   - `do_and_donts.md` — running log of process decisions from retrospectives. Read before backlog
     refinement and before development; obey what's in there. Append only, never rewrite past
     entries. Keep it short and compact it if it grows too large (see activity 5).
+  - `ubiquitous_language.md` — short glossary of the project's domain vocabulary (concepts, roles,
+    actions, screens, named UI components), with `ul/<slug>.md` files for overflow definitions.
+    Read it at the start of every activity below and use its canonical terms; see
+    `activities/0-ubiquitous-language.md` for how it's built and kept up to date.
 - `backlog/` — Product Backlog Items (PBIs) not yet scheduled, plus templates named
   `_<kind>.template.md` (e.g. `_bug.template.md`, `_story.template.md`, `_task.template.md`).
 - `active_sprint/` — PBIs being developed in the current sprint.
@@ -47,9 +51,11 @@ If asked to set this process up in a project that doesn't have this structure ye
 2. Create the five folders above.
 3. Copy `templates/_bug.template.md`, `templates/_story.template.md`, `templates/_task.template.md` from this skill into the
    new project's `backlog/`.
-4. Create empty `references/vision.md`, `references/tech_references.md`, and
-   `references/do_and_donts.md`, and interview the human briefly to seed `vision.md` and
-   `tech_references.md` (at minimum: what the project is, who it's for, where the code lives).
+4. Create empty `references/vision.md`, `references/tech_reference.md`,
+   `references/do_and_donts.md`, and `references/ubiquitous_language.md` (header only, see
+   `activities/0-ubiquitous-language.md`), and interview the human briefly to seed `vision.md` and
+   `tech_reference.md` (at minimum: what the project is, who it's for, where the code lives). The
+   glossary itself stays empty until there are real PBIs to extract terms from.
 5. Do not invent ADRs or PBIs — only create structure and the templates.
 
 ## Status check
@@ -83,6 +89,7 @@ for detail.
 Each activity is a separate file — load only the one you're about to run, don't load all of them
 up front:
 
+0. `activities/0-ubiquitous-language.md` — extract/maintain the domain glossary.
 1. `activities/1-backlog-refinement.md` — turn PBIs into Definition-of-Ready items.
 2. `activities/2-sprint-planning.md` — pick PBIs for the sprint, plan how to build them, write ADRs.
 3. `activities/3-sprint.md` — develop the sprint's PBIs.

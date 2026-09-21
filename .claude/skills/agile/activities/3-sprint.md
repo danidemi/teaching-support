@@ -2,8 +2,12 @@
 
 Goal: develop the PBIs in `active_sprint/`.
 
-Read `references/tech_references.md` first — it says where the actual source tree lives, which
+Read `references/tech_reference.md` first — it says where the actual source tree lives, which
 may not be the same folder as the SCRUM root (e.g. spec and code kept in separate trees).
+
+Use the canonical terms from `references/ubiquitous_language.md` when naming things in code,
+comments, or discussion — but never rename existing code identifiers just to match the glossary;
+the glossary governs spec prose, not enforced code style.
 
 Develop each PBI along these guidelines:
 

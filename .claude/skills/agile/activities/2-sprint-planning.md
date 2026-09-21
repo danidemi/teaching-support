@@ -2,6 +2,8 @@
 
 Goal: decide with the human which PBIs to work on, then plan how each will be implemented.
 
+Use the canonical terms from `references/ubiquitous_language.md` in plans and ADRs.
+
 ## Selecting PBIs
 
 - Prefer the smallest possible subset. A single, complex PBI is a perfectly good sprint.

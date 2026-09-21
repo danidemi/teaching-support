@@ -16,6 +16,12 @@ Then archive: move all `DONE` PBIs into a new `past_sprints/sprint_<YY_MM_DD_HH_
 during the sprint.
 
 
+## Updating the ubiquitous language
+
+After archiving, run a light pass of `activities/0-ubiquitous-language.md` over what was
+added/changed this sprint — new concepts, roles, screens, or components introduced by the PBIs
+just closed. Don't do a full project-wide extraction here.
+
 ## Gathering new PBIs
 
 Propose the human to collect new PBIs using `X-new-pbi.md` activity.

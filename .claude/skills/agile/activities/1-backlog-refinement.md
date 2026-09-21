@@ -4,7 +4,16 @@ Goal: help the human prepare upcoming PBIs so they are clear, manageable, and ac
 Sprint Planning. You can add whatever fields a PBI needs — never invent requirements or facts that
 weren't given.
 
-Read `references/do_and_donts.md` first and obey what's in there.
+Read `references/do_and_donts.md` and `references/ubiquitous_language.md` first and obey/use
+what's in there.
+
+## Using the ubiquitous language
+
+When a PBI (or the human, describing one) uses a name that doesn't match a glossary lemma or one
+of its `aka:` aliases, propose rephrasing it with the canonical term instead of leaving both
+wordings in play. If the human confirms it's actually a new concept, add it to the glossary (see
+`activities/0-ubiquitous-language.md`) rather than letting an undocumented synonym spread through
+the backlog.
 
 ## Definition of Ready (DoR)
 

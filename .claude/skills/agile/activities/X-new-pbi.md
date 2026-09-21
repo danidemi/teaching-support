@@ -2,6 +2,11 @@
 
 Goal: gather what should be added in the backlog.
 
+Read `references/ubiquitous_language.md` first. When the human names a concept, role, screen, or
+action, match it against the glossary and its `aka:` aliases; if their wording doesn't match,
+propose the canonical term. If it's genuinely new, confirm with the human, then add it to the
+glossary per `activities/0-ubiquitous-language.md`.
+
 ## Interview
 
 Interview the human to collect new PBIs for the backlog:
