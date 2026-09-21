@@ -1,10 +1,10 @@
 ID: TESTDATA-001
 
-Status: DRAFT
+Status: READY
 
 Priority: Medium
 
-Effort: [to be estimated in Sprint Planning]
+Effort: 3
 
 As:
 a `human tester`

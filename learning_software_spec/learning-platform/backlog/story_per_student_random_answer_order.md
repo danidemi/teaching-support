@@ -1,13 +1,17 @@
 ID: QUIZ-RANDOM-ANSWER-ORDER-001
 
-Status: DRAFT
+Status: READY
 
 Priority: Medium
 
-Effort: [to be estimated in Sprint Planning]
+Effort: 5
+
+Note: shares implementation ground with `QUIZ-RANDOM-QUESTION-ORDER-001` (per-student
+randomization at session-start, similar attribution requirements for scoring/breakdown/monitoring).
+Kept as a separate PBI, but plan both into the same sprint if either is picked.
 
 As:
-a `teacher`
+a `trainer`
 
 I want to:
 choose, when starting a quiz session, whether each student receives the answer choices of each
@@ -20,9 +24,9 @@ the same answer position at the same time, while I can still disable this when a
 matters (e.g. ordered-list questions or answers meant to be read in a specific sequence)
 
 Definition of Done:
-* when starting a quiz session, the teacher can turn "random answer order per student" on or off,
+* when starting a quiz session, the trainer can turn "random answer order per student" on or off,
   independently of the question-order setting
-* the setting defaults to off (preserves current answer-order behavior unless the teacher opts in)
+* the setting defaults to off (preserves current answer-order behavior unless the trainer opts in)
 * when on, each connected student is independently assigned a shuffled order of choices for each
   applicable question; two students are not guaranteed (and in practice unlikely) to see the same
   order

@@ -1,6 +1,10 @@
 ID: BUG-ANSWER-BREAKDOWN-BAR-MISALIGN
 
-Status: DRAFT
+Status: READY
+
+Priority: Low
+
+Effort: 1
 
 Steps To Reproduce:
 1. As a trainer, stop a quiz session and open the Answer Breakdown block
@@ -33,3 +37,12 @@ per bucket:
 ```
 The `Check` icon is an optional flex sibling with no reserved width, so rows with `bucket.isCorrect`
 get an extra ~20px pushed onto the label + bar that rows without it don't have.
+
+Definition of Done:
+* every option row's label and bar start at the same horizontal position, whether or not that
+  option is marked correct, for both single-answer and multi-select items
+* the correct-option checkmark renders in its own fixed-width column instead of pushing sibling
+  elements
+* verified with a real-browser (Playwright/Chromium) screenshot of the Answer Breakdown block for
+  an item with at least one correct and one incorrect option, per the standing DO from
+  `sprint_26_09_21_19_34`

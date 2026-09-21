@@ -1,13 +1,17 @@
 ID: QUIZ-RANDOM-QUESTION-ORDER-001
 
-Status: DRAFT
+Status: READY
 
 Priority: Medium
 
-Effort: [to be estimated in Sprint Planning]
+Effort: 5
+
+Note: shares implementation ground with `QUIZ-RANDOM-ANSWER-ORDER-001` (per-student
+randomization at session-start, similar attribution requirements for scoring/breakdown/monitoring).
+Kept as a separate PBI, but plan both into the same sprint if either is picked.
 
 As:
-a `teacher`
+a `trainer`
 
 I want to:
 choose, when starting a quiz session, whether each student receives the session's questions in a
@@ -20,8 +24,8 @@ the same question at the same time, while I can still disable this when question
 (e.g. for scaffolded quizzes where later questions build on earlier ones)
 
 Definition of Done:
-* when starting a quiz session, the teacher can turn "random question order per student" on or off
-* the setting defaults to off (preserves current fixed-order behavior unless the teacher opts in)
+* when starting a quiz session, the trainer can turn "random question order per student" on or off
+* the setting defaults to off (preserves current fixed-order behavior unless the trainer opts in)
 * when on, each connected student is independently assigned a shuffled order of the session's
   questions; two students are not guaranteed (and in practice unlikely) to see the same order
 * when off, all students see the questions in the session's authored order, as today
