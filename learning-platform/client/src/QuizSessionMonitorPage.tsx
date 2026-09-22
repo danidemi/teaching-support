@@ -366,7 +366,9 @@ function QuizSessionMonitorPage() {
                         <ul className="flex flex-col gap-1">
                           {item.buckets.map((bucket) => (
                             <li key={bucket.label} className="flex items-center gap-2 text-sm">
-                              {bucket.isCorrect && <Check className="size-4 shrink-0 text-brass" aria-label="correct answer" />}
+                              <span className="w-4 shrink-0">
+                                {bucket.isCorrect && <Check className="size-4 shrink-0 text-brass" aria-label="correct answer" />}
+                              </span>
                               <span className={bucket.isCorrect ? 'w-32 shrink-0 font-medium text-ink' : 'w-32 shrink-0 text-ink/70'}>{bucket.label}</span>
                               <div className="h-2 flex-1 rounded bg-ink-50">
                                 <div

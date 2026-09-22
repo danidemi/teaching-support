@@ -324,6 +324,41 @@ describe('QuizSessionMonitorPage (QUIZ-SESSION-CONTROL-001)', () => {
     expect(screen.getByTestId('item-breakdown-item-2')).toHaveTextContent('Question 2')
   })
 
+  it('shows real per-option counts for a multi-select item and left-aligns bars regardless of correctness (BUG-ANSWER-BREAKDOWN-MULTISELECT, BUG-ANSWER-BREAKDOWN-BAR-MISALIGN)', async () => {
+    stubFetch({
+      me: SIGNED_IN_USER,
+      session: { ...BASE_SESSION, status: 'stopped', joinedCount: 3, submittedCount: 3 },
+      results: { connections: [], classAverage: null },
+      answerBreakdown: {
+        items: [
+          {
+            itemIdentifier: 'multi-select-primes',
+            prompt: 'Which of the following are prime?',
+            buckets: [
+              { label: '2', count: 3, isCorrect: true },
+              { label: '4', count: 1, isCorrect: false },
+              { label: '7', count: 2, isCorrect: true },
+              { label: '9', count: 0, isCorrect: false },
+            ],
+            noAnswerCount: 0,
+            respondentCount: 3,
+          },
+        ],
+      },
+    })
+    renderAt('session-1')
+
+    const block = await screen.findByTestId('block-4-answer-breakdown')
+    // real per-option counts show, not zero
+    expect(block).toHaveTextContent('2')
+    expect(block).toHaveTextContent('7')
+
+    // every row's checkmark column has the same fixed width, whether or not it holds a checkmark
+    const rows = block.querySelectorAll('ul > li')
+    const firstChildWidths = new Set(Array.from(rows).map((row) => (row.firstElementChild as HTMLElement).className))
+    expect(firstChildWidths.size).toBe(1)
+  })
+
   it('does not show Block #4 before the session is stopped', async () => {
     stubFetch({ me: SIGNED_IN_USER, session: { ...BASE_SESSION, status: 'running', closesAt: '2026-08-23T13:00:00Z' } })
     renderAt('session-1')
