@@ -381,6 +381,7 @@ function QuizSessionMonitorPage() {
                           ))}
                           {item.noAnswerCount > 0 && (
                             <li className="flex items-center gap-2 text-sm text-ink/50">
+                              <span className="w-4 shrink-0" />
                               <span className="flex-1">No answer</span>
                               <span className="w-6 text-right">{item.noAnswerCount}</span>
                             </li>
