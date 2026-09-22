@@ -103,30 +103,53 @@ test('a shuffled item renders correctly, and two students in the same session ge
   expect(identifiersA).toEqual(identifiersB)
   expect(identifiersA).toEqual(['choice-shuffle-false', 'choice-shuffle-true', 'question-a', 'question-b', 'question-c', 'question-d'].sort())
 
-  // The shuffled choice item's served choice order actually differs from
-  // authored order in at least one of the two connections, OR both landed
-  // on the same permutation by chance — either way, the served XML must
-  // still render as real radio inputs, one per authored choice, with no
-  // rendering breakage from the round-tripped XML (the point of this
-  // real-browser check).
-  async function findShuffledItem(studentPage: typeof studentA, body: { items: { identifier: string; path: string }[] }) {
+  // Navigate a student to the served choice-shuffle-true item, waiting for
+  // each question-counter transition before clicking Next again (rather
+  // than firing every click back to back, which risks double-posting an
+  // answer against the same in-flight item).
+  async function goToShuffledItem(studentPage: typeof studentA, body: { items: { identifier: string; path: string; xml: string }[] }) {
+    const totalItems = body.items.length
     const targetIndex = body.items.findIndex((item) => item.identifier === 'choice-shuffle-true')
     expect(targetIndex).toBeGreaterThanOrEqual(0)
-    for (let i = 0; i <= targetIndex; i++) {
-      if (i > 0) await studentPage.getByRole('button', { name: /^next$/i }).click()
+    await expect(studentPage.getByTestId('quiz-question')).toContainText(`Question 1 of ${totalItems}`)
+    for (let i = 0; i < targetIndex; i++) {
+      await studentPage.getByRole('button', { name: /^next$/i }).click()
+      await expect(studentPage.getByTestId('quiz-question')).toContainText(`Question ${i + 2} of ${totalItems}`)
     }
-    return targetIndex
+    return body.items[targetIndex].xml
   }
 
-  await findShuffledItem(studentA, bodyA)
-  await studentA.waitForSelector('[data-testid="quiz-question"] input[type="radio"]')
-  const inputsA = studentA.locator('[data-testid="quiz-question"] input[type="radio"]')
-  await expect(inputsA).toHaveCount(4)
+  // Extracts each qti-simple-choice's label text, in the SERVED XML's own
+  // order — this is what the DoD's "the shuffled choices actually appear,
+  // in the served order" is checked against, independent of how the
+  // player happens to lay out its DOM.
+  function servedChoiceLabelsInOrder(xml: string): string[] {
+    return Array.from(xml.matchAll(/<qti-simple-choice[^>]*>([^<]*)<\/qti-simple-choice>/g), (m) => m[1])
+  }
 
-  await findShuffledItem(studentB, bodyB)
-  await studentB.waitForSelector('[data-testid="quiz-question"] input[type="radio"]')
-  const inputsB = studentB.locator('[data-testid="quiz-question"] input[type="radio"]')
-  await expect(inputsB).toHaveCount(4)
+  async function assertRendersInServedOrder(studentPage: typeof studentA, servedXml: string) {
+    await studentPage.waitForSelector('[data-testid="quiz-question"] input[type="radio"]')
+    const inputs = studentPage.locator('[data-testid="quiz-question"] input[type="radio"]')
+    // One real radio input per authored choice — no rendering breakage
+    // from the round-tripped XML.
+    await expect(inputs).toHaveCount(4)
+
+    const labels = servedChoiceLabelsInOrder(servedXml)
+    expect(labels).toHaveLength(4)
+    const rendered = await studentPage.getByTestId('quiz-question').innerText()
+    // The four labels ("Option A".."Option D") are distinct strings, so
+    // their positions in the rendered text can't collide — asserting
+    // strictly increasing indexOf proves they appear in the served order.
+    const positions = labels.map((label) => rendered.indexOf(label))
+    for (const position of positions) expect(position).toBeGreaterThanOrEqual(0)
+    for (let i = 1; i < positions.length; i++) expect(positions[i]).toBeGreaterThan(positions[i - 1])
+  }
+
+  const servedXmlA = await goToShuffledItem(studentA, bodyA)
+  await assertRendersInServedOrder(studentA, servedXmlA)
+
+  const servedXmlB = await goToShuffledItem(studentB, bodyB)
+  await assertRendersInServedOrder(studentB, servedXmlB)
 
   await contextA.close()
   await contextB.close()

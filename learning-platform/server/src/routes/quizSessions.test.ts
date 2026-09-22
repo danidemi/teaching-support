@@ -705,7 +705,7 @@ describe('GET /api/quiz-sessions/:sessionId/connections/:connectionId/items (QUI
   })
 
   it("is stable across repeated fetches for the same connection (the DoD's 'generated once, persisted' requirement)", async () => {
-    const { app, users } = createTestApp()
+    const { app, users, quizSessionConnections } = createTestApp()
     const agent = await signInAgent(users, app, 'trainer@example.com')
     const sessionId = await createRunningPackageSession(agent, zipOf(shuffledPackageEntries()), { forceShuffleQuestions: true, forceShuffleAnswers: true })
     const connectionId = await join(app, sessionId)
@@ -715,9 +715,16 @@ describe('GET /api/quiz-sessions/:sessionId/connections/:connectionId/items (QUI
 
     expect(first.body.items.map((i: { identifier: string }) => i.identifier)).toEqual(second.body.items.map((i: { identifier: string }) => i.identifier))
     expect(first.body.items).toEqual(second.body.items)
+
+    // and: the persisted row itself carries that same order — proving
+    // "persisted", not just "the handler happens to return the same thing
+    // twice" (e.g. if generation were idempotent by coincidence).
+    const persistedRow = quizSessionConnections.rows.find((row) => row.id === connectionId)
+    expect(persistedRow?.itemOrder).not.toBeNull()
+    expect(persistedRow?.itemOrder).toEqual(first.body.items.map((i: { identifier: string }) => i.identifier))
   })
 
-  it('two concurrent first-fetches for the same connection persist and serve only one generated order (double-fired-mount-effect safety)', async () => {
+  it('two concurrent first-fetches for the same connection return identical items (the atomic setOrderIfUnset write is proven separately, at the db layer, against real Postgres — not exercisable with this in-process fake)', async () => {
     const { app, users } = createTestApp()
     const agent = await signInAgent(users, app, 'trainer@example.com')
     const sessionId = await createRunningPackageSession(agent, zipOf(shuffledPackageEntries()), { forceShuffleQuestions: true, forceShuffleAnswers: true })

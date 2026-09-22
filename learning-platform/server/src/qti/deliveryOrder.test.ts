@@ -67,6 +67,16 @@ describe('resolveDeliveryOrder / applyDeliveryOrder (QUIZ-SESSION-PER-STUDENT-DE
     expect(fixedSlice).toEqual(['question-d', 'question-c'])
   })
 
+  it('question order: force on ALSO reorders an authored shuffle="true" section (the fourth combination)', () => {
+    const items = resolveQuizItems(loadFiles())
+    const testXml = testXmlOf(loadFiles())
+
+    const order = resolveDeliveryOrder(items, testXml, true, false, DETERMINISTIC_RANDOM)
+
+    const shuffledSlice = order.itemOrder.filter((id) => id === 'question-a' || id === 'question-b')
+    expect(shuffledSlice).toEqual(['question-b', 'question-a'])
+  })
+
   it('question order: force off leaves every section following its own attribute, sections in document order', () => {
     const items = resolveQuizItems(loadFiles())
     const testXml = testXmlOf(loadFiles())
@@ -101,6 +111,13 @@ describe('resolveDeliveryOrder / applyDeliveryOrder (QUIZ-SESSION-PER-STUDENT-DE
     const order = resolveDeliveryOrder(items, null, false, true, DETERMINISTIC_RANDOM)
 
     expect(order.choiceOrder['choice-shuffle-false']).toEqual(['csf_choice_b', 'csf_choice_c', 'csf_choice_d', 'csf_choice_a'])
+  })
+
+  it('choice order: force on ALSO shuffles an authored shuffle="true" item (the fourth combination)', () => {
+    const items = resolveQuizItems(loadFiles())
+    const order = resolveDeliveryOrder(items, null, false, true, DETERMINISTIC_RANDOM)
+
+    expect(order.choiceOrder['choice-shuffle-true']).toEqual(['cst_choice_b', 'cst_choice_c', 'cst_choice_d', 'cst_choice_a'])
   })
 
   it('choice order: force off + authored shuffle="false" leaves an unsupported/no-interaction item alone', () => {
