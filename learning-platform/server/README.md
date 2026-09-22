@@ -14,11 +14,28 @@ npm run db:seed
 
 from this `server/` directory.
 
-**Before running it**, the server must already be up and running (see
-`../README.md`'s "Run" section for how to start it with `npm run db:up`
-then `npm start`/`npm run dev`), and its `.env` must have
-`EXPEDITE_SIGNUP_ENABLED=true` (this is already the default in
-`.env.example`).
+**Before running it**, the server must already be up and running, with
+`EXPEDITE_SIGNUP_ENABLED=true` set (this is what lets the script create
+the two accounts below without needing to read a confirmation email).
+
+The easiest way to get there is the same script used for human-led UAT —
+from the `learning-platform/` folder (one level up from here):
+
+```bash
+./scripts/uat.sh
+```
+
+This brings up Postgres, builds and starts the server (creating
+`server/.env` from `server/.env.example` for you if it's missing — that
+file already has `EXPEDITE_SIGNUP_ENABLED=true`), and leaves it running in
+that terminal. Once it prints `learning-platform server listening on port
+3000`, open a **second terminal** and, from this `server/` directory, run
+`npm run db:seed`.
+
+If you're instead running the server some other way (`npm run dev`, etc.),
+make sure `server/.env` exists (`cp .env.example .env` if it doesn't) and
+that `EXPEDITE_SIGNUP_ENABLED=true` is set in it before starting the
+server.
 
 **What it creates:**
 

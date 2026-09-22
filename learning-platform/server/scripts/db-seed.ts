@@ -1,7 +1,18 @@
 import 'dotenv/config'
-import { inArray, like } from 'drizzle-orm'
+import { inArray, like, sql } from 'drizzle-orm'
 import { createDb } from '../src/db/client.js'
-import { users, tenants, courses, quizzes, quizFiles, quizSessions, quizSessionConnections, quizSessionAnswers, confirmationTokens } from '../src/db/schema.js'
+import {
+  users,
+  tenants,
+  courses,
+  quizzes,
+  quizFiles,
+  quizSessions,
+  quizSessionConnections,
+  quizSessionAnswers,
+  confirmationTokens,
+  sessions,
+} from '../src/db/schema.js'
 import { validPackageZip } from '../test-fixtures/qti-samples/buildPackage.js'
 
 /**
@@ -110,66 +121,100 @@ function expect(result: HttpResult, expectedStatus: number, step: string): HttpR
  * (tenant, courses, quizzes, sessions, connections, answers) — nothing
  * outside that domain is ever touched. Bottom-up, respecting the
  * (unenforced-by-cascade) foreign keys in `db/schema.ts`.
+ *
+ * Two things beyond a plain "find seed users, cascade from there":
+ *
+ * - Tenants are also looked up by *name* (`tenants.ensureCurrentTenant`
+ *   derives it from the owning email, e.g. `trainer1@seed.local's
+ *   workspace`), not only by following `users.currentTenantId` — a run
+ *   interrupted after deleting a seed user but before its tenant would
+ *   otherwise leave that tenant orphaned forever, and on the next run
+ *   `ensureCurrentTenant`'s unique-name insert would collide with it and
+ *   raise instead of recovering (its own recovery path only handles a
+ *   racing *insert*, not a pre-existing orphan). Matching by name closes
+ *   that gap without needing this script to never crash.
+ * - Every step runs in one transaction, so a failure partway through
+ *   leaves either the fully-old or the fully-cleaned state, never a
+ *   half-deleted one that the next run's queries above would misread.
  */
 async function cleanupSeedData(db: ReturnType<typeof createDb>['db']) {
-  const seedUsers = await db
-    .select({ id: users.id, currentTenantId: users.currentTenantId })
-    .from(users)
-    .where(like(users.email, `%${SEED_EMAIL_DOMAIN}`))
+  await db.transaction(async (tx) => {
+    const seedUsers = await tx
+      .select({ id: users.id, currentTenantId: users.currentTenantId })
+      .from(users)
+      .where(like(users.email, `%${SEED_EMAIL_DOMAIN}`))
 
-  const userIds = seedUsers.map((u) => u.id)
-  const tenantIds = seedUsers.map((u) => u.currentTenantId).filter((id): id is string => id !== null)
+    const seedTenantsByName = await tx
+      .select({ id: tenants.id })
+      .from(tenants)
+      .where(like(tenants.name, `%${SEED_EMAIL_DOMAIN}%`))
 
-  let courseIds: string[] = []
-  if (tenantIds.length > 0) {
-    const seedCourses = await db.select({ id: courses.id }).from(courses).where(inArray(courses.tenantId, tenantIds))
-    courseIds = seedCourses.map((c) => c.id)
-  }
+    const userIds = seedUsers.map((u) => u.id)
+    const tenantIds = [
+      ...new Set([...seedUsers.map((u) => u.currentTenantId).filter((id): id is string => id !== null), ...seedTenantsByName.map((t) => t.id)]),
+    ]
 
-  let quizIds: string[] = []
-  if (courseIds.length > 0) {
-    const seedQuizzes = await db.select({ id: quizzes.id }).from(quizzes).where(inArray(quizzes.courseId, courseIds))
-    quizIds = seedQuizzes.map((q) => q.id)
-  }
+    let courseIds: string[] = []
+    if (tenantIds.length > 0) {
+      const seedCourses = await tx.select({ id: courses.id }).from(courses).where(inArray(courses.tenantId, tenantIds))
+      courseIds = seedCourses.map((c) => c.id)
+    }
 
-  let sessionIds: string[] = []
-  if (quizIds.length > 0) {
-    const seedSessions = await db.select({ id: quizSessions.id }).from(quizSessions).where(inArray(quizSessions.quizId, quizIds))
-    sessionIds = seedSessions.map((s) => s.id)
-  }
+    let quizIds: string[] = []
+    if (courseIds.length > 0) {
+      const seedQuizzes = await tx.select({ id: quizzes.id }).from(quizzes).where(inArray(quizzes.courseId, courseIds))
+      quizIds = seedQuizzes.map((q) => q.id)
+    }
 
-  let connectionIds: string[] = []
-  if (sessionIds.length > 0) {
-    const seedConnections = await db
-      .select({ id: quizSessionConnections.id })
-      .from(quizSessionConnections)
-      .where(inArray(quizSessionConnections.sessionId, sessionIds))
-    connectionIds = seedConnections.map((c) => c.id)
-  }
+    let sessionIds: string[] = []
+    if (quizIds.length > 0) {
+      const seedSessions = await tx.select({ id: quizSessions.id }).from(quizSessions).where(inArray(quizSessions.quizId, quizIds))
+      sessionIds = seedSessions.map((s) => s.id)
+    }
 
-  if (connectionIds.length > 0) {
-    await db.delete(quizSessionAnswers).where(inArray(quizSessionAnswers.connectionId, connectionIds))
-  }
-  if (sessionIds.length > 0) {
-    await db.delete(quizSessionConnections).where(inArray(quizSessionConnections.sessionId, sessionIds))
-    await db.delete(quizSessions).where(inArray(quizSessions.quizId, quizIds))
-  }
-  if (quizIds.length > 0) {
-    await db.delete(quizFiles).where(inArray(quizFiles.quizId, quizIds))
-    await db.delete(quizzes).where(inArray(quizzes.courseId, courseIds))
-  }
-  if (courseIds.length > 0) {
-    await db.delete(courses).where(inArray(courses.tenantId, tenantIds))
-  }
-  if (userIds.length > 0) {
-    await db.delete(confirmationTokens).where(inArray(confirmationTokens.userId, userIds))
-  }
-  await db.delete(users).where(like(users.email, `%${SEED_EMAIL_DOMAIN}`))
-  if (tenantIds.length > 0) {
-    await db.delete(tenants).where(inArray(tenants.id, tenantIds))
-  }
+    let connectionIds: string[] = []
+    if (sessionIds.length > 0) {
+      const seedConnections = await tx
+        .select({ id: quizSessionConnections.id })
+        .from(quizSessionConnections)
+        .where(inArray(quizSessionConnections.sessionId, sessionIds))
+      connectionIds = seedConnections.map((c) => c.id)
+    }
 
-  console.log(`cleaned up previous seed data: ${userIds.length} user(s), ${courseIds.length} course(s), ${quizIds.length} quiz(zes), ${sessionIds.length} session(s)`)
+    if (connectionIds.length > 0) {
+      await tx.delete(quizSessionAnswers).where(inArray(quizSessionAnswers.connectionId, connectionIds))
+    }
+    if (sessionIds.length > 0) {
+      await tx.delete(quizSessionConnections).where(inArray(quizSessionConnections.sessionId, sessionIds))
+      await tx.delete(quizSessions).where(inArray(quizSessions.quizId, quizIds))
+    }
+    if (quizIds.length > 0) {
+      await tx.delete(quizFiles).where(inArray(quizFiles.quizId, quizIds))
+      await tx.delete(quizzes).where(inArray(quizzes.courseId, courseIds))
+    }
+    if (courseIds.length > 0) {
+      await tx.delete(courses).where(inArray(courses.tenantId, tenantIds))
+    }
+    if (userIds.length > 0) {
+      await tx.delete(confirmationTokens).where(inArray(confirmationTokens.userId, userIds))
+    }
+    await tx.delete(users).where(like(users.email, `%${SEED_EMAIL_DOMAIN}`))
+    if (tenantIds.length > 0) {
+      await tx.delete(tenants).where(inArray(tenants.id, tenantIds))
+    }
+
+    // A browser already signed in as a seed account (express-session, via
+    // connect-pg-simple) still points at the tenant/user just deleted
+    // above — left alone, that tester would see a stale/empty state until
+    // manually logging out. `sess` is a `json` column holding
+    // `{ userEmail, ... }` (login.ts) — matched as text, since `@seed.local`
+    // never needs indexed/structural json querying here.
+    await tx.delete(sessions).where(sql`${sessions.sess}::text ILIKE ${`%${SEED_EMAIL_DOMAIN}%`}`)
+
+    console.log(
+      `cleaned up previous seed data: ${userIds.length} user(s), ${tenantIds.length} tenant(s), ${courseIds.length} course(s), ${quizIds.length} quiz(zes), ${sessionIds.length} session(s)`,
+    )
+  })
 }
 
 async function signupExpedite(baseUrl: string, email: string, password: string) {
