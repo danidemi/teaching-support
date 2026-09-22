@@ -77,7 +77,7 @@ test('a student takes a real multi-item choice-only quiz end to end, and the tra
   await page.getByRole('button', { name: /create session/i }).click()
   await expect(page).toHaveURL(/\/quiz-sessions\/[^/]+$/)
 
-  const takeUrl = await page.locator('p').filter({ hasText: /\/take$/ }).innerText()
+  const takeUrl = await page.getByRole('link', { name: /\/take$/ }).innerText()
 
   // start before the student joins, so the take page finds the session
   // `running` (no polling on that page — the DoD's approved flow is
@@ -132,7 +132,7 @@ test('opening the take-URL before the session starts, or after it stops, shows a
   })
   await page.getByRole('button', { name: /create session/i }).click()
   await expect(page).toHaveURL(/\/quiz-sessions\/[^/]+$/)
-  const takeUrl = await page.locator('p').filter({ hasText: /\/take$/ }).innerText()
+  const takeUrl = await page.getByRole('link', { name: /\/take$/ }).innerText()
 
   const studentContext = await browser.newContext()
   const studentPage = await studentContext.newPage()
