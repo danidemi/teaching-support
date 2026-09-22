@@ -8,6 +8,10 @@ One-line entries. Long definitions live in `ul/<slug>.md`, linked from here.
   and resulting score.
 - **Course** — a collection of quizzes belonging to a tenant, browsable and selectable by a
   trainer.
+- **Force Shuffle** (questions / answers) — a per-session trainer setting that shuffles every
+  applicable question/choice order per student regardless of the item's own authored `shuffle`
+  attribute. Off does not mean "never shuffle" — it means the item/section's own authored
+  `shuffle` attribute decides.
 - **Needs Manual Grading** — the status shown for a connection whose result includes at least one
   question that cannot be automatically scored.
 - **Quiz** — an uploaded QTI package (a single item or a manifest-based package of items) that can
