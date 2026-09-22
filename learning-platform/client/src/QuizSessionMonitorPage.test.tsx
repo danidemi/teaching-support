@@ -280,6 +280,7 @@ describe('QuizSessionMonitorPage (QUIZ-SESSION-CONTROL-001)', () => {
               { label: 'Paris', count: 1, isCorrect: true },
             ],
             noAnswerCount: 1,
+            respondentCount: 2,
           },
         ],
       },
@@ -301,8 +302,17 @@ describe('QuizSessionMonitorPage (QUIZ-SESSION-CONTROL-001)', () => {
       results: { connections: [], classAverage: null },
       answerBreakdown: {
         items: [
-          { itemIdentifier: 'item-1', prompt: 'Question 1', buckets: [{ label: 'A', count: 2, isCorrect: true }], noAnswerCount: 0 },
-          { itemIdentifier: 'item-2', prompt: 'Question 2', buckets: [{ label: 'Rome', count: 1, isCorrect: true }, { label: 'Milan', count: 1, isCorrect: false }], noAnswerCount: 0 },
+          { itemIdentifier: 'item-1', prompt: 'Question 1', buckets: [{ label: 'A', count: 2, isCorrect: true }], noAnswerCount: 0, respondentCount: 2 },
+          {
+            itemIdentifier: 'item-2',
+            prompt: 'Question 2',
+            buckets: [
+              { label: 'Rome', count: 1, isCorrect: true },
+              { label: 'Milan', count: 1, isCorrect: false },
+            ],
+            noAnswerCount: 0,
+            respondentCount: 2,
+          },
         ],
       },
     })

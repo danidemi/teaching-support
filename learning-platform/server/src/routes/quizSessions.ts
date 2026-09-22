@@ -330,8 +330,8 @@ export function createQuizSessionsRouter(
 
       const breakdown = items.map((item) => {
         const responsesPerConnection = perConnectionAnswers.map((rows) => rows.find((row) => row.itemIdentifier === item.identifier)?.responses)
-        const { prompt, buckets, noAnswerCount } = computeAnswerBreakdown(item.xml, responsesPerConnection)
-        return { itemIdentifier: item.identifier, prompt, buckets, noAnswerCount }
+        const { prompt, buckets, noAnswerCount, respondentCount } = computeAnswerBreakdown(item.xml, responsesPerConnection)
+        return { itemIdentifier: item.identifier, prompt, buckets, noAnswerCount, respondentCount }
       })
 
       res.status(200).json({ items: breakdown })

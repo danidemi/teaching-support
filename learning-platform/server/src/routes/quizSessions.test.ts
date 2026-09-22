@@ -900,6 +900,7 @@ describe('GET /api/quiz-sessions/:sessionId/answer-breakdown (QUIZ-CLASS-REVIEW-
           { label: 'Paris', count: 1, isCorrect: true },
         ],
         noAnswerCount: 1,
+        respondentCount: 2,
       },
     ])
   })

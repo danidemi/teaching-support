@@ -10,6 +10,7 @@ export interface ItemAnswerBreakdown {
   prompt: string | undefined
   buckets: AnswerBucket[]
   noAnswerCount: number
+  respondentCount: number
 }
 
 function stringifyResponse(value: unknown): string {
@@ -39,7 +40,7 @@ function isCorrectMatch(candidate: string, correctResponse: unknown): boolean {
 export function computeAnswerBreakdown(itemXml: string, responses: (unknown | undefined)[]): ItemAnswerBreakdown {
   const parsed = parseQtiXml(itemXml)
   const item = parsed.document?.item
-  if (!item) return { prompt: undefined, buckets: [], noAnswerCount: responses.length }
+  if (!item) return { prompt: undefined, buckets: [], noAnswerCount: responses.length, respondentCount: 0 }
 
   const interaction = item.interactions[0]
   const prompt = interaction?.prompt ?? item.prompt
@@ -48,7 +49,14 @@ export function computeAnswerBreakdown(itemXml: string, responses: (unknown | un
 
   const rawValues: unknown[] = []
   let noAnswerCount = 0
+  // QUIZ-CLASS-REVIEW-001 / BUG-ANSWER-BREAKDOWN-MULTISELECT: `respondentCount`
+  // is the number of submitted connections that actually have a
+  // `quiz_session_answers` row for this item — `response !== undefined` —
+  // as opposed to `noAnswerCount`, which also folds in rows whose value
+  // resolves to nothing displayable (null, or an empty multi-select array).
+  let respondentCount = 0
   for (const response of responses) {
+    if (response !== undefined) respondentCount += 1
     const raw = response && typeof response === 'object' && responseIdentifier ? (response as Record<string, unknown>)[responseIdentifier] : undefined
     if (raw === undefined || raw === null) {
       noAnswerCount += 1
@@ -65,11 +73,31 @@ export function computeAnswerBreakdown(itemXml: string, responses: (unknown | un
     }))
     const byIdentifier = new Map(interaction.choices.map((choice, index) => [choice.identifier, index]))
     for (const value of rawValues) {
+      // BUG-ANSWER-BREAKDOWN-MULTISELECT: a multi-select
+      // (`cardinality="multiple"`) qti-choice-interaction stores its
+      // response as an array of identifiers (e.g.
+      // `{ RESPONSE: ["choice_a", "choice_c"] }`, per qti3-player-react's
+      // `serialize()` and `scoreChoiceAnswer`'s own handling). Each
+      // identifier in the array is a pick of its own bucket; an empty
+      // array means the respondent picked nothing, so it counts as
+      // no-answer instead of being dropped.
+      if (Array.isArray(value)) {
+        if (value.length === 0) {
+          noAnswerCount += 1
+          continue
+        }
+        for (const entry of value) {
+          if (typeof entry !== 'string') continue
+          const index = byIdentifier.get(entry)
+          if (index !== undefined) buckets[index].count += 1
+        }
+        continue
+      }
       if (typeof value !== 'string') continue
       const index = byIdentifier.get(value)
       if (index !== undefined) buckets[index].count += 1
     }
-    return { prompt, buckets, noAnswerCount }
+    return { prompt, buckets, noAnswerCount, respondentCount }
   }
 
   const buckets: AnswerBucket[] = []
@@ -85,5 +113,5 @@ export function computeAnswerBreakdown(itemXml: string, responses: (unknown | un
       buckets.push(bucket)
     }
   }
-  return { prompt, buckets, noAnswerCount }
+  return { prompt, buckets, noAnswerCount, respondentCount }
 }

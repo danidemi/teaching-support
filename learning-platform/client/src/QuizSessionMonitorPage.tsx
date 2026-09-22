@@ -48,6 +48,7 @@ interface ItemAnswerBreakdown {
   prompt?: string
   buckets: AnswerBucket[]
   noAnswerCount: number
+  respondentCount: number
 }
 
 interface AnswerBreakdownResponse {
@@ -354,7 +355,7 @@ function QuizSessionMonitorPage() {
                 <h2 className="mb-3 text-sm font-medium text-ink">Answer breakdown</h2>
                 <div className="flex flex-col gap-group-gap">
                   {answerBreakdown.items.map((item) => {
-                    const total = item.buckets.reduce((sum, bucket) => sum + bucket.count, 0) + item.noAnswerCount
+                    const total = item.respondentCount
                     return (
                       <div
                         key={item.itemIdentifier}
