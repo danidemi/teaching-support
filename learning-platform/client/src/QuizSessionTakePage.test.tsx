@@ -110,6 +110,21 @@ describe('QuizSessionTakePage (QUIZ-TAKE-RENDER-001)', () => {
     await waitFor(() => expect(screen.getByTestId('not-started-message')).toBeInTheDocument())
   })
 
+  it("fetches this connection's own items from the connection-scoped endpoint (QUIZ-SESSION-PER-STUDENT-DELIVERY-001), for a freshly-joined connection", async () => {
+    stubFetch({ joinBody: { id: 'connection-abc' }, statusBody: { status: 'running' }, itemsBody: { items: [] } })
+    renderAt('session-1')
+
+    await waitFor(() => expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/quiz-sessions/session-1/connections/connection-abc/items'))
+  })
+
+  it("fetches this connection's own items from the connection-scoped endpoint for a connection reused from localStorage", async () => {
+    localStorage.setItem('quiz-session-connection:session-1', 'connection-stored')
+    stubFetch({ statusBody: { status: 'running' }, itemsBody: { items: [] } })
+    renderAt('session-1')
+
+    await waitFor(() => expect(vi.mocked(fetch)).toHaveBeenCalledWith('/api/quiz-sessions/session-1/connections/connection-stored/items'))
+  })
+
   it('shows a stopped message once the session has ended', async () => {
     stubFetch({ statusBody: { status: 'stopped' } })
     renderAt('session-1')

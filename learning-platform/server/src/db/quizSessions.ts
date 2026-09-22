@@ -14,6 +14,10 @@ export interface QuizSession {
   startedAt: Date | null
   closesAt: Date | null
   stoppedAt: Date | null
+  // QUIZ-SESSION-PER-STUDENT-DELIVERY-001: force-shuffle override, set on
+  // `start` alongside timeLimitSeconds. See schema.ts's doc comment.
+  forceShuffleQuestions: boolean
+  forceShuffleAnswers: boolean
   createdAt: Date
   updatedAt: Date
 }
@@ -28,7 +32,13 @@ export interface QuizSession {
  */
 export interface SessionRepository {
   createForQuiz(quizId: string, tenantId: string): Promise<QuizSession | null>
-  start(sessionId: string, tenantId: string, timeLimitSeconds: number | null): Promise<QuizSession | null>
+  // QUIZ-SESSION-PER-STUDENT-DELIVERY-001: forceShuffleQuestions/
+  // forceShuffleAnswers are required (not optional) — every call site must
+  // decide them explicitly (parsed from /start's body, defaulting to
+  // `false` there, never silently defaulted again here) so a future
+  // optional-parameter addition can't be silently dropped by a stale
+  // caller.
+  start(sessionId: string, tenantId: string, timeLimitSeconds: number | null, forceShuffleQuestions: boolean, forceShuffleAnswers: boolean): Promise<QuizSession | null>
   stop(sessionId: string, tenantId: string): Promise<QuizSession | null>
   findByIdForTenant(sessionId: string, tenantId: string): Promise<QuizSession | null>
   // QUIZ-TAKE-RENDER-001: no tenant — an anonymous student's phone has no
@@ -51,6 +61,8 @@ const SELECT_COLUMNS = {
   startedAt: quizSessions.startedAt,
   closesAt: quizSessions.closesAt,
   stoppedAt: quizSessions.stoppedAt,
+  forceShuffleQuestions: quizSessions.forceShuffleQuestions,
+  forceShuffleAnswers: quizSessions.forceShuffleAnswers,
   createdAt: quizSessions.createdAt,
   updatedAt: quizSessions.updatedAt,
 }
@@ -86,14 +98,14 @@ export function createSessionRepository(databaseUrl: string): SessionRepository 
       return rows[0]
     },
 
-    async start(sessionId, tenantId, timeLimitSeconds) {
+    async start(sessionId, tenantId, timeLimitSeconds, forceShuffleQuestions, forceShuffleAnswers) {
       const existing = await findRowForTenant(sessionId, tenantId)
       if (!existing) return null
       const startedAt = new Date()
       const closesAt = timeLimitSeconds != null ? new Date(startedAt.getTime() + timeLimitSeconds * 1000) : null
       const rows = await db
         .update(quizSessions)
-        .set({ timeLimitSeconds, startedAt, closesAt, stoppedAt: null, updatedAt: new Date() })
+        .set({ timeLimitSeconds, startedAt, closesAt, stoppedAt: null, forceShuffleQuestions, forceShuffleAnswers, updatedAt: new Date() })
         .where(eq(quizSessions.id, sessionId))
         .returning(SELECT_COLUMNS)
       return rows[0] ?? null

@@ -62,9 +62,16 @@ function QuizSessionTakePage() {
       const storageKey = connectionStorageKey(currentSessionId)
       const storedConnectionId = localStorage.getItem(storageKey)
 
+      // Local variable, not the connectionId state — state set below via
+      // setConnectionId is not visible synchronously within this same
+      // async function, so the items fetch after it needs its own
+      // reference to build the connection-scoped URL from.
+      let currentConnectionId: string
+
       if (storedConnectionId) {
         // Already joined this session in this browser (e.g. a refresh) —
         // reuse the connection instead of joining again.
+        currentConnectionId = storedConnectionId
         setConnectionId(storedConnectionId)
         setJoinState('joined')
       } else {
@@ -88,6 +95,7 @@ function QuizSessionTakePage() {
         }
         const joinBody = await joinResponse.json()
         localStorage.setItem(storageKey, joinBody.id)
+        currentConnectionId = joinBody.id
         setConnectionId(joinBody.id)
         setJoinState('joined')
       }
@@ -99,7 +107,10 @@ function QuizSessionTakePage() {
       setStatus(statusBody.status)
 
       if (statusBody.status === 'running') {
-        const itemsResponse = await fetch(`/api/quiz-sessions/${sessionId}/items`)
+        // QUIZ-SESSION-PER-STUDENT-DELIVERY-001: connection-scoped — this
+        // connection's own effective (possibly per-student-shuffled) order,
+        // not a single session-wide order.
+        const itemsResponse = await fetch(`/api/quiz-sessions/${sessionId}/connections/${currentConnectionId}/items`)
         if (cancelled || itemsResponse.status !== 200) return
         const itemsBody = await itemsResponse.json()
         if (cancelled) return

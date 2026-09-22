@@ -1,4 +1,4 @@
-import { and, eq, isNotNull } from 'drizzle-orm'
+import { and, eq, isNotNull, isNull } from 'drizzle-orm'
 import { createDb } from './client.js'
 import { quizSessionConnections, quizSessions } from './schema.js'
 
@@ -7,6 +7,10 @@ export interface QuizSessionConnection {
   sessionId: string
   connectedAt: Date
   submittedAt: Date | null
+  // QUIZ-SESSION-PER-STUDENT-DELIVERY-001: null until generated (lazily,
+  // on this connection's first items fetch). See schema.ts's doc comment.
+  itemOrder: string[] | null
+  choiceOrder: Record<string, string[]> | null
 }
 
 export interface SessionCounts {
@@ -39,6 +43,19 @@ export interface ConnectionRepository {
   // QUIZ-AUTO-EVAL-001: the raw rows (not just counts) behind
   // `GET .../results` — one per connection, to score against.
   listForSession(sessionId: string): Promise<QuizSessionConnection[]>
+  // QUIZ-SESSION-PER-STUDENT-DELIVERY-001: the same "belongs to this
+  // session" scoping as belongsToSession/markSubmitted, but returning the
+  // row itself (with its possibly-still-null order columns) rather than a
+  // boolean — the new items route needs both the existence check and the
+  // row in one query.
+  findForSession(connectionId: string, sessionId: string): Promise<QuizSessionConnection | null>
+  // Persists this connection's delivery order exactly once: an atomic
+  // `UPDATE ... WHERE item_order IS NULL RETURNING ...`. If the row
+  // already had a non-null itemOrder (a double-fired mount effect losing
+  // the race), the UPDATE matches zero rows and this re-reads + returns
+  // the row that won instead of overwriting it — so two racing calls for
+  // the same connection never persist two different permutations.
+  setOrderIfUnset(connectionId: string, itemOrder: string[], choiceOrder: Record<string, string[]>): Promise<QuizSessionConnection | null>
 }
 
 export function createConnectionRepository(databaseUrl: string): ConnectionRepository {
@@ -81,6 +98,28 @@ export function createConnectionRepository(databaseUrl: string): ConnectionRepos
 
     async listForSession(sessionId) {
       return db.select().from(quizSessionConnections).where(eq(quizSessionConnections.sessionId, sessionId))
+    },
+
+    async findForSession(connectionId, sessionId) {
+      const rows = await db
+        .select()
+        .from(quizSessionConnections)
+        .where(and(eq(quizSessionConnections.id, connectionId), eq(quizSessionConnections.sessionId, sessionId)))
+        .limit(1)
+      return rows[0] ?? null
+    },
+
+    async setOrderIfUnset(connectionId, itemOrder, choiceOrder) {
+      const updated = await db
+        .update(quizSessionConnections)
+        .set({ itemOrder, choiceOrder })
+        .where(and(eq(quizSessionConnections.id, connectionId), isNull(quizSessionConnections.itemOrder)))
+        .returning()
+      if (updated[0]) return updated[0]
+      // Lost the race (another request's UPDATE already won) — re-read
+      // whatever is there now instead of overwriting it.
+      const rows = await db.select().from(quizSessionConnections).where(eq(quizSessionConnections.id, connectionId)).limit(1)
+      return rows[0] ?? null
     },
   }
 }

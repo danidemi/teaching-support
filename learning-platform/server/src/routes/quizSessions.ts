@@ -8,6 +8,7 @@ import { appBaseUrl } from '../config.js'
 import { resolveQuizItems } from '../qti/resolveQtiItems.js'
 import { scoreChoiceAnswer } from '../qti/scoreAnswer.js'
 import { computeAnswerBreakdown } from '../qti/answerBreakdown.js'
+import { resolveDeliveryOrder, applyDeliveryOrder } from '../qti/deliveryOrder.js'
 import type { GradingStatus } from '../db/quizSessionAnswers.js'
 
 export interface ItemResult {
@@ -27,6 +28,12 @@ export interface QuizSessionResponse {
   startedAt: string | null
   closesAt: string | null
   stoppedAt: string | null
+  // QUIZ-SESSION-PER-STUDENT-DELIVERY-001: settable via /start, alongside
+  // timeLimit. Trainer-facing UI for toggling these is out of this tech
+  // PBI's scope — each of QUIZ-RANDOM-QUESTION-ORDER-001/
+  // QUIZ-RANDOM-ANSWER-ORDER-001 owns its own toggle, reading this field.
+  forceShuffleQuestions: boolean
+  forceShuffleAnswers: boolean
   takeUrl: string
   // QUIZ-SESSION-LIVE-STATUS-001: folded into this same response rather
   // than a separate `/status` endpoint — the monitor page already polls
@@ -60,6 +67,8 @@ function toResponse(session: QuizSession, now: Date, counts: { joinedCount: numb
     startedAt: session.startedAt?.toISOString() ?? null,
     closesAt: session.closesAt?.toISOString() ?? null,
     stoppedAt: session.stoppedAt?.toISOString() ?? null,
+    forceShuffleQuestions: session.forceShuffleQuestions,
+    forceShuffleAnswers: session.forceShuffleAnswers,
     takeUrl: `${appBaseUrl()}/quiz-sessions/${session.id}/take`,
     joinedCount: counts.joinedCount,
     submittedCount: counts.submittedCount,
@@ -86,6 +95,19 @@ export function parseTimeLimit(input: unknown): number | null | 'invalid' {
 }
 
 /**
+ * `forceShuffleQuestions`/`forceShuffleAnswers` in `/start`'s body
+ * (ADR-0013): an omitted value defaults to `false` (no trainer action
+ * required to keep today's behavior for a session that never sets these);
+ * anything present but not a boolean is rejected as `'invalid'`, the same
+ * "tell a caller apart from a bad value" shape `parseTimeLimit` uses.
+ */
+export function parseForceShuffle(input: unknown): boolean | 'invalid' {
+  if (input === undefined || input === null) return false
+  if (typeof input !== 'boolean') return 'invalid'
+  return input
+}
+
+/**
  * `POST /api/quizzes/:quizId/sessions` (create), `POST
  * /api/quiz-sessions/:sessionId/start` (also reopen — see
  * `db/quizSessions.ts`'s `start`), `POST /api/quiz-sessions/:sessionId
@@ -100,11 +122,13 @@ export function parseTimeLimit(input: unknown): number | null | 'invalid' {
  *
  * QUIZ-TAKE-RENDER-001 adds three more anonymous, no-tenant routes for the
  * same reason: `GET .../status` (the take page's not-started/running/
- * stopped gate), `GET .../items` (resolved item XML, `running` only —
- * `409` otherwise, so the questions aren't fetchable by URL before the
- * session starts), and `POST .../connections/:connectionId/answers`
- * (records one item's response, or the `'ungraded'` placeholder for an
- * unsupported interaction type).
+ * stopped gate), `GET .../connections/:connectionId/items` (resolved item
+ * XML in that connection's own effective order, per
+ * QUIZ-SESSION-PER-STUDENT-DELIVERY-001/ADR-0013 — `running` only, `409`
+ * otherwise, so the questions aren't fetchable by URL before the session
+ * starts), and `POST .../connections/:connectionId/answers` (records one
+ * item's response, or the `'ungraded'` placeholder for an unsupported
+ * interaction type).
  *
  * Every id-in-URL lookup here — tenant-scoped or not — follows
  * ROUTE-ID-GUARD-001's pattern: wrapped in try/catch, a malformed id
@@ -183,9 +207,19 @@ export function createQuizSessionsRouter(
       res.status(400).json({ error: 'invalid_time_limit' })
       return
     }
+    const forceShuffleQuestions = parseForceShuffle(req.body?.forceShuffleQuestions)
+    if (forceShuffleQuestions === 'invalid') {
+      res.status(400).json({ error: 'invalid_force_shuffle_questions' })
+      return
+    }
+    const forceShuffleAnswers = parseForceShuffle(req.body?.forceShuffleAnswers)
+    if (forceShuffleAnswers === 'invalid') {
+      res.status(400).json({ error: 'invalid_force_shuffle_answers' })
+      return
+    }
 
     try {
-      const started = await sessions.start(req.params.sessionId, tenantId, timeLimitSeconds)
+      const started = await sessions.start(req.params.sessionId, tenantId, timeLimitSeconds, forceShuffleQuestions, forceShuffleAnswers)
       if (!started) {
         res.status(404).json({ error: 'session_not_found' })
         return
@@ -401,12 +435,24 @@ export function createQuizSessionsRouter(
     }
   })
 
-  // QUIZ-TAKE-RENDER-001: anonymous — resolves the session's quiz package
-  // (ADR-0010's quiz_files) into the ordered item list the take page
-  // renders. Served only while `running`: a `closed`/`stopped` session
-  // returns `409`, not the questions, so the take-URL alone can't be used
-  // to read the quiz before/after the window the trainer opened it for.
-  router.get('/api/quiz-sessions/:sessionId/items', async (req, res) => {
+  // QUIZ-TAKE-RENDER-001, replaced by QUIZ-SESSION-PER-STUDENT-DELIVERY-001:
+  // anonymous — resolves the session's quiz package (ADR-0010's quiz_files)
+  // into the ordered item list this connection's attempt renders. Served
+  // only while `running`: a `closed`/`stopped` session returns `409`, not
+  // the questions, so the take-URL alone can't be used to read the quiz
+  // before/after the window the trainer opened it for. Now
+  // connection-scoped (`.../connections/:connectionId/items`, following the
+  // existing `.../connections/:connectionId/answers` convention) instead of
+  // session-scoped: every student in the same session can get a different
+  // effective order (ADR-0013), so "the items" is no longer a single
+  // session-wide answer.
+  //
+  // The order is generated once per connection, on its first fetch here,
+  // and persisted via `ConnectionRepository.setOrderIfUnset`'s atomic
+  // conditional UPDATE — a second (or double-fired-mount-effect) call for
+  // the same connection reads back the same persisted order instead of
+  // generating (and racing) a second permutation.
+  router.get('/api/quiz-sessions/:sessionId/connections/:connectionId/items', async (req, res) => {
     try {
       const session = await sessions.findById(req.params.sessionId)
       if (!session) {
@@ -418,17 +464,36 @@ export function createQuizSessionsRouter(
         res.status(409).json({ error: 'session_not_running', status })
         return
       }
+      const connection = await connections.findForSession(req.params.connectionId, req.params.sessionId)
+      if (!connection) {
+        res.status(404).json({ error: 'connection_not_found' })
+        return
+      }
+
       const files = await quizzes.getFilesByQuizId(session.quizId)
       const items = resolveQuizItems(files)
+      const testFile = files.find((file) => file.relativePath === 'test.xml')
+      const testXml = testFile ? testFile.fileData.toString('utf-8') : null
+
+      let itemOrder = connection.itemOrder
+      let choiceOrder = connection.choiceOrder
+      if (itemOrder === null) {
+        const generated = resolveDeliveryOrder(items, testXml, session.forceShuffleQuestions, session.forceShuffleAnswers)
+        const persisted = await connections.setOrderIfUnset(connection.id, generated.itemOrder, generated.choiceOrder)
+        itemOrder = persisted?.itemOrder ?? generated.itemOrder
+        choiceOrder = persisted?.choiceOrder ?? generated.choiceOrder
+      }
+
+      const orderedItems = applyDeliveryOrder(items, { itemOrder: itemOrder ?? [], choiceOrder: choiceOrder ?? {} })
       res.status(200).json({
-        items: items.map((item) => ({ identifier: item.identifier, path: item.path, xml: item.xml, supported: item.supported })),
+        items: orderedItems.map((item) => ({ identifier: item.identifier, path: item.path, xml: item.xml, supported: item.supported })),
       })
     } catch (err) {
       if (isInvalidIdError(err)) {
         res.status(404).json({ error: 'session_not_found' })
         return
       }
-      console.error('get quiz session items failed:', err)
+      console.error('get quiz session connection items failed:', err)
       res.status(500).json({ error: 'internal_error' })
     }
   })

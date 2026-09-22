@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  QUIZ-SESSION-PER-STUDENT-DELIVERY-001/ADR-0013: valid QTI 3.0 sample —
+  multi-item test exercising the "off = follow authored XML" delivery-order
+  path that no other fixture in this repo covers (every other fixture uses
+  shuffle="false" everywhere and none use qti-ordering at all).
+
+  "section-shuffled" is authored `<qti-ordering shuffle="true"/>` — its two
+  items (question-a, question-b) are reordered per student even with the
+  session's forceShuffleQuestions off. "section-fixed" is authored
+  `<qti-ordering shuffle="false"/>` — its two items (question-c,
+  question-d) stay in authored order unless forceShuffleQuestions is on.
+  choice-shuffle-true/choice-shuffle-false (see those files' own headers)
+  cover the same force-or-authored rule for a single item's own choice
+  order, independent of question order.
+-->
+<qti-assessment-test xmlns="http://www.imsglobal.org/xsd/imsqtiasi_v3p0"
+                      identifier="shuffle-sample-test"
+                      title="Shuffle sample test">
+  <qti-test-part identifier="part1" navigation-mode="linear" submission-mode="individual">
+    <qti-assessment-section identifier="section-shuffled" title="Shuffled section" visible="true">
+      <qti-ordering shuffle="true"/>
+      <qti-assessment-item-ref identifier="question-a" href="./sample-shuffle-question-a.xml"/>
+      <qti-assessment-item-ref identifier="question-b" href="./sample-shuffle-question-b.xml"/>
+      <qti-assessment-item-ref identifier="choice-shuffle-true" href="./sample-shuffle-choice-shuffle-true.xml"/>
+    </qti-assessment-section>
+    <qti-assessment-section identifier="section-fixed" title="Fixed section" visible="true">
+      <qti-ordering shuffle="false"/>
+      <qti-assessment-item-ref identifier="question-c" href="./sample-shuffle-question-c.xml"/>
+      <qti-assessment-item-ref identifier="question-d" href="./sample-shuffle-question-d.xml"/>
+      <qti-assessment-item-ref identifier="choice-shuffle-false" href="./sample-shuffle-choice-shuffle-false.xml"/>
+    </qti-assessment-section>
+  </qti-test-part>
+</qti-assessment-test>

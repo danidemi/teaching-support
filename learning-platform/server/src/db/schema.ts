@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, varchar, json, jsonb, integer, doublePrecision, index, uniqueIndex, customType } from 'drizzle-orm/pg-core'
+import { pgTable, uuid, text, timestamp, varchar, json, jsonb, integer, boolean, doublePrecision, index, uniqueIndex, customType } from 'drizzle-orm/pg-core'
 
 /**
  * Postgres `bytea` — drizzle-orm/pg-core has no built-in binary column
@@ -173,6 +173,13 @@ export const quizSessions = pgTable('quiz_sessions', {
   closesAt: timestamp('closes_at', { withTimezone: true }),
   // Nullable: unset until an explicit Stop. Cleared again on reopen.
   stoppedAt: timestamp('stopped_at', { withTimezone: true }),
+  // QUIZ-SESSION-PER-STUDENT-DELIVERY-001/ADR-0013: force-shuffle override,
+  // set via `POST /start`'s body alongside `timeLimitSeconds`. `false`
+  // (the default) means "honor each item/section's own authored `shuffle`
+  // attribute"; `true` means "shuffle regardless of that attribute". See
+  // `qti/deliveryOrder.ts` for how these combine with the authored XML.
+  forceShuffleQuestions: boolean('force_shuffle_questions').notNull().default(false),
+  forceShuffleAnswers: boolean('force_shuffle_answers').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 })
@@ -199,6 +206,17 @@ export const quizSessionConnections = pgTable('quiz_session_connections', {
   // never touches this table, which is exactly how "keeps accumulating
   // rather than resetting" is satisfied without extra logic.
   submittedAt: timestamp('submitted_at', { withTimezone: true }),
+  // QUIZ-SESSION-PER-STUDENT-DELIVERY-001/ADR-0013: this connection's
+  // persisted effective delivery order, generated lazily once on its first
+  // items fetch (`qti/deliveryOrder.ts`), not re-derived per request. Null
+  // until generated. `itemOrder` is an array of item identifiers (the
+  // question order); `choiceOrder` maps an item identifier to its array of
+  // choice identifiers, present only for items that were actually
+  // shuffled. Both are written together, atomically, by
+  // `ConnectionRepository.setOrderIfUnset` — see that method's doc comment
+  // for why (a double-fired mount effect must not race two permutations).
+  itemOrder: jsonb('item_order').$type<string[]>(),
+  choiceOrder: jsonb('choice_order').$type<Record<string, string[]>>(),
 })
 
 /**

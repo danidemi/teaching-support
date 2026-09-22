@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  QUIZ-SESSION-PER-STUDENT-DELIVERY-001/ADR-0013: valid QTI 3.0 sample —
+  single-choice item authored shuffle="false" on its qti-choice-interaction.
+  Exercises the "force ON overrides the authored attribute" choice-order
+  path: this item is only shuffled per student when the session's
+  forceShuffleAnswers is on, since its own authored attribute says
+  shuffle="false".
+-->
+<qti-assessment-item xmlns="http://www.imsglobal.org/xsd/imsqtiasi_v3p0"
+                      identifier="choice-shuffle-false"
+                      title="Choice shuffle false"
+                      adaptive="false"
+                      time-dependent="false">
+  <qti-response-declaration identifier="RESPONSE" cardinality="single" base-type="identifier">
+    <qti-correct-response>
+      <qti-value>csf_choice_b</qti-value>
+    </qti-correct-response>
+  </qti-response-declaration>
+  <qti-outcome-declaration identifier="SCORE" cardinality="single" base-type="float">
+    <qti-default-value>
+      <qti-value>0</qti-value>
+    </qti-default-value>
+  </qti-outcome-declaration>
+  <qti-item-body>
+    <qti-choice-interaction response-identifier="RESPONSE" shuffle="false" max-choices="1">
+      <qti-prompt>Which one is correct?</qti-prompt>
+      <qti-simple-choice identifier="csf_choice_a">Option A</qti-simple-choice>
+      <qti-simple-choice identifier="csf_choice_b">Option B</qti-simple-choice>
+      <qti-simple-choice identifier="csf_choice_c">Option C</qti-simple-choice>
+      <qti-simple-choice identifier="csf_choice_d">Option D</qti-simple-choice>
+    </qti-choice-interaction>
+  </qti-item-body>
+  <qti-response-processing template="https://purl.imsglobal.org/spec/qti/v3p0/rptemplates/match_correct"/>
+</qti-assessment-item>
