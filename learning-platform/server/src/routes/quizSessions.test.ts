@@ -12,7 +12,9 @@ import {
   createTestSessionMiddleware,
   signInAgent,
 } from '../testSupport/fakes.js'
-import { deriveStatus, parseTimeLimit } from './quizSessions.js'
+import { deriveStatus, parseTimeLimit, parseForceShuffle } from './quizSessions.js'
+import { parseQtiXml } from '@longsightgroup/qti3-core'
+import { zipOf, shuffledPackageEntries } from '../../test-fixtures/qti-samples/buildPackage.js'
 
 // Covers QUIZ-SESSION-CONTROL-001's DoD
 // (active_sprint/story_quiz_session_control.md): create/start/stop/reopen
@@ -108,6 +110,22 @@ describe('parseTimeLimit (pure)', () => {
 
   it.each(['banana', '0m', '-5h', '5', 'h', '5x'])('rejects %s as invalid', (input) => {
     expect(parseTimeLimit(input)).toBe('invalid')
+  })
+})
+
+describe('parseForceShuffle (pure)', () => {
+  it('treats an omitted/null value as false (no trainer action required)', () => {
+    expect(parseForceShuffle(undefined)).toBe(false)
+    expect(parseForceShuffle(null)).toBe(false)
+  })
+
+  it('accepts true/false', () => {
+    expect(parseForceShuffle(true)).toBe(true)
+    expect(parseForceShuffle(false)).toBe(false)
+  })
+
+  it.each(['true', 1, 0, 'false'])('rejects a non-boolean %s as invalid', (input) => {
+    expect(parseForceShuffle(input)).toBe('invalid')
   })
 })
 
@@ -254,6 +272,49 @@ describe('POST /api/quiz-sessions/:sessionId/start', () => {
     expect(response.status).toBe(200)
     expect(response.body.status).toBe('running')
     expect(response.body.closesAt).toBeNull()
+  })
+
+  it('defaults forceShuffleQuestions/forceShuffleAnswers to false when omitted (QUIZ-SESSION-PER-STUDENT-DELIVERY-001)', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const sessionId = await createSession(agent)
+
+    const response = await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({})
+
+    expect(response.body.forceShuffleQuestions).toBe(false)
+    expect(response.body.forceShuffleAnswers).toBe(false)
+  })
+
+  it('sets forceShuffleQuestions/forceShuffleAnswers from the body, alongside timeLimit', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const sessionId = await createSession(agent)
+
+    const response = await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({ timeLimit: '10m', forceShuffleQuestions: true, forceShuffleAnswers: false })
+
+    expect(response.status).toBe(200)
+    expect(response.body.forceShuffleQuestions).toBe(true)
+    expect(response.body.forceShuffleAnswers).toBe(false)
+  })
+
+  it('returns 400 for a non-boolean forceShuffleQuestions', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const sessionId = await createSession(agent)
+
+    const response = await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({ forceShuffleQuestions: 'yes' })
+
+    expect(response.status).toBe(400)
+  })
+
+  it('returns 400 for a non-boolean forceShuffleAnswers', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const sessionId = await createSession(agent)
+
+    const response = await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({ forceShuffleAnswers: 1 })
+
+    expect(response.status).toBe(400)
   })
 
   it('returns 400 for an unparseable time limit', async () => {
@@ -558,21 +619,38 @@ describe('GET /api/quiz-sessions/:sessionId/status (QUIZ-TAKE-RENDER-001)', () =
   })
 })
 
-describe('GET /api/quiz-sessions/:sessionId/items (QUIZ-TAKE-RENDER-001)', () => {
-  async function createRunningSession(agent: ReturnType<typeof request.agent>, xml: string) {
-    const { quizId } = await createCourseAndQuizWithItem(agent, xml)
+describe('GET /api/quiz-sessions/:sessionId/connections/:connectionId/items (QUIZ-TAKE-RENDER-001, replaced by QUIZ-SESSION-PER-STUDENT-DELIVERY-001)', () => {
+  async function createRunningSession(agent: ReturnType<typeof request.agent>, xml: string, options?: { forceShuffleQuestions?: boolean; forceShuffleAnswers?: boolean }, fileName = 'quiz.xml') {
+    const { quizId } = await createCourseAndQuizWithItem(agent, xml, fileName)
     const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
     const sessionId = created.body.id as string
-    await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({})
+    await agent.post(`/api/quiz-sessions/${sessionId}/start`).send(options ?? {})
     return sessionId
+  }
+
+  async function createRunningPackageSession(agent: ReturnType<typeof request.agent>, zip: Buffer, options?: { forceShuffleQuestions?: boolean; forceShuffleAnswers?: boolean }, fileName = 'quiz.zip') {
+    const courseResponse = await agent.post('/api/courses').send({ title: `Course for ${fileName}` })
+    const courseId = courseResponse.body.id as string
+    const quizResponse = await agent.post(`/api/courses/${courseId}/quizzes`).attach('file', zip, fileName)
+    const quizId = quizResponse.body.id as string
+    const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
+    const sessionId = created.body.id as string
+    await agent.post(`/api/quiz-sessions/${sessionId}/start`).send(options ?? {})
+    return sessionId
+  }
+
+  async function join(app: ReturnType<typeof createTestApp>['app'], sessionId: string) {
+    const joined = await request(app).post(`/api/quiz-sessions/${sessionId}/connections`)
+    return joined.body.id as string
   }
 
   it('resolves a standalone single-item quiz, marked supported', async () => {
     const { app, users } = createTestApp()
     const agent = await signInAgent(users, app, 'trainer@example.com')
     const sessionId = await createRunningSession(agent, CHOICE_ITEM)
+    const connectionId = await join(app, sessionId)
 
-    const response = await request(app).get(`/api/quiz-sessions/${sessionId}/items`)
+    const response = await request(app).get(`/api/quiz-sessions/${sessionId}/connections/${connectionId}/items`)
 
     expect(response.status).toBe(200)
     expect(response.body.items).toHaveLength(1)
@@ -583,8 +661,9 @@ describe('GET /api/quiz-sessions/:sessionId/items (QUIZ-TAKE-RENDER-001)', () =>
     const { app, users } = createTestApp()
     const agent = await signInAgent(users, app, 'trainer@example.com')
     const sessionId = await createRunningSession(agent, UNSUPPORTED_ITEM)
+    const connectionId = await join(app, sessionId)
 
-    const response = await request(app).get(`/api/quiz-sessions/${sessionId}/items`)
+    const response = await request(app).get(`/api/quiz-sessions/${sessionId}/connections/${connectionId}/items`)
 
     expect(response.status).toBe(200)
     expect(response.body.items[0]).toMatchObject({ identifier: 'text-entry-unsupported', supported: false })
@@ -595,8 +674,9 @@ describe('GET /api/quiz-sessions/:sessionId/items (QUIZ-TAKE-RENDER-001)', () =>
     const agent = await signInAgent(users, app, 'trainer@example.com')
     const { quizId } = await createCourseAndQuizWithItem(agent, CHOICE_ITEM)
     const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
+    const connectionId = await join(app, created.body.id)
 
-    const response = await request(app).get(`/api/quiz-sessions/${created.body.id}/items`)
+    const response = await request(app).get(`/api/quiz-sessions/${created.body.id}/connections/${connectionId}/items`)
 
     expect(response.status).toBe(409)
     expect(response.body.status).toBe('closed')
@@ -604,8 +684,108 @@ describe('GET /api/quiz-sessions/:sessionId/items (QUIZ-TAKE-RENDER-001)', () =>
 
   it('returns 404, not a crash, for a malformed session id', async () => {
     const { app } = createTestApp()
-    const response = await request(app).get('/api/quiz-sessions/does-not-exist/items')
+    const response = await request(app).get('/api/quiz-sessions/does-not-exist/connections/does-not-exist/items')
     expect(response.status).toBe(404)
+  })
+
+  it('returns 404 for a connection that does not belong to this session', async () => {
+    // given: two separate running sessions, each with their own connection
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const sessionA = await createRunningSession(agent, CHOICE_ITEM, undefined, 'quiz-a.xml')
+    const sessionB = await createRunningSession(agent, CHOICE_ITEM, undefined, 'quiz-b.xml')
+    const connectionForA = await join(app, sessionA)
+
+    // when: fetching sessionB's items using sessionA's connection id
+    const response = await request(app).get(`/api/quiz-sessions/${sessionB}/connections/${connectionForA}/items`)
+
+    // then: rejected, not silently served
+    expect(response.status).toBe(404)
+    expect(response.body.error).toBe('connection_not_found')
+  })
+
+  it("is stable across repeated fetches for the same connection (the DoD's 'generated once, persisted' requirement)", async () => {
+    const { app, users, quizSessionConnections } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const sessionId = await createRunningPackageSession(agent, zipOf(shuffledPackageEntries()), { forceShuffleQuestions: true, forceShuffleAnswers: true })
+    const connectionId = await join(app, sessionId)
+
+    const first = await request(app).get(`/api/quiz-sessions/${sessionId}/connections/${connectionId}/items`)
+    const second = await request(app).get(`/api/quiz-sessions/${sessionId}/connections/${connectionId}/items`)
+
+    expect(first.body.items.map((i: { identifier: string }) => i.identifier)).toEqual(second.body.items.map((i: { identifier: string }) => i.identifier))
+    expect(first.body.items).toEqual(second.body.items)
+
+    // and: the persisted row itself carries that same order — proving
+    // "persisted", not just "the handler happens to return the same thing
+    // twice" (e.g. if generation were idempotent by coincidence).
+    const persistedRow = quizSessionConnections.rows.find((row) => row.id === connectionId)
+    expect(persistedRow?.itemOrder).not.toBeNull()
+    expect(persistedRow?.itemOrder).toEqual(first.body.items.map((i: { identifier: string }) => i.identifier))
+  })
+
+  it('two concurrent first-fetches for the same connection return identical items (the atomic setOrderIfUnset write is proven separately, at the db layer, against real Postgres — not exercisable with this in-process fake)', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const sessionId = await createRunningPackageSession(agent, zipOf(shuffledPackageEntries()), { forceShuffleQuestions: true, forceShuffleAnswers: true })
+    const connectionId = await join(app, sessionId)
+
+    const [first, second] = await Promise.all([
+      request(app).get(`/api/quiz-sessions/${sessionId}/connections/${connectionId}/items`),
+      request(app).get(`/api/quiz-sessions/${sessionId}/connections/${connectionId}/items`),
+    ])
+
+    expect(first.body.items).toEqual(second.body.items)
+  })
+
+  it('two different connections in the same shuffled session are independently generated (each gets its own order call)', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const sessionId = await createRunningPackageSession(agent, zipOf(shuffledPackageEntries()), { forceShuffleQuestions: true, forceShuffleAnswers: true })
+    const connectionA = await join(app, sessionId)
+    const connectionB = await join(app, sessionId)
+
+    const responseA = await request(app).get(`/api/quiz-sessions/${sessionId}/connections/${connectionA}/items`)
+    const responseB = await request(app).get(`/api/quiz-sessions/${sessionId}/connections/${connectionB}/items`)
+
+    // Same set of items served to both (nothing lost/duplicated) — not
+    // asserting the two orders differ, since that isn't guaranteed by a
+    // real RNG (DoD's own wording: "not guaranteed distinct, but generated
+    // independently").
+    const idsA = responseA.body.items.map((i: { identifier: string }) => i.identifier).sort()
+    const idsB = responseB.body.items.map((i: { identifier: string }) => i.identifier).sort()
+    expect(idsA).toEqual(idsB)
+  })
+
+  it('force off: honors each authored shuffle attribute — an authored shuffle="false" item stays byte-identical', async () => {
+    const { app, users, quizzes } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const sessionId = await createRunningPackageSession(agent, zipOf(shuffledPackageEntries()), { forceShuffleQuestions: false, forceShuffleAnswers: false })
+    const connectionId = await join(app, sessionId)
+
+    const response = await request(app).get(`/api/quiz-sessions/${sessionId}/connections/${connectionId}/items`)
+
+    const served = response.body.items.find((i: { identifier: string }) => i.identifier === 'choice-shuffle-false')
+    const sourceFile = quizzes.fileRows.find((f) => f.relativePath === 'sample-shuffle-choice-shuffle-false.xml')
+    expect(served.xml).toBe(sourceFile?.fileData.toString('utf-8'))
+  })
+
+  it('force on: shuffles an authored shuffle="false" item too, still parseable with the same identifier and choice set', async () => {
+    const { app, users, quizzes } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const sessionId = await createRunningPackageSession(agent, zipOf(shuffledPackageEntries()), { forceShuffleQuestions: false, forceShuffleAnswers: true })
+    const connectionId = await join(app, sessionId)
+
+    const response = await request(app).get(`/api/quiz-sessions/${sessionId}/connections/${connectionId}/items`)
+
+    const served = response.body.items.find((i: { identifier: string }) => i.identifier === 'choice-shuffle-false')
+    const sourceFile = quizzes.fileRows.find((f) => f.relativePath === 'sample-shuffle-choice-shuffle-false.xml')
+    const sourceXml = sourceFile!.fileData.toString('utf-8')
+
+    const parsedServed = parseQtiXml(served.xml)
+    const parsedSource = parseQtiXml(sourceXml)
+    expect(parsedServed.document?.item.identifier).toBe(parsedSource.document?.item.identifier)
+    expect(new Set(served.xml.match(/identifier="csf_choice_[a-d]"/g))).toEqual(new Set(sourceXml.match(/identifier="csf_choice_[a-d]"/g)))
   })
 })
 
@@ -616,8 +796,9 @@ describe('POST /api/quiz-sessions/:sessionId/connections/:connectionId/answers (
     const sessionId = created.body.id as string
     await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({})
     const joined = await request(app).post(`/api/quiz-sessions/${sessionId}/connections`)
-    const itemsResponse = await request(app).get(`/api/quiz-sessions/${sessionId}/items`)
-    return { sessionId, connectionId: joined.body.id as string, itemPath: itemsResponse.body.items[0].path as string }
+    const connectionId = joined.body.id as string
+    const itemsResponse = await request(app).get(`/api/quiz-sessions/${sessionId}/connections/${connectionId}/items`)
+    return { sessionId, connectionId, itemPath: itemsResponse.body.items[0].path as string }
   }
 
   it('records a pending, max-score-1 answer for a supported choice item', async () => {
@@ -683,7 +864,7 @@ describe('POST .../submit scores pending answers (QUIZ-AUTO-EVAL-001)', () => {
     await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({})
     const joined = await request(app).post(`/api/quiz-sessions/${sessionId}/connections`)
     const connectionId = joined.body.id as string
-    const itemsResponse = await request(app).get(`/api/quiz-sessions/${sessionId}/items`)
+    const itemsResponse = await request(app).get(`/api/quiz-sessions/${sessionId}/connections/${connectionId}/items`)
     const itemPath = itemsResponse.body.items[0].path as string
     await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${connectionId}/answers`).send({ itemPath, responses })
     return { sessionId, connectionId }
@@ -751,10 +932,9 @@ describe('GET /api/quiz-sessions/:sessionId/results (QUIZ-AUTO-EVAL-001)', () =>
     const sessionId = created.body.id as string
     await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({})
 
-    const itemsResponse = await request(app).get(`/api/quiz-sessions/${sessionId}/items`)
-    const itemPath = itemsResponse.body.items[0].path as string
-
     const studentA = await request(app).post(`/api/quiz-sessions/${sessionId}/connections`)
+    const itemsResponse = await request(app).get(`/api/quiz-sessions/${sessionId}/connections/${studentA.body.id}/items`)
+    const itemPath = itemsResponse.body.items[0].path as string
     await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${studentA.body.id}/answers`).send({ itemPath, responses: { RESPONSE: 'choice_b' } })
     await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${studentA.body.id}/submit`)
 
@@ -785,10 +965,9 @@ describe('GET /api/quiz-sessions/:sessionId/results (QUIZ-AUTO-EVAL-001)', () =>
     const sessionId = created.body.id as string
     await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({})
 
-    const itemsResponse = await request(app).get(`/api/quiz-sessions/${sessionId}/items`)
-    const itemPath = itemsResponse.body.items[0].path as string
-
     const submitted = await request(app).post(`/api/quiz-sessions/${sessionId}/connections`)
+    const itemsResponse = await request(app).get(`/api/quiz-sessions/${sessionId}/connections/${submitted.body.id}/items`)
+    const itemPath = itemsResponse.body.items[0].path as string
     await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${submitted.body.id}/answers`).send({ itemPath, responses: { RESPONSE: 'choice_b' } })
     await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${submitted.body.id}/submit`)
 
@@ -833,9 +1012,9 @@ describe('GET /api/quiz-sessions/:sessionId/results (QUIZ-AUTO-EVAL-001)', () =>
     const sessionId = created.body.id as string
     await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({})
 
-    const itemsResponse = await request(app).get(`/api/quiz-sessions/${sessionId}/items`)
-    const itemPath = itemsResponse.body.items[0].path as string
     const student = await request(app).post(`/api/quiz-sessions/${sessionId}/connections`)
+    const itemsResponse = await request(app).get(`/api/quiz-sessions/${sessionId}/connections/${student.body.id}/items`)
+    const itemPath = itemsResponse.body.items[0].path as string
     await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${student.body.id}/answers`).send({ itemPath, responses: { RESPONSE: 'Rome' } })
     await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${student.body.id}/submit`)
     await agent.post(`/api/quiz-sessions/${sessionId}/stop`)
@@ -870,10 +1049,9 @@ describe('GET /api/quiz-sessions/:sessionId/answer-breakdown (QUIZ-CLASS-REVIEW-
     const sessionId = created.body.id as string
     await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({})
 
-    const itemsResponse = await request(app).get(`/api/quiz-sessions/${sessionId}/items`)
-    const itemPath = itemsResponse.body.items[0].path as string
-
     const studentA = await request(app).post(`/api/quiz-sessions/${sessionId}/connections`)
+    const itemsResponse = await request(app).get(`/api/quiz-sessions/${sessionId}/connections/${studentA.body.id}/items`)
+    const itemPath = itemsResponse.body.items[0].path as string
     await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${studentA.body.id}/answers`).send({ itemPath, responses: { RESPONSE: 'choice_b' } })
     await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${studentA.body.id}/submit`)
 

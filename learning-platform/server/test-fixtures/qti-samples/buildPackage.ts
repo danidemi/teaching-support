@@ -37,3 +37,22 @@ export function zipOf(entries: Record<string, Buffer | string>): Buffer {
 export function validPackageZip(): Buffer {
   return zipOf(validPackageEntries())
 }
+
+// QUIZ-SESSION-PER-STUDENT-DELIVERY-001/ADR-0013: the "off = follow
+// authored XML" fixture — every fixture above uses shuffle="false"
+// everywhere and no fixture has qti-ordering at all, so this is the only
+// package in this repo where the delivery-order module's authored-shuffle
+// path (as opposed to the force-shuffle path) has real data to run
+// against. See sample-shuffle-test.xml's own header comment for the shape.
+export function shuffledPackageEntries(): Record<string, Buffer> {
+  return {
+    'imsmanifest.xml': Buffer.from(PACKAGE_MANIFEST, 'utf-8'),
+    'test.xml': readSample('sample-shuffle-test.xml'),
+    'sample-shuffle-question-a.xml': readSample('sample-shuffle-question-a.xml'),
+    'sample-shuffle-question-b.xml': readSample('sample-shuffle-question-b.xml'),
+    'sample-shuffle-question-c.xml': readSample('sample-shuffle-question-c.xml'),
+    'sample-shuffle-question-d.xml': readSample('sample-shuffle-question-d.xml'),
+    'sample-shuffle-choice-shuffle-true.xml': readSample('sample-shuffle-choice-shuffle-true.xml'),
+    'sample-shuffle-choice-shuffle-false.xml': readSample('sample-shuffle-choice-shuffle-false.xml'),
+  }
+}

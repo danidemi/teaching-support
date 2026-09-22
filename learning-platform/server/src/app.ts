@@ -233,7 +233,8 @@ function lazySessionRepository(): SessionRepository {
 
   return {
     createForQuiz: (quizId, tenantId) => resolve().createForQuiz(quizId, tenantId),
-    start: (sessionId, tenantId, timeLimitSeconds) => resolve().start(sessionId, tenantId, timeLimitSeconds),
+    start: (sessionId, tenantId, timeLimitSeconds, forceShuffleQuestions, forceShuffleAnswers) =>
+      resolve().start(sessionId, tenantId, timeLimitSeconds, forceShuffleQuestions, forceShuffleAnswers),
     stop: (sessionId, tenantId) => resolve().stop(sessionId, tenantId),
     findByIdForTenant: (sessionId, tenantId) => resolve().findByIdForTenant(sessionId, tenantId),
     findById: (sessionId) => resolve().findById(sessionId),
@@ -261,6 +262,8 @@ function lazyConnectionRepository(): ConnectionRepository {
     countsForSession: (sessionId) => resolve().countsForSession(sessionId),
     belongsToSession: (connectionId, sessionId) => resolve().belongsToSession(connectionId, sessionId),
     listForSession: (sessionId) => resolve().listForSession(sessionId),
+    findForSession: (connectionId, sessionId) => resolve().findForSession(connectionId, sessionId),
+    setOrderIfUnset: (connectionId, itemOrder, choiceOrder) => resolve().setOrderIfUnset(connectionId, itemOrder, choiceOrder),
   }
 }
 

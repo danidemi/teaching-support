@@ -217,19 +217,23 @@ export function createFakeSessionRepository(
         startedAt: null,
         closesAt: null,
         stoppedAt: null,
+        forceShuffleQuestions: false,
+        forceShuffleAnswers: false,
         createdAt: now,
         updatedAt: now,
       }
       rows.push(created)
       return created
     },
-    async start(sessionId: string, tenantId: string, timeLimitSeconds: number | null) {
+    async start(sessionId: string, tenantId: string, timeLimitSeconds: number | null, forceShuffleQuestions: boolean, forceShuffleAnswers: boolean) {
       const row = findRowForTenant(sessionId, tenantId)
       if (!row) return null
       row.timeLimitSeconds = timeLimitSeconds
       row.startedAt = new Date()
       row.closesAt = timeLimitSeconds != null ? new Date(row.startedAt.getTime() + timeLimitSeconds * 1000) : null
       row.stoppedAt = null
+      row.forceShuffleQuestions = forceShuffleQuestions
+      row.forceShuffleAnswers = forceShuffleAnswers
       row.updatedAt = new Date()
       return row
     },
@@ -272,7 +276,7 @@ export function createFakeConnectionRepository(sessions: SessionRepository & { r
     async create(sessionId: string) {
       throwIfNotUuidShaped(sessionId)
       if (!sessions.rows.some((row) => row.id === sessionId)) return null
-      const created: QuizSessionConnection = { id: fakeUuid(nextId++), sessionId, connectedAt: new Date(), submittedAt: null }
+      const created: QuizSessionConnection = { id: fakeUuid(nextId++), sessionId, connectedAt: new Date(), submittedAt: null, itemOrder: null, choiceOrder: null }
       rows.push(created)
       return created
     },
@@ -298,6 +302,23 @@ export function createFakeConnectionRepository(sessions: SessionRepository & { r
     },
     async listForSession(sessionId: string) {
       return rows.filter((row) => row.sessionId === sessionId)
+    },
+    async findForSession(connectionId: string, sessionId: string) {
+      throwIfNotUuidShaped(connectionId)
+      throwIfNotUuidShaped(sessionId)
+      return rows.find((row) => row.id === connectionId && row.sessionId === sessionId) ?? null
+    },
+    async setOrderIfUnset(connectionId: string, itemOrder: string[], choiceOrder: Record<string, string[]>) {
+      const row = rows.find((row) => row.id === connectionId)
+      if (!row) return null
+      // Mirrors the real repository's `UPDATE ... WHERE item_order IS NULL`
+      // race-safety: a row that already has an order wins, this call never
+      // overwrites it.
+      if (row.itemOrder === null) {
+        row.itemOrder = itemOrder
+        row.choiceOrder = choiceOrder
+      }
+      return row
     },
   }
 }
