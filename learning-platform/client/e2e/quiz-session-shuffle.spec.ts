@@ -64,11 +64,15 @@ test('a shuffled item renders correctly, and two students in the same session ge
   await page.getByRole('button', { name: /create session/i }).click()
   await expect(page).toHaveURL(/\/quiz-sessions\/[^/]+$/)
 
-  const takeUrl = await page.locator('p').filter({ hasText: /\/take$/ }).innerText()
+  const takeUrl = await page.getByRole('link', { name: /\/take$/ }).innerText()
 
-  // No force-shuffle toggle exists yet (out of this tech PBI's scope) —
-  // starting with defaults still exercises the authored shuffle="true"
-  // items/section (ADR-0013's "off = follow authored XML" path).
+  // Starting with both trainer-facing toggles left unchecked (their
+  // default) still exercises the authored shuffle="true" items/section
+  // (ADR-0013's "off = follow authored XML" path) — QUIZ-RANDOM-QUESTION
+  // -ORDER-001/QUIZ-RANDOM-ANSWER-ORDER-001's own toggle wiring is
+  // exercised by the second test below, forcing shuffle on instead.
+  await expect(page.getByLabel(/force shuffle questions/i)).not.toBeChecked()
+  await expect(page.getByLabel(/force shuffle answers/i)).not.toBeChecked()
   await page.getByRole('button', { name: /^start$/i }).click()
 
   // Two SEPARATE browser contexts, not two tabs of the same browser:
@@ -150,6 +154,76 @@ test('a shuffled item renders correctly, and two students in the same session ge
 
   const servedXmlB = await goToShuffledItem(studentB, bodyB)
   await assertRendersInServedOrder(studentB, servedXmlB)
+
+  await contextA.close()
+  await contextB.close()
+})
+
+// QUIZ-RANDOM-QUESTION-ORDER-001/QUIZ-RANDOM-ANSWER-ORDER-001: real-browser
+// coverage of the trainer-facing toggles themselves (checking the "force
+// shuffle answers" checkbox before Start, not just sending the field
+// directly to the API as the tech PBI's own route tests do) — forces
+// shuffling on the choice-shuffle-false item, which is authored
+// shuffle="false" and would otherwise never shuffle, proving the toggle's
+// wiring end to end. Two separate browser contexts again, each getting its
+// own independently-generated forced order.
+test('checking "force shuffle answers" before Start shuffles an authored shuffle="false" item per student', async ({ page, browser }) => {
+  await signUpAndLogIn(page, uniqueEmail('e2e-force-shuffle'), 'correct-horse-1')
+
+  await page.getByRole('button', { name: /new course/i }).click()
+  await page.getByLabel('Course name').fill('E2E Force Shuffle Course')
+  await page.getByRole('button', { name: /^create$/i }).click()
+  await page.getByText('E2E Force Shuffle Course').click()
+
+  await page.locator('input[data-testid="upload-file-input"]').setInputFiles({
+    name: 'shuffle-quiz.zip',
+    mimeType: 'application/zip',
+    buffer: buildShufflePackageZip(),
+  })
+  await page.getByRole('button', { name: /create session/i }).click()
+  await expect(page).toHaveURL(/\/quiz-sessions\/[^/]+$/)
+
+  const takeUrl = await page.getByRole('link', { name: /\/take$/ }).innerText()
+
+  // when: the trainer explicitly checks "force shuffle answers" (leaving
+  // "force shuffle questions" off) before starting
+  await page.getByLabel(/force shuffle answers/i).check()
+  await expect(page.getByLabel(/force shuffle answers/i)).toBeChecked()
+  await expect(page.getByLabel(/force shuffle questions/i)).not.toBeChecked()
+  await page.getByRole('button', { name: /^start$/i }).click()
+
+  const contextA = await browser.newContext()
+  const contextB = await browser.newContext()
+  const studentA = await contextA.newPage()
+  const studentB = await contextB.newPage()
+
+  const [itemsResponseA] = await Promise.all([studentA.waitForResponse((res) => /\/connections\/[^/]+\/items$/.test(res.url())), studentA.goto(takeUrl)])
+  const [itemsResponseB] = await Promise.all([studentB.waitForResponse((res) => /\/connections\/[^/]+\/items$/.test(res.url())), studentB.goto(takeUrl)])
+
+  const bodyA = await itemsResponseA.json()
+  const bodyB = await itemsResponseB.json()
+
+  function choiceIdentifiersOf(body: { items: { identifier: string; xml: string }[] }, identifier: string): string[] {
+    const item = body.items.find((i) => i.identifier === identifier)
+    return Array.from(item!.xml.matchAll(/<qti-simple-choice[^>]*identifier="([^"]+)"/g), (m) => m[1])
+  }
+
+  // then: the authored shuffle="false" item is still reordered for both
+  // students — the force-shuffle-answers toggle overrode its own
+  // attribute — while carrying the exact same set of choice identifiers
+  // (nothing lost/duplicated), each independently generated.
+  const authoredOrder = ['csf_choice_a', 'csf_choice_b', 'csf_choice_c', 'csf_choice_d']
+  const servedA = choiceIdentifiersOf(bodyA, 'choice-shuffle-false')
+  const servedB = choiceIdentifiersOf(bodyB, 'choice-shuffle-false')
+  expect(new Set(servedA)).toEqual(new Set(authoredOrder))
+  expect(new Set(servedB)).toEqual(new Set(authoredOrder))
+  // At least one of the two (independently generated, real-RNG) orders
+  // differs from the authored one — both coincidentally matching identity
+  // has probability 1/24 * 1/24, negligible flake risk — proving the
+  // toggle actually forced a reorder rather than leaving the
+  // shuffle="false" item untouched.
+  const bothIdentity = JSON.stringify(servedA) === JSON.stringify(authoredOrder) && JSON.stringify(servedB) === JSON.stringify(authoredOrder)
+  expect(bothIdentity).toBe(false)
 
   await contextA.close()
   await contextB.close()

@@ -1129,3 +1129,77 @@ describe('reopening keeps Block #2 counts accumulating (QUIZ-SESSION-LIVE-STATUS
     expect(response.body.submittedCount).toBe(1)
   })
 })
+
+// QUIZ-RANDOM-QUESTION-ORDER-001/QUIZ-RANDOM-ANSWER-ORDER-001's DoD: "no
+// code change needed [for attribution], but a test proves it rather than
+// assumes it" (ADR-0013). Two connections in the SAME force-shuffled
+// session each get their own independently generated item/choice order
+// (QUIZ-SESSION-PER-STUDENT-DELIVERY-001) — this proves scoring, the
+// answer breakdown, and per-connection results all still attribute each
+// response to its real item/choice identifier, never to a served
+// position, regardless of what each connection's own order happened to
+// be.
+describe('scoring/breakdown attribution survives differing per-connection delivery order (QUIZ-RANDOM-QUESTION-ORDER-001/QUIZ-RANDOM-ANSWER-ORDER-001)', () => {
+  async function createRunningShuffledSession(agent: ReturnType<typeof request.agent>) {
+    const courseResponse = await agent.post('/api/courses').send({ title: 'Attribution course' })
+    const courseId = courseResponse.body.id as string
+    const quizResponse = await agent.post(`/api/courses/${courseId}/quizzes`).attach('file', zipOf(shuffledPackageEntries()), 'shuffle-quiz.zip')
+    const quizId = quizResponse.body.id as string
+    const created = await agent.post(`/api/quizzes/${quizId}/sessions`)
+    const sessionId = created.body.id as string
+    // given: force-shuffle on for BOTH questions and answers — the
+    // maximally-adversarial case for attribution, since both this
+    // connection's item order and its choice-shuffle-true item's choice
+    // order are independently randomized per connection.
+    await agent.post(`/api/quiz-sessions/${sessionId}/start`).send({ forceShuffleQuestions: true, forceShuffleAnswers: true })
+    return sessionId
+  }
+
+  it('scores each connection correctly by choice identifier, not by the position it was served in', async () => {
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const sessionId = await createRunningShuffledSession(agent)
+
+    // given: two connections, each generating (likely) its own distinct
+    // delivery order for the same session
+    const connA = (await request(app).post(`/api/quiz-sessions/${sessionId}/connections`)).body.id as string
+    const connB = (await request(app).post(`/api/quiz-sessions/${sessionId}/connections`)).body.id as string
+    const itemsA = (await request(app).get(`/api/quiz-sessions/${sessionId}/connections/${connA}/items`)).body.items
+    const itemsB = (await request(app).get(`/api/quiz-sessions/${sessionId}/connections/${connB}/items`)).body.items
+    const targetA = itemsA.find((i: { identifier: string }) => i.identifier === 'choice-shuffle-true')
+    const targetB = itemsB.find((i: { identifier: string }) => i.identifier === 'choice-shuffle-true')
+
+    // when: A answers correctly (cst_choice_b), B answers incorrectly
+    // (cst_choice_a) — by identifier, exactly as a real player's
+    // serialize() would send, regardless of each one's own served choice
+    // order
+    await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${connA}/answers`).send({ itemPath: targetA.path, responses: { RESPONSE: 'cst_choice_b' } })
+    await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${connB}/answers`).send({ itemPath: targetB.path, responses: { RESPONSE: 'cst_choice_a' } })
+    const submittedA = await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${connA}/submit`)
+    const submittedB = await request(app).post(`/api/quiz-sessions/${sessionId}/connections/${connB}/submit`)
+
+    // then: each connection's own result attributes its choice-shuffle-true
+    // item correctly, independent of its own served order
+    const resultA = submittedA.body.result.itemResults.find((r: { itemIdentifier: string }) => r.itemIdentifier === 'choice-shuffle-true')
+    const resultB = submittedB.body.result.itemResults.find((r: { itemIdentifier: string }) => r.itemIdentifier === 'choice-shuffle-true')
+    expect(resultA).toMatchObject({ gradingStatus: 'graded', score: 1, maxScore: 1 })
+    expect(resultB).toMatchObject({ gradingStatus: 'graded', score: 0, maxScore: 1 })
+
+    await agent.post(`/api/quiz-sessions/${sessionId}/stop`)
+
+    // and: the trainer-facing per-connection results also attribute the
+    // right total to the right connection
+    const results = await agent.get(`/api/quiz-sessions/${sessionId}/results`)
+    const perConnection = Object.fromEntries(results.body.connections.map((c: { connectionId: string; totalScore: number }) => [c.connectionId, c.totalScore]))
+    expect(perConnection[connA]).toBeGreaterThan(perConnection[connB])
+
+    // and: the answer breakdown buckets each response under the real
+    // choice label ("Option B"/"Option A"), correctly marking the
+    // authored-correct one, never under a served-position label
+    const breakdown = await agent.get(`/api/quiz-sessions/${sessionId}/answer-breakdown`)
+    const itemBreakdown = breakdown.body.items.find((i: { itemIdentifier: string }) => i.itemIdentifier === 'choice-shuffle-true')
+    const bucketFor = (label: string) => itemBreakdown.buckets.find((b: { label: string }) => b.label === label)
+    expect(bucketFor('Option B')).toMatchObject({ count: 1, isCorrect: true })
+    expect(bucketFor('Option A')).toMatchObject({ count: 1, isCorrect: false })
+  })
+})

@@ -134,6 +134,46 @@ describe('QuizSessionMonitorPage (QUIZ-SESSION-CONTROL-001)', () => {
     expect(screen.getByText(/remaining/i)).toBeInTheDocument()
   })
 
+  it('defaults both force-shuffle toggles off and sends them as false when starting without touching them (QUIZ-RANDOM-QUESTION-ORDER-001/QUIZ-RANDOM-ANSWER-ORDER-001)', async () => {
+    // given: a closed session and a fetch spy to inspect the /start body
+    stubFetch({ me: SIGNED_IN_USER, session: { ...BASE_SESSION } })
+    renderAt('session-1')
+    await waitFor(() => expect(screen.getByRole('button', { name: /start/i })).toBeInTheDocument())
+
+    // then: both checkboxes render unchecked by default
+    expect(screen.getByLabelText(/force shuffle questions/i)).not.toBeChecked()
+    expect(screen.getByLabelText(/force shuffle answers/i)).not.toBeChecked()
+
+    // when: starting without touching either toggle
+    fireEvent.click(screen.getByRole('button', { name: /start/i }))
+
+    // then: /start's body carries both flags, explicitly false
+    await waitFor(() => expect(screen.getByRole('button', { name: /stop/i })).toBeInTheDocument())
+    const startCall = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.find((call) => (call[0] as string).endsWith('/start') && (call[1] as RequestInit | undefined)?.method === 'POST')
+    const body = JSON.parse(startCall![1].body as string)
+    expect(body.forceShuffleQuestions).toBe(false)
+    expect(body.forceShuffleAnswers).toBe(false)
+  })
+
+  it('sends the force-shuffle toggles as true when the trainer turns them on', async () => {
+    stubFetch({ me: SIGNED_IN_USER, session: { ...BASE_SESSION } })
+    renderAt('session-1')
+    await waitFor(() => expect(screen.getByRole('button', { name: /start/i })).toBeInTheDocument())
+
+    fireEvent.click(screen.getByLabelText(/force shuffle questions/i))
+    fireEvent.click(screen.getByLabelText(/force shuffle answers/i))
+    expect(screen.getByLabelText(/force shuffle questions/i)).toBeChecked()
+    expect(screen.getByLabelText(/force shuffle answers/i)).toBeChecked()
+
+    fireEvent.click(screen.getByRole('button', { name: /start/i }))
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /stop/i })).toBeInTheDocument())
+    const startCall = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls.find((call) => (call[0] as string).endsWith('/start') && (call[1] as RequestInit | undefined)?.method === 'POST')
+    const body = JSON.parse(startCall![1].body as string)
+    expect(body.forceShuffleQuestions).toBe(true)
+    expect(body.forceShuffleAnswers).toBe(true)
+  })
+
   it('shows an error and stays closed when starting fails', async () => {
     stubFetch({ me: SIGNED_IN_USER, session: { ...BASE_SESSION }, startStatus: 400 })
     renderAt('session-1')

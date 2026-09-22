@@ -105,6 +105,13 @@ function QuizSessionMonitorPage() {
   const [loadError, setLoadError] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [timeLimitInput, setTimeLimitInput] = useState('')
+  // QUIZ-RANDOM-QUESTION-ORDER-001/QUIZ-RANDOM-ANSWER-ORDER-001: both
+  // default off — off means "honor the quiz's own authored `shuffle`
+  // attribute" (ADR-0013), not "never shuffle". Independent toggles, sent
+  // alongside `timeLimit` in the same `/start` body the tech PBI's route
+  // already accepts `forceShuffleQuestions`/`forceShuffleAnswers` on.
+  const [forceShuffleQuestions, setForceShuffleQuestions] = useState(false)
+  const [forceShuffleAnswers, setForceShuffleAnswers] = useState(false)
   const [qrSvg, setQrSvg] = useState<string | null>(null)
   const [now, setNow] = useState(() => new Date())
   const [results, setResults] = useState<SessionResults | null>(null)
@@ -191,10 +198,16 @@ function QuizSessionMonitorPage() {
     const response = await fetch(`/api/quiz-sessions/${sessionId}/start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ timeLimit: timeLimitInput.trim() || undefined }),
+      body: JSON.stringify({
+        timeLimit: timeLimitInput.trim() || undefined,
+        forceShuffleQuestions,
+        forceShuffleAnswers,
+      }),
     })
     if (response.status === 200) {
       setTimeLimitInput('')
+      setForceShuffleQuestions(false)
+      setForceShuffleAnswers(false)
       await loadSession()
     } else {
       setActionError('Could not start the session. Check the time limit format (e.g. 3h or 75m).')
@@ -279,6 +292,24 @@ function QuizSessionMonitorPage() {
                       onChange={(event) => setTimeLimitInput(event.target.value)}
                       placeholder="e.g. 75m"
                     />
+                    <label className="flex items-center gap-2 text-sm text-ink">
+                      <input
+                        type="checkbox"
+                        id="force-shuffle-questions"
+                        checked={forceShuffleQuestions}
+                        onChange={(event) => setForceShuffleQuestions(event.target.checked)}
+                      />
+                      Force shuffle questions
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-ink">
+                      <input
+                        type="checkbox"
+                        id="force-shuffle-answers"
+                        checked={forceShuffleAnswers}
+                        onChange={(event) => setForceShuffleAnswers(event.target.checked)}
+                      />
+                      Force shuffle answers
+                    </label>
                     <Button type="button" onClick={handleStart}>
                       {session.status === 'stopped' ? 'Reopen' : 'Start'}
                     </Button>
