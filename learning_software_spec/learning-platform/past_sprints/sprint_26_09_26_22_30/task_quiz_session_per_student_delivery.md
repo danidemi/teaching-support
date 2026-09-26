@@ -1,6 +1,6 @@
 ID: QUIZ-SESSION-PER-STUDENT-DELIVERY-001
 
-Status: IN_PROGRESS
+Status: DONE
 
 Priority: Medium
 

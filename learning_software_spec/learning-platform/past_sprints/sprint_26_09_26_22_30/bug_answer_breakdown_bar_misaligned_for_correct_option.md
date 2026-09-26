@@ -1,6 +1,6 @@
 ID: BUG-ANSWER-BREAKDOWN-BAR-MISALIGN
 
-Status: READY
+Status: DONE
 
 Priority: Low
 

@@ -44,6 +44,18 @@ Once located, the SCRUM root is organized like this:
 - `adr/` — Architecture Decision Records. Always read and obeyed for new development, to keep the
   project technically coherent across sprints.
 
+## PBI attachments (images, screenshots, logs)
+
+Any image or log is durable evidence, not disposable chat context — never let one the human
+provides, or one you produce as verification, simply vanish at the end of a turn. Save it as a
+file next to the PBI it belongs to: `<same folder as the PBI>/assets/<pbi-id>/<slug>.<ext>`
+(e.g. `backlog/assets/LOGIN-001/wireframe.png`, or
+`active_sprint/assets/TESTDATA-001/seed-run.png`), and reference it from the PBI's own Markdown
+with a relative link so it's discoverable from the file alone. When a PBI moves between folders
+(backlog → active_sprint → past_sprints/sprint_<timestamp>), move its `assets/<pbi-id>/` folder
+with it. Skip this only for an image that's genuinely disposable (e.g. a scratch sketch fully
+superseded by a later one already saved).
+
 ## Bootstrapping a new project
 
 If asked to set this process up in a project that doesn't have this structure yet:

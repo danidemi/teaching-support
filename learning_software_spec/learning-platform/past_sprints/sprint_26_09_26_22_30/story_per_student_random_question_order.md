@@ -1,6 +1,6 @@
 ID: QUIZ-RANDOM-QUESTION-ORDER-001
 
-Status: READY
+Status: DONE
 
 Priority: Medium
 

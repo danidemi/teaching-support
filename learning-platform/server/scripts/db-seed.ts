@@ -246,7 +246,7 @@ async function takeQuizAsStudent(baseUrl: string, sessionId: string, answer: Stu
   const joined = expect(await agent.post(`/api/quiz-sessions/${sessionId}/connections`), 201, `${label}: join session`)
   const connectionId = joined.body.id as string
 
-  const itemsResult = await agent.get(`/api/quiz-sessions/${sessionId}/items`)
+  const itemsResult = await agent.get(`/api/quiz-sessions/${sessionId}/connections/${connectionId}/items`)
   const items: { identifier: string; path: string }[] = itemsResult.body.items
 
   const singleChoiceItem = items.find((item) => item.path === SINGLE_CHOICE_PATH)

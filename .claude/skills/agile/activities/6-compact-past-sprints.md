@@ -30,12 +30,31 @@ sprints") — never automatically as part of sprint review or retrospective.
 5. Keep the `Implemented (sprint, <date>)` section — this is already the compact factual record of
    what shipped, which files changed, and what was tested. Trim only if it restates the DoD
    redundantly; don't remove concrete facts (file paths, test counts, endpoint names).
-6. Leave `review.md` in that sprint folder untouched.
+
+## Non-PBI files in each in-scope sprint folder
+
+- `review.md`: delete entirely. It's the sign-off record for a sprint review that already
+  happened — nothing in it is needed once the sprint's PBIs are themselves compacted.
+- `sprint.md` (the sprint's own summary/plan file, if present): don't delete — summarize in place.
+  Strip out:
+  - anything that only makes sense with cross-sprint context (references to other sprints, to
+    PBIs outside this folder, to backlog items not developed in this sprint)
+  - anything superseded or made stale by later work (a plan that changed, a risk that didn't
+    materialize, a "TBD" later resolved elsewhere)
+  - anything out of scope for what this sprint actually shipped (rejected options, meta-process
+    notes, planning discussion)
+  Keep only what documents this sprint's own outcome in a self-contained way: what was built,
+  in one or two lines per PBI, plus any fact still needed to make sense of the compacted PBI files
+  next to it. If nothing durable survives, delete `sprint.md` too rather than leaving an empty
+  shell.
+- Leave any other non-PBI file (assets, ADR references, etc.) as already handled by the "orphaned
+  asset" check below.
 
 ## Before finishing
 
 Report back to the human: how many sprint folders were compacted, how many PBI files were
-deleted (not-DONE) vs. compacted (DONE), and the resulting size before/after if easy to compute.
+deleted (not-DONE) vs. compacted (DONE), how many `review.md` files were deleted, whether each
+`sprint.md` was summarized or deleted, and the resulting size before/after if easy to compute.
 Ask for confirmation before deleting if anything looks like it might still be referenced by a
 `Depends on:` in a PBI you are *not* compacting (i.e. one in the last N sprints, or in
 `active_sprint/`) — check with a quick grep across those before deleting.

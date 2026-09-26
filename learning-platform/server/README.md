@@ -6,13 +6,11 @@ See `../README.md` for the overall project layout and how to run the app.
 
 If you're testing the app and want it pre-loaded with realistic sample
 data — accounts you can log in with, a course, a quiz, and some quiz
-results already recorded — run:
+results already recorded — from the `learning-platform/` folder, run:
 
 ```bash
-npm run db:seed
+./scripts/seed.sh
 ```
-
-from this `server/` directory.
 
 **Before running it**, the server must already be up and running, with
 `EXPEDITE_SIGNUP_ENABLED=true` set (this is what lets the script create
@@ -29,8 +27,8 @@ This brings up Postgres, builds and starts the server (creating
 `server/.env` from `server/.env.example` for you if it's missing — that
 file already has `EXPEDITE_SIGNUP_ENABLED=true`), and leaves it running in
 that terminal. Once it prints `learning-platform server listening on port
-3000`, open a **second terminal** and, from this `server/` directory, run
-`npm run db:seed`.
+3000`, open a **second terminal** and, from the `learning-platform/` folder,
+run `./scripts/seed.sh`.
 
 If you're instead running the server some other way (`npm run dev`, etc.),
 make sure `server/.env` exists (`cp .env.example .env` if it doesn't) and

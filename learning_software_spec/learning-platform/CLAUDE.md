@@ -11,6 +11,9 @@ Applies to all development carried out during a sprint on this project:
 - Use language best practices.
 - Write unit tests using the given / when / then pattern.
 - Ensure existing automatic unit tests keep passing alongside any new ones.
+- If a change adds a new kind of entity, or changes an API shape that `server/scripts/db-seed.ts`
+  (TESTDATA-001) relies on, update that seed script in the same change so it keeps producing a
+  representative, working seed rather than silently drifting out of date.
 
 ## Drizzle migration naming
 

@@ -138,3 +138,17 @@ Newest entries at the bottom.
   screenshot. Before writing a fixture for a parsed format already used elsewhere in the repo
   (QTI XML, stored JSON shapes, etc.), check an existing real sample/fixture for the true shape
   rather than inventing one that merely satisfies the code being tested.
+
+## sprint_26_09_26_22_30
+
+* **DO** treat "PBI done" as requiring, in order: the full unit test suite green, then (when
+  reasonable) actually running the app and exercising the feature, then attaching the resulting
+  screenshots/logs to the PBI itself as durable proof — not stopping right after the code edit and
+  asserting it works. TESTDATA-001 is the positive case this sprint: running `scripts/seed.sh`
+  end-to-end (not just `db-seed.ts`'s own code review) is what caught a real integration bug — it
+  still called `QUIZ-SESSION-PER-STUDENT-DELIVERY-001`'s old items-endpoint shape, missing the new
+  required `connectionId` segment, which no unit test in either story caught.
+* **DON'T** report a PBI as done on the strength of unit tests alone, or without evidence attached
+  to the PBI file — explicit human ask this retro, echoing a gap flagged repeatedly in earlier
+  sprints (`sprint_26_09_19_00_00`, `sprint_26_09_20_22_55`, `sprint_26_09_21_19_34`) that kept
+  recurring because it was being treated as a GUI-only rule rather than a general one.

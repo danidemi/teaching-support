@@ -40,6 +40,9 @@ For each PBI in `backlog/`:
   manually otherwise.
 - Check for inconsistencies against already-developed PBIs and interview the human on how to
   reconcile them.
+- If the human attaches an image (wireframe, screenshot, mockup) while describing a PBI, save it
+  under that PBI's own `assets/<pbi-id>/` folder per `SKILL.md`'s "PBI attachments" convention and
+  reference it from the PBI — don't let it drop once the conversation moves on.
 
 You may edit PBIs directly — they stay in the backlog until explicitly moved to `active_sprint/`.
 

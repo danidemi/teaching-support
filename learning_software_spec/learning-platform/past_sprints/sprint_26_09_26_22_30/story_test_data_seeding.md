@@ -1,6 +1,6 @@
 ID: TESTDATA-001
 
-Status: READY
+Status: DONE
 
 Priority: Medium
 
@@ -34,8 +34,9 @@ Technical plan (sprint planning, 2026-09-22):
   what it produces, and that it's safe to re-run.
 
 Definition of Done:
-* a documented way exists for a human tester to trigger seeding of test data (`npm run db:seed`)
-  without needing source-level knowledge
+* a documented way exists for a human tester to trigger seeding of test data (`./scripts/seed.sh`,
+  a thin wrapper next to `scripts/uat.sh` around `npm run db:seed`) without needing source-level
+  knowledge
 * the seeded data includes: at least a couple of users/accounts, at least one quiz, and quiz
   attempts covering correct, incorrect, and partially-correct (multi-select) answers
 * seeding is repeatable (can be re-run to reset/refresh the test data) and does not require manual
