@@ -39,7 +39,8 @@ Once located, the SCRUM root is organized like this:
 - `past_sprints/sprint_<timestamp>/` — archived sprints, one folder per sprint, each PBI plus a
   `review.md`. Granularity can vary (e.g. `sprint_26_08_20` vs. the preferred one
   `sprint_26_08_22_15_56`) — match whatever pattern existing folders already use in that project
-  rather than enforcing one format. 
+  rather than enforcing one format. Grows without bound over time; compact older folders on
+  explicit human request (see `activities/6-compact-past-sprints.md`), never automatically.
 - `adr/` — Architecture Decision Records. Always read and obeyed for new development, to keep the
   project technically coherent across sprints.
 
@@ -95,7 +96,10 @@ up front:
 3. `activities/3-sprint.md` — develop the sprint's PBIs.
 4. `activities/4-sprint-review.md` — get human sign-off, archive the sprint, gather new PBIs.
 5. `activities/5-retrospective.md` — capture one do and one don't for `do_and_donts.md`.
-6. `activities/X-new-pbi.md` — collect human feedback to create new PBIs.
+6. `activities/6-compact-past-sprints.md` — compact old `past_sprints/` PBIs to their durable
+   essentials. Run only when the human explicitly asks (e.g. "compact past sprints") — never
+   automatically.
+7. `activities/X-new-pbi.md` — collect human feedback to create new PBIs.
 
 If the human's request maps clearly to one activity, load that file and follow it. If it's
 ambiguous, ask which activity they mean, or use the status check above to suggest one.

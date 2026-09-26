@@ -1,70 +1,27 @@
 ID: DB-MIGRATIONS-001
 
-Status: DONE
-
-Priority: High
-
-Effort: 3 (added during grooming, 2026-08-21: setting up the migration tool and a first
-migration is small once ORM-SELECTION-001 has picked the library)
-
 As:
 a `maintainer` of learning-platform
 
 I want to:
-use a well established database migration tool to version and apply database schema
-changes, with migration files stored in the app's own repository
+use a well established database migration tool to version and apply database schema changes,
+with migration files stored in the app's own repository
 
 So that:
-schema changes (new tables/columns for TENANT-001, COURSE-001, QTI-22-IMPORT, ...) are
-tracked, repeatable, and applied the same way in every environment, instead of being
-applied by hand against Postgres
+schema changes are tracked, repeatable, and applied the same way in every environment
 
 Definition of Done:
-* a migration tool compatible with the library chosen in ORM-SELECTION-001 is set up in
-  `server/` (e.g. Prisma Migrate if Prisma is chosen, Drizzle Kit if Drizzle is chosen)
-* migration files live under version control in `server/` and are applied via a single
-  documented command (e.g. `npm run migrate`)
-* a first migration exists and, run against a clean local Postgres, produces the schema
-  TENANT-001 needs (`tenants`, `users` tables per `adr/ADR-0002-persistence-and-iam.md`)
-* running the migration command twice in a row is a no-op the second time (idempotent)
-* existing client/server unit tests still pass
+* migration tool matches the ORM chosen in ORM-SELECTION-001, files under version control in
+  `server/`, applied via a single documented command
+* a first migration produces the `tenants`/`users` schema TENANT-001 needs
+* the migration command is idempotent (re-running is a no-op)
 
-Notes:
-* rewritten during grooming (2026-08-21) — the previous version of this story was a
-  copy-paste of DEPS-001 (npm audit content) and did not describe migrations at all; its
-  claimed provenance ("carried over from `past_sprints/sprint_26_08_20/review.md`") was
-  false — that review does not mention migrations
-* depends on ORM-SELECTION-001 (added during grooming, 2026-08-21): the migration tool
-  choice follows from the ORM choice, since each ships its own migration tool
-* sequenced alongside/after TENANT-001, since TENANT-001 is the first story needing the
-  `tenants`/`users` schema this story's first migration must produce
-* moved to READY during grooming (2026-08-21): selected for the next sprint together with
-  ORM-SELECTION-001; within the sprint, do ORM-SELECTION-001 first since this story's
-  migration tool follows from that choice
-
-Development (2026-08-21):
-* migration tool: `drizzle-kit` (`generate` + `migrate`, not `push` — see ADR-0003), already a
-  devDependency of `server/` from ORM-SELECTION-001
-* `server/scripts/db-migrate.ts` applies `drizzle/*.sql` against `DATABASE_URL`, run via
-  `npm run db:migrate`; generating a new migration from `src/db/schema.ts` is `npm run db:generate`
-* first migration: `server/drizzle/0000_loving_chamber.sql` — creates `tenants` (id, name
-  unique, created_at) and `users` (id, email unique, current_tenant_id → tenants.id nullable,
-  created_at). Columns are the minimal shape ADR-0002 and TENANT-001's current draft text
-  support (single `current_tenant`, not yet a many-to-many membership) — TENANT-001 is still
-  `DRAFT` and may need a follow-up migration once it's groomed to READY; flagged here so it
-  isn't missed
-* verified against a clean Postgres (`docker compose down -v` then `up`): first `npm run
-  db:migrate` created all 3 tables (including ORM-SELECTION-001's `spike_items`) and one row in
-  `drizzle.__drizzle_migrations`; a second `npm run db:migrate` produced the same log with no
-  new tables and no new tracking row — confirmed idempotent by inspecting `\dt` and the tracking
-  table directly, not just by the log
-* verified: `npm test` in `server/` and `npm run build` both green with the Postgres container
-  stopped
-* all five Definition of Done items met — ready for sprint review; status left at `READY`
-  per `references/do_and_donts.md` (READY = groomed/built, DONE = accepted at review)
-* extended (2026-08-21), on request: migrations now also apply automatically on server
-  startup (`server/src/index.ts`, Flyway-in-Quarkus style), not only via `npm run db:migrate`
-  — see `adr/ADR-0003-orm-selection.md`'s addendum. Verified both paths: fresh DB → server
-  starts, migrates, serves `/healthz`; DB unreachable → server exits 1 with a clear
-  `ECONNREFUSED`, no listener bound. `npm test`/`npm run build` unaffected (`app.test.ts` uses
-  `createApp()`, not `index.ts`)
+Implemented (sprint, 2026-08-21):
+* `drizzle-kit` (`generate`/`migrate`, not `push` — ADR-0003); `server/scripts/db-migrate.ts`
+  applies `drizzle/*.sql` via `npm run db:migrate` (`npm run db:generate` to create one)
+* first migration `server/drizzle/0000_loving_chamber.sql`: `tenants` (id, name unique,
+  created_at), `users` (id, email unique, current_tenant_id → tenants.id nullable, created_at)
+* migrations also run automatically on server startup (`server/src/index.ts`) — DB unreachable
+  makes the server exit 1 instead of starting unmigrated
+* verified idempotent against a clean Postgres (two `npm run db:migrate` runs, checked via
+  `\dt`/tracking table directly); `npm test`/`npm run build` green
