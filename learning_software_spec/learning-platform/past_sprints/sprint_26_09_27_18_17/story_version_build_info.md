@@ -1,6 +1,6 @@
 ID: VERSION-INFO-001
 
-Status: READY
+Status: DONE — accepted at sprint review 2026-09-27
 
 Priority: Medium
 
@@ -88,3 +88,48 @@ Implementation Plan (sprint planning, 2026-09-27):
   different commits and confirm both sides update independently, confirm the dirty flag with an
   uncommitted change, confirm the mismatch flag when the two disagree. Screenshot both the
   matched and mismatched states, per `do_and_donts.md`'s GUI screenshot rule.
+
+Implemented (sprint, 2026-09-27):
+* `server/src/version.ts` — `computeGitVersionFields()` (branch, short SHA, dirty, commit
+  timestamp) shared by both the dev-mode live path and the build-time script below;
+  `getVersionInfo()` reads `dist/version.json` if present (production), else computes live and
+  caches the result (dev), so `startedAt` reflects process start, not every request.
+* Design refinement made during implementation, not in the original plan: git calls are scoped
+  to the `learning-platform` folder (`git status --porcelain -- .` / `git log -1 -- .` with `cwd`
+  set there), not the whole multi-project repo this lives in — otherwise editing an unrelated
+  spec file elsewhere in the repo would falsely mark the running app "dirty" or shift its
+  reported commit timestamp. Branch/commit SHA stay repo-wide (there's only one HEAD). Flagging
+  for human confirmation since this wasn't discussed at planning.
+* `server/scripts/write-version.ts` — new `postbuild` script (`server/package.json`) that runs
+  after `tsc -b`, writes `dist/version.json` (`label: 'Built'`, `builtAt: <now>`). `dist/` is
+  already gitignored, so this generated file is never committed.
+* `server/src/routes/version.ts` — new `GET /api/version`, no auth (same as `/healthz`), mounted
+  in `app.ts`. Verified end-to-end: a clean `npm run build` in `server/` produces a correct
+  `dist/version.json`, and the built server serves it back unchanged from `/api/version`.
+* `client/vite.config.ts` — converted to the function form of `defineConfig` to read Vite's
+  `command` param; computes the same git fields (same folder-scoping as the server) and injects
+  them via `define` as `__CLIENT_VERSION__`, labeled `'Built'`/`builtAt` for `vite build` or
+  `'Dev build'`/`startedAt` for `vite dev`.
+* `client/src/lib/version.ts` (`getClientVersionInfo`), `client/src/lib/useServerVersionInfo.ts`
+  (`GET /api/version` on mount, same shape), `client/src/components/VersionInfoMenu.tsx` — renders
+  one `<details>` row per side inside USER-MENU-001's dropdown (native disclosure widget, not
+  hover-only, for keyboard/touch parity), a short label (`branch@sha[-dirty]`) as the visible
+  summary, full breakdown (branch, commit, status, commit time, built/started timestamp) inside,
+  and a `TriangleAlert` warning line when the two sides' commit SHAs differ. Wired into
+  `AppHeader.tsx` below the "Log out" item.
+* `client/src/components/VersionInfoMenu.test.tsx` (given/when/then) covers both the
+  matched (no flag) and mismatched (flag shown) cases directly.
+* Full automated suite green: server `npx vitest run` 215/215, client `npx vitest run` 99/99
+  (both include this story's new tests), both `npx tsc -b` clean.
+* End-to-end verification against the real built app (disposable Playwright/Postgres stack, same
+  `client/e2e/run-e2e-server.sh` harness as USER-MENU-001, not a dev-mode shortcut): confirmed the
+  dropdown shows matching client/server short labels with no mismatch flag on a normal run
+  (screenshot:
+  [`assets/VERSION-INFO-001/verification-matched.png`](assets/VERSION-INFO-001/verification-matched.png)).
+  A genuine two-commit divergence wasn't created for this (would mean committing throwaway
+  history mid-sprint); instead `/api/version`'s response was intercepted via Playwright's
+  `page.route` to simulate a stale server, confirming the mismatch flag and both expandable
+  breakdowns render correctly (screenshot:
+  [`assets/VERSION-INFO-001/verification-mismatched.png`](assets/VERSION-INFO-001/verification-mismatched.png)).
+  The dirty flag itself is verified for real, not simulated — this sprint's own uncommitted
+  `learning-platform` changes show up as `dirty` on both sides in the matched-state screenshot.

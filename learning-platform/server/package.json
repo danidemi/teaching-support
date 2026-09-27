@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc -b",
+    "postbuild": "tsx scripts/write-version.ts",
     "start": "node dist/index.js",
     "test": "vitest run",
     "db:up": "docker compose up -d",

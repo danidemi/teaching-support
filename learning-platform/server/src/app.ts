@@ -16,6 +16,7 @@ import { createConnectionRepository, type ConnectionRepository } from './db/quiz
 import { createQuizSessionAnswerRepository, type QuizSessionAnswerRepository } from './db/quizSessionAnswers.js'
 import { createMailer, type Mailer } from './email/mailer.js'
 import { createSessionMiddleware } from './auth/session.js'
+import { createVersionRouter } from './routes/version.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const CLIENT_DIST = path.resolve(__dirname, '../../client/dist')
@@ -72,6 +73,8 @@ export function createApp(deps?: Partial<AppDeps>): Express {
   })
 
   app.use(express.json())
+
+  app.use(createVersionRouter())
 
   // API routes must be registered before the static/SPA fallback below,
   // or `/api/*` requests get swallowed and served index.html instead.

@@ -52,34 +52,34 @@ describe('App (home page, HOME-001 / AUTH-UX-001)', () => {
     expect(link.closest('header')).not.toBeNull()
   })
 
-  it("shows the signed-in user's email in the header once GET /api/me confirms a session", async () => {
+  it("shows the signed-in user's email in the account menu once GET /api/me confirms a session (USER-MENU-001)", async () => {
     // given: the server reports a signed-in user
     stubFetch({ status: 200, body: { id: '1', email: 'trainer@example.com' } })
 
-    // when: the page renders and /api/me resolves
+    // when: the page renders, /api/me resolves, and the account menu is opened
     render(<App />)
+    await waitFor(() => expect(screen.getByRole('button', { name: /account menu/i })).toBeInTheDocument())
+    fireEvent.keyDown(screen.getByRole('button', { name: /account menu/i }), { key: 'Enter' })
 
-    // then: the header shows the user's email instead of "Sign in"
-    await waitFor(() => {
-      expect(screen.getByText('trainer@example.com')).toBeInTheDocument()
-    })
+    // then: the header shows an avatar (not "Sign in"), and the email is in the dropdown
+    expect(screen.getByText('trainer@example.com')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /sign in/i })).not.toBeInTheDocument()
   })
 
-  it("shows the user's current tenant next to their email (TENANT-001)", async () => {
+  it("shows the user's current tenant next to their email in the account menu (TENANT-001 / USER-MENU-001)", async () => {
     // given: the server reports a signed-in user with a current tenant
     stubFetch({
       status: 200,
       body: { id: '1', email: 'trainer@example.com', tenant: { id: '1', name: "trainer@example.com's workspace" } },
     })
 
-    // when: the page renders and /api/me resolves
+    // when: the page renders, /api/me resolves, and the account menu is opened
     render(<App />)
+    await waitFor(() => expect(screen.getByRole('button', { name: /account menu/i })).toBeInTheDocument())
+    fireEvent.keyDown(screen.getByRole('button', { name: /account menu/i }), { key: 'Enter' })
 
-    // then: the tenant name is shown alongside the email
-    await waitFor(() => {
-      expect(screen.getByText("trainer@example.com's workspace")).toBeInTheDocument()
-    })
+    // then: the tenant name is shown inside the opened dropdown
+    expect(screen.getByText("trainer@example.com's workspace")).toBeInTheDocument()
   })
 
   it('shows a sign-up link pointing to /signup when signed out', async () => {
@@ -102,7 +102,7 @@ describe('App (home page, HOME-001 / AUTH-UX-001)', () => {
 
     // when: the page renders and /api/me resolves
     render(<App />)
-    await waitFor(() => expect(screen.getByText('trainer@example.com')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('button', { name: /account menu/i })).toBeInTheDocument())
 
     // then: the sign-up link is no longer shown
     expect(screen.queryByRole('link', { name: /sign up/i })).not.toBeInTheDocument()
@@ -252,31 +252,32 @@ describe('App log-out control (LOGOUT-001)', () => {
     )
   }
 
-  it('shows a "Log out" control instead of "Sign in" once signed in', async () => {
+  it('shows a "Log out" control in the account menu instead of "Sign in" once signed in (USER-MENU-001)', async () => {
     // given: a signed-in user
     stubSignedInThenLogout(vi.fn())
 
-    // when: the page renders and /api/me resolves
+    // when: the page renders, /api/me resolves, and the account menu is opened
     render(<App />)
+    await waitFor(() => expect(screen.getByRole('button', { name: /account menu/i })).toBeInTheDocument())
+    fireEvent.keyDown(screen.getByRole('button', { name: /account menu/i }), { key: 'Enter' })
 
     // then: a log-out control is shown, and "Sign in" is not
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: /log out/i })).toBeInTheDocument()
-    })
+    expect(screen.getByRole('menuitem', { name: /log out/i })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: /sign in/i })).not.toBeInTheDocument()
   })
 
   it('calls POST /api/logout and navigates home when "Log out" is clicked', async () => {
-    // given: a signed-in user
+    // given: a signed-in user with the account menu open
     const logoutSpy = vi.fn()
     stubSignedInThenLogout(logoutSpy)
     const assignSpy = vi.fn()
     vi.stubGlobal('location', { ...window.location, assign: assignSpy })
     render(<App />)
-    await waitFor(() => expect(screen.getByRole('button', { name: /log out/i })).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('button', { name: /account menu/i })).toBeInTheDocument())
+    fireEvent.keyDown(screen.getByRole('button', { name: /account menu/i }), { key: 'Enter' })
 
     // when: clicking "Log out"
-    fireEvent.click(screen.getByRole('button', { name: /log out/i }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /log out/i }))
 
     // then: the server is told to end the session, and the browser returns home
     await waitFor(() => expect(logoutSpy).toHaveBeenCalledWith(expect.objectContaining({ method: 'POST' })))

@@ -1,6 +1,6 @@
 ID: USER-MENU-001
 
-Status: READY
+Status: DONE — accepted at sprint review 2026-09-27
 
 Priority: Medium
 
@@ -80,3 +80,39 @@ Implementation Plan (sprint planning, 2026-09-27):
 * Verification: screenshot of the collapsed avatar and of the open dropdown (tenant/email/log-out
   visible), per `do_and_donts.md`'s GUI screenshot rule — light and dark color-scheme both, per the
   `sprint_26_09_19_00_00` DON'T.
+
+Implemented (sprint, 2026-09-27):
+* `client/src/components/ui/dropdown-menu.tsx` — shadcn's dropdown-menu copied in (Root, Trigger,
+  Content, Label, Item, Separator), styled with the project's own tokens (ink/paper/brass), no
+  `tailwindcss-animate` classes since that plugin isn't installed here.
+* `client/src/lib/avatarInitials.ts` (+ `avatarInitials.test.ts`, given/when/then) — implements both
+  DoD rules (2-alpha-char initials, 1-char fallback for <2 alphabetic characters).
+* `client/src/components/AppHeader.tsx` — signed-in block replaced with an avatar
+  `DropdownMenuTrigger` + `DropdownMenuContent` (tenant name, email, "Log out" wired to the existing
+  `onLogout` prop, unchanged contract).
+* `client/src/App.test.tsx` — the workspace-text assertion (line 81) and three other assertions that
+  assumed email/"Log out" were directly visible in the header now open the account menu first (all
+  four were checked by re-grepping the file, not just line 81, since the header change affects any
+  assertion that queried header text directly).
+* Radix's default keyboard behavior (Enter/Space opens the focused trigger, Escape/outside-click
+  closes) verified as-is — no custom keyboard handling added.
+* Test-environment finding: jsdom (this repo's `jsdom` v24) has no `PointerEvent` constructor, so
+  Radix's trigger (which opens on `onPointerDown`) never opens under `fireEvent.click`/`fireEvent.pointerDown`
+  in these unit tests. Worked around by opening via `fireEvent.keyDown(trigger, { key: 'Enter' })`
+  instead — this exercises the DoD's own keyboard-accessibility requirement rather than working
+  around it with an unrelated shortcut.
+* Verification gap found, not a defect: `client/src/index.css` states this app is deliberately
+  light-only (`color-scheme: light`, pinned for the QTI player's contrast) — there is no dark
+  color-scheme to screenshot. Took one screenshot set (the app's only color scheme) instead of a
+  light/dark pair; flagging this for human confirmation that a single-scheme screenshot satisfies
+  this DoD line for an app with no dark theme.
+* Full automated suite green (`npx vitest run`: 97/97; `npx tsc -b`: clean) and the feature was
+  exercised end-to-end against a disposable Playwright/Postgres stack (the existing
+  `client/e2e/run-e2e-server.sh` harness, not a dev-mode shortcut), not just unit tests, per
+  `do_and_donts.md`'s `sprint_26_09_26_22_30` DO.
+* Screenshots (both against the real built app, signed in as a fresh seeded-at-runtime user):
+  [`assets/USER-MENU-001/verification-collapsed-avatar.png`](assets/USER-MENU-001/verification-collapsed-avatar.png),
+  [`assets/USER-MENU-001/verification-open-dropdown.png`](assets/USER-MENU-001/verification-open-dropdown.png).
+* Fallback-initials rule (single-char avatar when the local part has fewer than 2 alphabetic
+  characters) implemented as coded in the Implementation Plan — flagging per that plan's own note
+  for a quick human sanity-check, not separately re-decided here.

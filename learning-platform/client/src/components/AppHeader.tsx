@@ -1,4 +1,7 @@
 import { Button } from './ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu'
+import { avatarInitials } from '../lib/avatarInitials'
+import VersionInfoMenu from './VersionInfoMenu'
 import type { SignedInUser } from '../lib/session'
 
 interface AppHeaderProps {
@@ -34,17 +37,24 @@ function AppHeader({ user, onLogout }: AppHeaderProps) {
         )}
       </div>
       {user ? (
-        <span className="flex items-center gap-group-gap">
-          {user.tenant && (
-            <span className="rounded border border-brass/60 px-2 py-0.5 text-xs font-medium text-brass-50">
-              {user.tenant.name}
-            </span>
-          )}
-          <span className="text-sm font-medium">{user.email}</span>
-          <Button type="button" variant="ghost" size="sm" onClick={onLogout}>
-            Log out
-          </Button>
-        </span>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label="Account menu"
+              className="flex h-9 w-9 items-center justify-center rounded-full border border-brass/60 bg-brass-50 text-sm font-semibold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brass focus-visible:ring-offset-2"
+            >
+              {avatarInitials(user.email)}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            {user.tenant && <DropdownMenuLabel>{user.tenant.name}</DropdownMenuLabel>}
+            <DropdownMenuLabel className="pt-0 text-sm font-normal text-ink">{user.email}</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onLogout}>Log out</DropdownMenuItem>
+            <VersionInfoMenu />
+          </DropdownMenuContent>
+        </DropdownMenu>
       ) : (
         <Button asChild variant="ghost" size="sm">
           <a href="/login">Sign in</a>
