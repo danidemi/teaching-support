@@ -1,0 +1,56 @@
+ID: USER-MENU-001
+
+Status: READY
+
+Priority: Medium
+
+Effort: 5
+
+As:
+a `trainer`
+
+I want to:
+have the top navigation bar's current-`tenant` name, email, and log-out control collapsed behind
+a single avatar (a circle showing my initials when no picture is set) that opens a dropdown
+containing that same information and action
+
+So that:
+the top bar is less cluttered and matches a familiar pattern (e.g. Microsoft Teams' account menu:
+avatar in the corner, click to reveal name/email/account actions in a dropdown)
+
+Definition of Done:
+* the top navigation bar (`client/src/components/AppHeader.tsx`) no longer shows the tenant-name
+  pill, email text, and "Log out" button side by side at all times
+* instead it shows a circular avatar; today's signed-in user shape (`SignedInUser` — id, email,
+  tenant) carries no display name, so with no profile picture the avatar shows initials derived
+  from the email's local part: the first two alphabetic characters of the local part, uppercased
+  (e.g. `trainer1@seed.local` → `TR`) — decided with the human (2026-09-27)
+* clicking the avatar opens a dropdown showing at least: the current tenant/workspace name, the
+  user's email, and a log-out action equivalent to today's "Log out" button
+* keyboard-accessible (dropdown opens on Enter/Space when avatar is focused, closes on Escape or
+  outside click)
+* `client/src/App.test.tsx:81` currently asserts the workspace text (`"...'s workspace"`) is
+  directly visible in the header — that assertion moves to open-the-dropdown-then-assert, since
+  the text is no longer shown until the avatar is clicked; update it as part of this story. Re-grepped at this grooming session (2026-09-27): line 81 still holds that exact assertion, and a
+  repo-wide `grep -rn "Log out\|workspace" client/e2e` still returns no matches — no `client/e2e`
+  spec needs updating.
+* if the email's local part has fewer than 2 alphabetic characters, fall back to a single-character
+  avatar using the local part's first character as-is, uppercased (e.g. `1@seed.local` → `1`) —
+  proposed at grooming 2026-09-27, not put to the human as a separate question (low-stakes
+  implementation fallback); flag it for a quick human sanity-check when this story is built
+* verification: manual — screenshot of the collapsed avatar in the header, and of the open
+  dropdown showing tenant/email/log-out, per `do_and_donts.md`'s screenshot rule for GUI stories
+
+Note:
+Reference screenshots attached by the user:
+* current header (workspace pill + email + Log out button):
+  [`assets/USER-MENU-001/current-header-workspace-email-logout.png`](assets/USER-MENU-001/current-header-workspace-email-logout.png)
+* desired direction, Microsoft Teams' avatar-and-dropdown pattern:
+  [`assets/USER-MENU-001/reference-teams-avatar-dropdown.png`](assets/USER-MENU-001/reference-teams-avatar-dropdown.png)
+  (the exact actions inside Teams' dropdown, e.g. presence/status, don't apply here — only the
+  avatar-opens-dropdown-with-account-info-and-actions pattern is being requested)
+
+Decided with the human (2026-09-27): `VERSION-INFO-001` places its version/build info inside this
+story's dropdown, so `VERSION-INFO-001` now depends on this story — both touch
+`client/src/components/AppHeader.tsx` and its new dropdown; sequence `USER-MENU-001` before
+`VERSION-INFO-001` in sprint planning rather than developing them independently in parallel.
