@@ -54,3 +54,37 @@ testing an old version because I forgot to restart it." The user's own proposed 
 (`<branch>.<sha>.<status>.<commit-tstamp>.<build-tstamp>`) is recorded above as one input, not
 adopted as-is — see the DoD bullet on why a dot-joined string is fragile. Scope (client+server with
 mismatch flag, rather than server-only) confirmed with the human 2026-09-27.
+
+Implementation Plan (sprint planning, 2026-09-27):
+* Checked deployment shape before design: `server/docker-compose.yml` only runs the Postgres
+  database; the server itself runs directly on the host (`npm run build && npm start` →
+  `node dist/index.js`, per `do_and_donts.md`'s `sprint_26_08_21` DON'T), so the `git` CLI and the
+  repo's `.git` are always present at both build time and process-start time — no container-without-
+  `.git` problem, no need to vendor git info another way.
+* No new ADR needed — this uses the already-available `git` CLI and Node's built-in
+  `child_process`, not a new npm dependency (a Vite git-info plugin was considered and rejected for
+  that reason).
+* Server side:
+  * Production (`tsc -b` build): add a build step (e.g. a `prebuild` script, or the start of the
+    existing `build` script) that shells out to `git` (`rev-parse --abbrev-ref HEAD`, `rev-parse
+    --short HEAD`, `status --porcelain` for dirty/clean, `log -1 --format=%cI` for commit
+    timestamp) and writes `dist/version.json` with those fields plus `builtAt: <now>`,
+    `label: 'Built'`.
+  * Dev (`tsx watch src/index.ts`, no separate build step): compute the same git fields live at
+    process startup instead of reading a (possibly stale, possibly absent) `dist/version.json`;
+    `startedAt: <now>`, `label: 'Dev build'`.
+  * New `GET /api/version` returns whichever of the two applies.
+* Client side: compute the same git fields in `client/vite.config.ts` at config-load time (runs for
+  both `vite build` and `vite dev`; Vite's `command` config param distinguishes them — `'build'` →
+  `label: 'Built'`, `'serve'` → `label: 'Dev build'`), inject via Vite's `define` as a single
+  `__CLIENT_VERSION__` constant (JSON-stringified), read by a small typed
+  `client/src/lib/version.ts`.
+* UI: inside `USER-MENU-001`'s dropdown, add two short labels, one per side (e.g. `Server:
+  main@a1b2c3d-dirty`, `Client: main@a1b2c3d`), each expandable (hover or click-to-expand, for
+  keyboard/touch parity) to the full breakdown (branch, sha, dirty/clean, commit time, build/start
+  time) — not the single dot-joined string the DoD already rejected as fragile. Show a visible
+  mismatch flag (e.g. a warning badge) when the two sides' commit SHAs differ.
+* Verification: per the DoD's own verification bullet — restart server / rebuild client from
+  different commits and confirm both sides update independently, confirm the dirty flag with an
+  uncommitted change, confirm the mismatch flag when the two disagree. Screenshot both the
+  matched and mismatched states, per `do_and_donts.md`'s GUI screenshot rule.

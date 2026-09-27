@@ -54,3 +54,29 @@ Decided with the human (2026-09-27): `VERSION-INFO-001` places its version/build
 story's dropdown, so `VERSION-INFO-001` now depends on this story — both touch
 `client/src/components/AppHeader.tsx` and its new dropdown; sequence `USER-MENU-001` before
 `VERSION-INFO-001` in sprint planning rather than developing them independently in parallel.
+
+Implementation Plan (sprint planning, 2026-09-27):
+* No new ADR needed — this extends ADR-0006's already-adopted shadcn/ui + Radix pattern, it doesn't
+  introduce a new component library. `client/src/components/ui/` today only has `button.tsx`,
+  `card.tsx`, `input.tsx`, `label.tsx` (no dropdown/menu primitive yet); `@radix-ui/react-label` and
+  `@radix-ui/react-slot` are the only Radix packages present so far.
+* Copy shadcn's `dropdown-menu.tsx` into `client/src/components/ui/`, adding
+  `@radix-ui/react-dropdown-menu` as a `client/` runtime dependency (same copy-in convention as the
+  existing `ui/` components).
+* Add a small pure helper, e.g. `client/src/lib/avatarInitials.ts`, implementing the two rules
+  above (2-alpha-char initials; 1-char fallback), unit-tested directly (given an email local part /
+  when computing initials / then the expected initials) rather than only through the rendered
+  header.
+* In `client/src/components/AppHeader.tsx`, replace the signed-in `<span>` block (tenant pill +
+  email + Log out button) with a `DropdownMenuTrigger` wrapping a circular avatar button (initials
+  via the helper above; leaves room for a future profile-picture `src` since `SignedInUser` has
+  none today) and a `DropdownMenuContent` showing the tenant name, email, and a "Log out" menu item
+  wired to the existing `onLogout` prop — no change to `onLogout`'s own contract.
+* Radix's `DropdownMenu` already opens on Enter/Space when its trigger is focused and closes on
+  Escape/outside click by default — use it as-is rather than hand-rolling keyboard handling; verify
+  this default behavior satisfies the DoD rather than assuming it.
+* Update `client/src/App.test.tsx:81`'s assertion: open the dropdown first (e.g. click/keyboard-open
+  the avatar trigger), then assert the workspace text inside the opened `DropdownMenuContent`.
+* Verification: screenshot of the collapsed avatar and of the open dropdown (tenant/email/log-out
+  visible), per `do_and_donts.md`'s GUI screenshot rule — light and dark color-scheme both, per the
+  `sprint_26_09_19_00_00` DON'T.

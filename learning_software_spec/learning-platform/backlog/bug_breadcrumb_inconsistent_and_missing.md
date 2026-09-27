@@ -69,3 +69,14 @@ title or its `courseId` — there is no `GET /api/quizzes/:quizId` endpoint at a
 the `Courses > <course> > <quiz> > <session>` trail on the Sessions-list and monitor/history pages
 needs a new way to resolve quiz → course (and session → quiz for the monitor page), not just a
 route param read. This affects both the design (still open, above) and the effort estimate.
+
+Decided with the human at sprint planning (2026-09-27), not yet built (this PBI was left in the
+backlog this sprint — see `TABLE-STYLE-001`'s own coupling note above): add a new, tenant-scoped
+`GET /api/quizzes/:quizId` endpoint returning the quiz's title, `courseId`, and course title;
+session → quiz is already covered today by `GET /api/quiz-sessions/:sessionId`'s existing
+`quizId` field, so no change is needed there. Folded into this PBI rather than split into a
+separate overhead PBI — small, self-contained addition (one route + one repository method).
+Routing note (checked 2026-09-27): `client/src/main.tsx` uses a plain `<BrowserRouter>`/`<Routes>`
+table (no `createBrowserRouter`/route `handle`), so the shared breadcrumb component cannot use
+`useMatches` (data-router only) — build it on `matchPath`/`useParams` against a small ordered route
+config instead. This doesn't touch ADR-0004's routing choice.

@@ -18,8 +18,10 @@ the app looks coherent instead of each table looking hand-rolled, and a future s
 "make headers bolder") is a single edit instead of finding and fixing every table separately
 
 Definition of Done:
-* a single shared table component/style (exact form — shared React component vs. shared CSS
-  classes — to be decided at grooming) is introduced and used by all existing tables, at minimum
+* a single shared table component (decided with the human at sprint planning, 2026-09-27: a shared
+  React component, not shared CSS classes — copy shadcn/ui's `table.tsx` into
+  `client/src/components/ui/`, per ADR-0006's copy-in convention, and bake the resolved style
+  decisions below into it) is introduced and used by all existing tables, at minimum
   the quiz list (`client/src/components/QuizzesSection.tsx`) and the sessions list
   (`client/src/QuizSessionHistoryPage.tsx`), plus any other `<table>` usage found in
   `client/src/CourseDashboardPage.tsx` / `client/src/QuizSessionMonitorPage.tsx`
