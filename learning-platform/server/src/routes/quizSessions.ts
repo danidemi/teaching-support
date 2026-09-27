@@ -151,6 +151,29 @@ export function createQuizSessionsRouter(
     return req.session.tenantId
   }
 
+  // BUG-BREADCRUMB-NAV: resolves quiz -> course for the shared breadcrumb
+  // (session -> quiz is already covered by `GET /api/quiz-sessions/:sessionId`'s
+  // own `quizId` field, no new lookup needed there).
+  router.get('/api/quizzes/:quizId', sessionMiddleware, async (req, res) => {
+    const tenantId = requireTenant(req, res)
+    if (!tenantId) return
+    try {
+      const quiz = await quizzes.findByIdWithCourseForTenant(req.params.quizId, tenantId)
+      if (!quiz) {
+        res.status(404).json({ error: 'quiz_not_found' })
+        return
+      }
+      res.status(200).json(quiz)
+    } catch (err) {
+      if (isInvalidIdError(err)) {
+        res.status(404).json({ error: 'quiz_not_found' })
+        return
+      }
+      console.error('get quiz failed:', err)
+      res.status(500).json({ error: 'internal_error' })
+    }
+  })
+
   router.post('/api/quizzes/:quizId/sessions', sessionMiddleware, async (req, res) => {
     const tenantId = requireTenant(req, res)
     if (!tenantId) return

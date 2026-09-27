@@ -1,6 +1,27 @@
 ID: BUG-BREADCRUMB-NAV
 
-Status: READY
+Status: IN_REVIEW
+
+Implemented (2026-09-27): new tenant-scoped `GET /api/quizzes/:quizId` (`server/src/routes/quizSessions.ts`,
+`server/src/db/quizzes.ts`'s `findByIdWithCourseForTenant`); shared `client/src/components/Breadcrumb.tsx`
+(route-driven via `matchPath`), rendered by `CourseDashboardPage`, `CourseDetailPage`,
+`QuizSessionHistoryPage`, `QuizSessionMonitorPage`. Sessions-list page's trail ends at the quiz (no
+session selected there); the session monitor page gets the full 4-segment trail, using the label
+`Not started` for a session with no `startedAt` yet — both per this file's own flagged design
+decisions, not yet re-confirmed with the human — see this sprint's `sprint.md`/`review.md` for the
+explicit questions raised at review. Also note: the breadcrumb says `Not started` while the
+sessions table's own cell (unchanged) says `not started yet` — same case, different casing/wording,
+also not yet confirmed as intentional. Full unit suite green (220 server / 104 client tests,
+including a new `Breadcrumb.test.tsx` and new server route tests) and the full existing Playwright
+e2e suite green (13/13, no regressions from the breadcrumb/table changes). Verified end-to-end
+against the real built app with 3 courses and 3 sessions (so multi-row layout is actually visible),
+both light and dark `colorScheme` (the app stays visually pinned light either way) — screenshots in
+`assets/BUG-BREADCRUMB-NAV/`:
+[`courses-light.png`](assets/BUG-BREADCRUMB-NAV/courses-light.png),
+[`course-detail-light.png`](assets/BUG-BREADCRUMB-NAV/course-detail-light.png),
+[`sessions-list-light.png`](assets/BUG-BREADCRUMB-NAV/sessions-list-light.png),
+[`session-monitor-light.png`](assets/BUG-BREADCRUMB-NAV/session-monitor-light.png) (dark
+counterparts alongside each).
 
 Steps To Reproduce:
 1. Open `/courses` (Course dashboard) before selecting any `course`.
@@ -80,3 +101,24 @@ Routing note (checked 2026-09-27): `client/src/main.tsx` uses a plain `<BrowserR
 table (no `createBrowserRouter`/route `handle`), so the shared breadcrumb component cannot use
 `useMatches` (data-router only) — build it on `matchPath`/`useParams` against a small ordered route
 config instead. This doesn't touch ADR-0004's routing choice.
+
+Implementation plan (sprint planning, 2026-09-27, see `active_sprint/sprint.md`):
+* New server route `GET /api/quizzes/:quizId`, tenant-scoped like `GET /api/quiz-sessions/:sessionId`
+  (`requireTenant` + a repository lookup joining `quizzes`→`courses` on `courses.tenant_id`),
+  returning `{ id, title, courseId, courseTitle }`; unknown id and cross-tenant id both
+  `404 quiz_not_found`.
+* Shared `Breadcrumb` component, driven by a small ordered route config matched against the current
+  path with `matchPath` (not `useMatches` — see the routing note above), rendered by
+  `CourseDashboardPage`, `CourseDetailPage`, `QuizSessionHistoryPage`, `QuizSessionMonitorPage`.
+* `/courses`: `Courses` only, no placeholder segment.
+* `QuizSessionHistoryPage` (`/quizzes/:quizId/sessions`, nothing "selected" on this page): trail
+  ends at `Courses > <course> > <quiz>` — fetches the new endpoint once on mount.
+* `QuizSessionMonitorPage` (`/quiz-sessions/:sessionId`): full
+  `Courses > <course> > <quiz> > <session>` trail — session's own `GET
+  /api/quiz-sessions/:sessionId` (already fetched) gives `quizId`; the new endpoint resolves
+  quiz→course; both one-shot on mount, outside the existing live-status polling loop (ADR-0009).
+  Session segment: existing `formatDateTime` (already used by the sessions table's Started column),
+  or the literal label `Not started` when `startedAt` is null.
+* Remove the old per-page `<nav aria-label="Breadcrumb">` markup from `CourseDashboardPage`/
+  `CourseDetailPage` once the shared component replaces it; update any existing test asserting the
+  old `(no course selected)` text.

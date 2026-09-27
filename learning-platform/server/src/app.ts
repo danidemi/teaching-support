@@ -217,6 +217,7 @@ function lazyQuizRepository(): QuizRepository {
     replaceFile: (quizId, courseId, file) => resolve().replaceFile(quizId, courseId, file),
     getFiles: (quizId, courseId) => resolve().getFiles(quizId, courseId),
     getFilesByQuizId: (quizId) => resolve().getFilesByQuizId(quizId),
+    findByIdWithCourseForTenant: (quizId, tenantId) => resolve().findByIdWithCourseForTenant(quizId, tenantId),
   }
 }
 

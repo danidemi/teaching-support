@@ -121,7 +121,9 @@ export function createFakeCourseRepository(): CourseRepository & { rows: (Course
  * fake `SessionRepository` on top of — kept here rather than duplicated a
  * third time, same rationale as this file's own header comment.
  */
-export function createFakeQuizRepository(): QuizRepository & { rows: (Quiz & { courseId: string })[]; fileRows: (QuizFile & { quizId: string })[] } {
+export function createFakeQuizRepository(
+  courses?: CourseRepository & { rows: (Course & { tenantId: string })[] },
+): QuizRepository & { rows: (Quiz & { courseId: string })[]; fileRows: (QuizFile & { quizId: string })[] } {
   const rows: (Quiz & { courseId: string })[] = []
   const fileRows: (QuizFile & { quizId: string })[] = []
   let nextId = 1
@@ -171,6 +173,13 @@ export function createFakeQuizRepository(): QuizRepository & { rows: (Quiz & { c
     },
     async getFilesByQuizId(quizId: string) {
       return fileRows.filter((f) => f.quizId === quizId).map(({ id, relativePath, fileData, mimeType }) => ({ id, relativePath, fileData, mimeType }))
+    },
+    async findByIdWithCourseForTenant(quizId: string, tenantId: string) {
+      throwIfNotUuidShaped(quizId)
+      const quiz = rows.find((row) => row.id === quizId)
+      if (!quiz || !courses) return null
+      const course = courses.rows.find((row) => row.id === quiz.courseId && row.tenantId === tenantId)
+      return course ? { id: quiz.id, title: quiz.title, courseId: course.id, courseTitle: course.title } : null
     },
   }
 }

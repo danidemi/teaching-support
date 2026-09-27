@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm'
 import { createDb } from './client.js'
-import { quizzes, quizFiles } from './schema.js'
+import { quizzes, quizFiles, courses } from './schema.js'
 
 export interface Quiz {
   id: string
@@ -41,6 +41,14 @@ export interface QuizFileUpdate {
   files: NewQuizFile[]
 }
 
+/** BUG-BREADCRUMB-NAV: enough to render `Courses > <course> > <quiz>`. */
+export interface QuizWithCourse {
+  id: string
+  title: string
+  courseId: string
+  courseTitle: string
+}
+
 /**
  * QUIZ-DASHBOARD-001: list/delete/replace-file, all scoped to a course
  * (never global — `courses.findByIdForTenant` is what proves the caller's
@@ -65,6 +73,11 @@ export interface QuizRepository {
   // XML for the anonymous take page has no course/tenant to scope by
   // (only a sessionId, itself already the student's only credential).
   getFilesByQuizId(quizId: string): Promise<QuizFile[]>
+  // BUG-BREADCRUMB-NAV: bare quizId (no courseId in the URL), tenant-scoped
+  // via the quiz's own course instead — same information-hiding rationale
+  // as every other tenant-scoped lookup here (unknown id and cross-tenant
+  // id both resolve to `null`).
+  findByIdWithCourseForTenant(quizId: string, tenantId: string): Promise<QuizWithCourse | null>
 }
 
 const SELECT_COLUMNS = {
@@ -157,6 +170,16 @@ export function createQuizRepository(databaseUrl: string): QuizRepository {
 
     async getFilesByQuizId(quizId) {
       return db.select(FILE_SELECT_COLUMNS).from(quizFiles).where(eq(quizFiles.quizId, quizId))
+    },
+
+    async findByIdWithCourseForTenant(quizId, tenantId) {
+      const rows = await db
+        .select({ id: quizzes.id, title: quizzes.title, courseId: quizzes.courseId, courseTitle: courses.title })
+        .from(quizzes)
+        .innerJoin(courses, eq(quizzes.courseId, courses.id))
+        .where(and(eq(quizzes.id, quizId), eq(courses.tenantId, tenantId)))
+        .limit(1)
+      return rows[0] ?? null
     },
   }
 }

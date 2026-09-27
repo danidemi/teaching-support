@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button } from './ui/button'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from './ui/table'
 
 interface Quiz {
   id: string
@@ -161,22 +162,22 @@ function QuizzesSection({ courseId }: { courseId: string }) {
       ) : quizzes.length === 0 ? (
         <p className="text-ink/70">No quizzes uploaded to this course yet.</p>
       ) : (
-        <table className="w-full border-collapse overflow-hidden rounded-card border border-border text-left text-sm">
-          <thead>
-            <tr className="bg-ink-50 text-ink">
-              <th className="px-4 py-2 font-medium">Title</th>
-              <th className="px-4 py-2 font-medium">Uploaded</th>
-              <th className="px-4 py-2 font-medium">Status</th>
-              <th className="px-4 py-2 font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Title</TableHead>
+              <TableHead>Uploaded</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {quizzes.map((quiz) => (
-              <tr key={quiz.id} className="border-t border-border">
-                <td className="px-4 py-2 text-ink">{quiz.title}</td>
-                <td className="px-4 py-2 text-ink/70">{formatDate(quiz.createdAt)}</td>
-                <td className="px-4 py-2 text-ink/70">{quiz.status}</td>
-                <td className="px-4 py-2">
+              <TableRow key={quiz.id}>
+                <TableCell className="text-ink">{quiz.title}</TableCell>
+                <TableCell className="text-ink/70">{formatDate(quiz.createdAt)}</TableCell>
+                <TableCell className="text-ink/70">{quiz.status}</TableCell>
+                <TableCell>
                   <div className="flex gap-2">
                     <Button type="button" variant="outline" size="sm" onClick={() => handleCreateSession(quiz.id)}>
                       Create session
@@ -191,11 +192,11 @@ function QuizzesSection({ courseId }: { courseId: string }) {
                       Delete
                     </Button>
                   </div>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       )}
     </div>
   )

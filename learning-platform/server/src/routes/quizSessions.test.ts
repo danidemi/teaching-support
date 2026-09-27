@@ -30,7 +30,7 @@ function createTestApp() {
   const users = createFakeUserRepository()
   const tenants = createFakeTenantRepository()
   const courses = createFakeCourseRepository()
-  const quizzes = createFakeQuizRepository()
+  const quizzes = createFakeQuizRepository(courses)
   const quizSessions = createFakeSessionRepository(quizzes, courses)
   const quizSessionConnections = createFakeConnectionRepository(quizSessions)
   const quizSessionAnswers = createFakeQuizSessionAnswerRepository()
@@ -57,6 +57,75 @@ const ORIGINAL_APP_BASE_URL = process.env.APP_BASE_URL
 
 afterEach(() => {
   process.env.APP_BASE_URL = ORIGINAL_APP_BASE_URL
+})
+
+// Covers BUG-BREADCRUMB-NAV's new endpoint (active_sprint/bug_breadcrumb_inconsistent_and_missing.md):
+// resolves a bare quizId to its title + course, tenant-scoped, for the
+// shared breadcrumb component.
+describe('GET /api/quizzes/:quizId (BUG-BREADCRUMB-NAV)', () => {
+  it('returns 401 when not signed in', async () => {
+    // given: no session
+    const { app } = createTestApp()
+
+    // when: fetching a quiz with no signed-in agent
+    const response = await request(app).get('/api/quizzes/some-id')
+
+    // then: 401, not a lookup attempt
+    expect(response.status).toBe(401)
+  })
+
+  it('returns the quiz title, courseId, and course title', async () => {
+    // given: a signed-in trainer with a course and quiz
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+    const { courseId, quizId } = await createCourseAndQuiz(agent)
+
+    // when: fetching that quiz by id
+    const response = await agent.get(`/api/quizzes/${quizId}`)
+
+    // then: its title plus its course's id/title are returned
+    expect(response.status).toBe(200)
+    expect(response.body).toMatchObject({ id: quizId, title: 'Sample question', courseId, courseTitle: 'Intro to Python' })
+  })
+
+  it('returns 404 for a quiz belonging to a different tenant', async () => {
+    // given: tenant A's quiz
+    const { app, users } = createTestApp()
+    const agentA = await signInAgent(users, app, 'trainer-a@example.com')
+    const { quizId } = await createCourseAndQuiz(agentA)
+    const agentB = await signInAgent(users, app, 'trainer-b@example.com')
+
+    // when: tenant B fetches it
+    const response = await agentB.get(`/api/quizzes/${quizId}`)
+
+    // then: 404, not 403 — doesn't confirm the quiz exists at all
+    expect(response.status).toBe(404)
+    expect(response.body).toEqual({ error: 'quiz_not_found' })
+  })
+
+  it('returns 404 for an unknown quiz id', async () => {
+    // given: a signed-in trainer, no quiz with this id
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+
+    // when: fetching a UUID-shaped id that matches no row
+    const response = await agent.get('/api/quizzes/00000000-0000-4000-8000-000000000000')
+
+    // then: 404
+    expect(response.status).toBe(404)
+  })
+
+  it('returns 404 for a malformed quiz id, not a 500', async () => {
+    // given: a signed-in trainer
+    const { app, users } = createTestApp()
+    const agent = await signInAgent(users, app, 'trainer@example.com')
+
+    // when: fetching a non-UUID-shaped id (ROUTE-ID-GUARD-001)
+    const response = await agent.get('/api/quizzes/not-a-uuid')
+
+    // then: folded into the same 404, not an uncaught 500
+    expect(response.status).toBe(404)
+  })
 })
 
 describe('deriveStatus (pure)', () => {

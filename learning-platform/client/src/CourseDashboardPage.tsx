@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import AppHeader from './components/AppHeader'
+import Breadcrumb from './components/Breadcrumb'
 import { Button } from './components/ui/button'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from './components/ui/table'
 import { Card } from './components/ui/card'
 import { Input } from './components/ui/input'
 import { Label } from './components/ui/label'
@@ -47,8 +49,8 @@ function compareCourses(a: Course, b: Course, column: SortBy, direction: SortDir
  * (`/courses/:courseId`, COURSE-DETAIL-001) — decided at that story's
  * grooming (2026-08-23) to remove the earlier in-memory "selected
  * course" state and "View quizzes" link this page used to have. Nothing
- * is ever "selected" on this page any more, so the breadcrumb always
- * reads `Courses > (no course selected)`.
+ * is ever "selected" on this page any more, so the shared `Breadcrumb`
+ * (BUG-BREADCRUMB-NAV) just shows `Courses`, with no placeholder segment.
  */
 function CourseDashboardPage() {
   const { user, logout } = useSignedInUser()
@@ -119,9 +121,7 @@ function CourseDashboardPage() {
     <div className="min-h-screen flex flex-col bg-paper">
       <AppHeader user={user} onLogout={logout} />
 
-      <nav aria-label="Breadcrumb" className="flex items-center justify-between border-b border-border px-6 py-3 text-sm text-ink/70">
-        <span>Courses &gt; (no course selected)</span>
-      </nav>
+      <Breadcrumb />
 
       <main className="flex-1 px-6 py-section-gap">
         {!user ? (
@@ -132,7 +132,7 @@ function CourseDashboardPage() {
             to view your courses.
           </p>
         ) : (
-          <div className="mx-auto flex max-w-3xl flex-col gap-group-gap">
+          <div className="flex flex-col gap-group-gap">
             <div className="flex items-center justify-between gap-group-gap">
               <Button type="button" onClick={() => setShowCreateForm(true)}>
                 + New course
@@ -146,11 +146,11 @@ function CourseDashboardPage() {
             ) : sortedCourses.length === 0 ? (
               <p className="text-ink/70">No courses yet — create one to get started.</p>
             ) : (
-              <table className="w-full border-collapse overflow-hidden rounded-card border border-border text-left text-sm">
-                <thead>
-                  <tr className="bg-ink-50 text-ink">
+              <Table>
+                <TableHeader>
+                  <TableRow>
                     {COLUMNS.map((column) => (
-                      <th key={column.value} className="px-4 py-2 font-medium">
+                      <TableHead key={column.value}>
                         <button
                           type="button"
                           onClick={() => handleHeaderClick(column.value)}
@@ -161,24 +161,24 @@ function CourseDashboardPage() {
                             <span aria-hidden="true">{sortDirection === 'asc' ? '▲' : '▼'}</span>
                           )}
                         </button>
-                      </th>
+                      </TableHead>
                     ))}
-                  </tr>
-                </thead>
-                <tbody>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {sortedCourses.map((course) => (
-                    <tr
+                    <TableRow
                       key={course.id}
                       onClick={() => window.location.assign(`/courses/${course.id}`)}
-                      className="cursor-pointer border-t border-border hover:bg-ink-50"
+                      className="cursor-pointer hover:bg-brass-50"
                     >
-                      <td className="px-4 py-2 text-ink">{course.title}</td>
-                      <td className="px-4 py-2 text-ink/70">{formatDate(course.createdAt)}</td>
-                      <td className="px-4 py-2 text-ink/70">{formatDate(course.updatedAt)}</td>
-                    </tr>
+                      <TableCell className="text-ink">{course.title}</TableCell>
+                      <TableCell className="text-ink/70">{formatDate(course.createdAt)}</TableCell>
+                      <TableCell className="text-ink/70">{formatDate(course.updatedAt)}</TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             )}
           </div>
         )}

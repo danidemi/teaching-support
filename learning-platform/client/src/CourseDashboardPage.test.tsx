@@ -1,6 +1,15 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import CourseDashboardPage from './CourseDashboardPage'
+
+function renderPage() {
+  render(
+    <MemoryRouter initialEntries={['/courses']}>
+      <CourseDashboardPage />
+    </MemoryRouter>,
+  )
+}
 
 // Covers COURSE-001's DoD (active_sprint/story_course_dashboard.md): the
 // dashboard lists the tenant's courses, sorts, creates, selects (updating
@@ -41,7 +50,7 @@ describe('CourseDashboardPage (COURSE-001)', () => {
     stubFetch({ me: null })
 
     // when: the page renders
-    render(<CourseDashboardPage />)
+    renderPage()
 
     // then: a sign-in prompt is shown instead of a course list
     await waitFor(() => expect(screen.getByText(/to view your courses/i)).toBeInTheDocument())
@@ -52,7 +61,7 @@ describe('CourseDashboardPage (COURSE-001)', () => {
     stubFetch({ me: SIGNED_IN_USER, courses: [] })
 
     // when: the page renders
-    render(<CourseDashboardPage />)
+    renderPage()
 
     // then: a friendly empty-state message is shown, not an empty table
     await waitFor(() => expect(screen.getByText(/no courses yet/i)).toBeInTheDocument())
@@ -69,7 +78,7 @@ describe('CourseDashboardPage (COURSE-001)', () => {
     })
 
     // when: the page renders
-    render(<CourseDashboardPage />)
+    renderPage()
 
     // then: both courses are listed
     await waitFor(() => expect(screen.getByText('Intro to Python')).toBeInTheDocument())
@@ -81,7 +90,7 @@ describe('CourseDashboardPage (COURSE-001)', () => {
     stubFetch({ me: SIGNED_IN_USER, courses: [{ id: 'c1', title: 'Intro to Python', createdAt: '2026-01-10T00:00:00Z', updatedAt: '2026-08-01T00:00:00Z' }] })
     const assignSpy = vi.fn()
     vi.stubGlobal('location', { ...window.location, assign: assignSpy })
-    render(<CourseDashboardPage />)
+    renderPage()
     await waitFor(() => expect(screen.getByText('Intro to Python')).toBeInTheDocument())
 
     // when: clicking the course row
@@ -91,14 +100,14 @@ describe('CourseDashboardPage (COURSE-001)', () => {
     expect(assignSpy).toHaveBeenCalledWith('/courses/c1')
   })
 
-  it('always shows "(no course selected)" in the breadcrumb (COURSE-DETAIL-001: nothing is ever selected on this page)', async () => {
+  it('shows just "Courses" in the breadcrumb, with no placeholder segment (BUG-BREADCRUMB-NAV: nothing is ever selected on this page)', async () => {
     // given: a signed-in user with a course
     stubFetch({ me: SIGNED_IN_USER, courses: [{ id: 'c1', title: 'Intro to Python', createdAt: '2026-01-10T00:00:00Z', updatedAt: '2026-08-01T00:00:00Z' }] })
-    render(<CourseDashboardPage />)
+    renderPage()
 
     // when/then: the breadcrumb never reflects a selection
-    const breadcrumb = screen.getByRole('navigation', { name: /breadcrumb/i })
-    await waitFor(() => expect(within(breadcrumb).getByText(/no course selected/i)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('navigation', { name: /breadcrumb/i })).toHaveTextContent('Courses'))
+    expect(screen.queryByText(/no course selected/i)).not.toBeInTheDocument()
   })
 
   it('opens a "New course" form, submits it, and refreshes the list', async () => {
@@ -108,7 +117,7 @@ describe('CourseDashboardPage (COURSE-001)', () => {
       courses: [],
       createBody: { id: 'new', title: 'Onboarding basics', createdAt: '2026-06-20T00:00:00Z', updatedAt: '2026-06-20T00:00:00Z' },
     })
-    render(<CourseDashboardPage />)
+    renderPage()
     await waitFor(() => expect(screen.getByText(/no courses yet/i)).toBeInTheDocument())
 
     // when: opening the form and submitting a name
@@ -127,7 +136,7 @@ describe('CourseDashboardPage (COURSE-001)', () => {
   it('shows an error and keeps the form open when the title is already taken', async () => {
     // given: the server rejects the new course as a duplicate
     stubFetch({ me: SIGNED_IN_USER, courses: [], createStatus: 409, createBody: { error: 'title_taken' } })
-    render(<CourseDashboardPage />)
+    renderPage()
     await waitFor(() => expect(screen.getByText(/no courses yet/i)).toBeInTheDocument())
 
     // when: submitting a duplicate name
@@ -149,7 +158,7 @@ describe('CourseDashboardPage (COURSE-001)', () => {
         { id: 'c2', title: 'Intro to Python', createdAt: '2026-01-10T00:00:00Z', updatedAt: '2026-08-01T00:00:00Z' },
       ],
     })
-    render(<CourseDashboardPage />)
+    renderPage()
     await waitFor(() => expect(screen.getByText('Advanced SQL')).toBeInTheDocument())
 
     // when: clicking the "Created" header once
@@ -171,7 +180,7 @@ describe('CourseDashboardPage (COURSE-001)', () => {
         { id: 'c2', title: 'Intro to Python', createdAt: '2026-01-10T00:00:00Z', updatedAt: '2026-08-01T00:00:00Z' },
       ],
     })
-    render(<CourseDashboardPage />)
+    renderPage()
     await waitFor(() => expect(screen.getByText('Advanced SQL')).toBeInTheDocument())
     const titleHeader = screen.getByRole('button', { name: /^title$/i })
 
@@ -199,7 +208,7 @@ describe('CourseDashboardPage (COURSE-001)', () => {
   it('closes the form without creating anything when Cancel is clicked', async () => {
     // given: a signed-in user with the create form open
     stubFetch({ me: SIGNED_IN_USER, courses: [] })
-    render(<CourseDashboardPage />)
+    renderPage()
     await waitFor(() => expect(screen.getByText(/no courses yet/i)).toBeInTheDocument())
     fireEvent.click(screen.getByRole('button', { name: /\+ new course/i }))
 

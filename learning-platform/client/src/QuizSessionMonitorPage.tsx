@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import QRCode from 'qrcode'
 import { Check, ExternalLink } from 'lucide-react'
 import AppHeader from './components/AppHeader'
+import Breadcrumb from './components/Breadcrumb'
 import { Card } from './components/ui/card'
 import { Input } from './components/ui/input'
 import { Button } from './components/ui/button'
@@ -229,6 +230,8 @@ function QuizSessionMonitorPage() {
     <div className="min-h-screen flex flex-col bg-paper">
       <AppHeader user={user} onLogout={logout} />
 
+      <Breadcrumb />
+
       <main className="flex-1 px-6 py-section-gap">
         {!user ? (
           <p className="text-ink/70">
@@ -358,6 +361,12 @@ function QuizSessionMonitorPage() {
                 <p className="mb-3 text-sm text-ink">
                   Class average: {results.classAverage === null ? '—' : `${Math.round(results.classAverage * 100)}%`}
                 </p>
+                {/* TABLE-STYLE-001: left as plain markup, not the shared `Table` primitives —
+                    this is a small summary widget inside Block #3's own `Card`, aligned against
+                    the "Results"/"Class average" text right above it in the same panel, not a
+                    list page in the DoD's sense (quiz list / sessions list). Reusing the shared
+                    header background + full-width padding here misaligned it against its
+                    siblings and doubled up on framing already provided by the surrounding Card. */}
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="text-ink/70">

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import AppHeader from './components/AppHeader'
-import { Card } from './components/ui/card'
+import Breadcrumb from './components/Breadcrumb'
+import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from './components/ui/table'
 import { useSignedInUser } from './lib/session'
 
 type SessionStatus = 'closed' | 'running' | 'stopped'
@@ -56,6 +57,8 @@ function QuizSessionHistoryPage() {
     <div className="min-h-screen flex flex-col bg-paper">
       <AppHeader user={user} onLogout={logout} />
 
+      <Breadcrumb />
+
       <main className="flex-1 px-6 py-section-gap">
         <h1 className="mb-4 text-lg font-semibold text-ink">Sessions</h1>
 
@@ -73,34 +76,28 @@ function QuizSessionHistoryPage() {
         ) : sessions.length === 0 ? (
           <p className="text-ink/70">No sessions yet for this quiz.</p>
         ) : (
-          <Card>
-            <table className="w-full border-collapse overflow-hidden rounded-card border border-border text-left text-sm">
-              <thead>
-                <tr className="bg-ink-50 text-ink">
-                  <th className="px-4 py-2 font-medium">Status</th>
-                  <th className="px-4 py-2 font-medium">Started</th>
-                  <th className="px-4 py-2 font-medium">Stopped</th>
-                  <th className="px-4 py-2 font-medium">Joined / Submitted</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sessions.map((session) => (
-                  <tr
-                    key={session.id}
-                    className="cursor-pointer border-t border-border hover:bg-ink-50"
-                    onClick={() => window.location.assign(`/quiz-sessions/${session.id}`)}
-                  >
-                    <td className="px-4 py-2 text-ink">{session.status}</td>
-                    <td className="px-4 py-2 text-ink/70">{session.startedAt ? formatDateTime(session.startedAt) : 'not started yet'}</td>
-                    <td className="px-4 py-2 text-ink/70">{session.stoppedAt ? formatDateTime(session.stoppedAt) : '—'}</td>
-                    <td className="px-4 py-2 text-ink/70">
-                      {session.joinedCount} / {session.submittedCount}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Status</TableHead>
+                <TableHead>Started</TableHead>
+                <TableHead>Stopped</TableHead>
+                <TableHead>Joined / Submitted</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sessions.map((session) => (
+                <TableRow key={session.id} className="cursor-pointer hover:bg-brass-50" onClick={() => window.location.assign(`/quiz-sessions/${session.id}`)}>
+                  <TableCell className="text-ink">{session.status}</TableCell>
+                  <TableCell className="text-ink/70">{session.startedAt ? formatDateTime(session.startedAt) : 'not started yet'}</TableCell>
+                  <TableCell className="text-ink/70">{session.stoppedAt ? formatDateTime(session.stoppedAt) : '—'}</TableCell>
+                  <TableCell className="text-ink/70">
+                    {session.joinedCount} / {session.submittedCount}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         )}
       </main>
     </div>
