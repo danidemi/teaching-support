@@ -1,6 +1,6 @@
 ID: TABLE-STYLE-001
 
-Status: IN_REVIEW
+Status: DONE — accepted at sprint review 2026-09-28
 
 Implemented (2026-09-27): `client/src/components/ui/table.tsx` (ADR-0006 copy-in — `Table`,
 `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell`), bakes in the left accent bar,

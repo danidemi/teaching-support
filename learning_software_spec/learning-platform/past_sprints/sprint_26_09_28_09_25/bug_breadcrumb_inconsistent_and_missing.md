@@ -1,6 +1,6 @@
 ID: BUG-BREADCRUMB-NAV
 
-Status: IN_REVIEW
+Status: DONE — accepted at sprint review 2026-09-28
 
 Implemented (2026-09-27): new tenant-scoped `GET /api/quizzes/:quizId` (`server/src/routes/quizSessions.ts`,
 `server/src/db/quizzes.ts`'s `findByIdWithCourseForTenant`); shared `client/src/components/Breadcrumb.tsx`
